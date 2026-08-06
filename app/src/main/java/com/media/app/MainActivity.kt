@@ -280,6 +280,9 @@ fun HomeScaffold(vm: PlayerViewModel) {
     val overrides by remember {
         db.dao().observeAll().map { list -> list.associateBy { it.mediaId } }
     }.collectAsState(initial = emptyMap())
+    val positions by remember {
+        db.positionDao().observeAll().map { list -> list.associateBy { it.mediaId } }
+    }.collectAsState(initial = emptyMap())
 
     val allAudio = remember(overrides, reloadKey) { MediaRepository.audioWithOverrides(context, overrides) }
     val music = remember(allAudio) { allAudio.filter { it.pillar == Pillar.MUSIC } }
@@ -317,8 +320,8 @@ fun HomeScaffold(vm: PlayerViewModel) {
 
             if (continueItems.isNotEmpty()) {
                 item {
-                    ShelfHeader("Continue")
-                    MediaShelf(continueItems, state, large = true, onEdit = { editItem = it }) { idx ->
+                    ShelfHeader("Continue", subtitle = "Pick up where you left off")
+                    MediaShelf(continueItems, state, positions, large = true, onEdit = { editItem = it }) { idx ->
                         vm.playOrToggle(continueItems, idx)
                         if (continueItems[idx].type == MediaType.VIDEO) showPlayer = true
                     }
@@ -329,26 +332,26 @@ fun HomeScaffold(vm: PlayerViewModel) {
 
             if (music.isNotEmpty()) {
                 item {
-                    ShelfHeader("Music", onSeeAll = { libraryPillar = Pillar.MUSIC; showLibrary = true })
-                    MediaShelf(music, state, onEdit = { editItem = it }) { idx -> vm.playOrToggle(music, idx) }
+                    ShelfHeader("Music", subtitle = "From your library", onSeeAll = { libraryPillar = Pillar.MUSIC; showLibrary = true })
+                    MediaShelf(music, state, positions, onEdit = { editItem = it }) { idx -> vm.playOrToggle(music, idx) }
                 }
             }
             if (podcasts.isNotEmpty()) {
                 item {
-                    ShelfHeader("Podcasts", onSeeAll = { libraryPillar = Pillar.PODCAST; showLibrary = true })
-                    MediaShelf(podcasts, state, onEdit = { editItem = it }) { idx -> vm.playOrToggle(podcasts, idx) }
+                    ShelfHeader("Podcasts", subtitle = "Shows and episodes", onSeeAll = { libraryPillar = Pillar.PODCAST; showLibrary = true })
+                    MediaShelf(podcasts, state, positions, onEdit = { editItem = it }) { idx -> vm.playOrToggle(podcasts, idx) }
                 }
             }
             if (audiobooks.isNotEmpty()) {
                 item {
-                    ShelfHeader("Audiobooks", onSeeAll = { libraryPillar = Pillar.AUDIOBOOK; showLibrary = true })
-                    MediaShelf(audiobooks, state, onEdit = { editItem = it }) { idx -> vm.playOrToggle(audiobooks, idx) }
+                    ShelfHeader("Audiobooks", subtitle = "Listen, chapter by chapter", onSeeAll = { libraryPillar = Pillar.AUDIOBOOK; showLibrary = true })
+                    MediaShelf(audiobooks, state, positions, onEdit = { editItem = it }) { idx -> vm.playOrToggle(audiobooks, idx) }
                 }
             }
             if (video.isNotEmpty()) {
                 item {
-                    ShelfHeader("Video", onSeeAll = { libraryPillar = Pillar.VIDEO; showLibrary = true })
-                    MediaShelf(video, state, wide = true, onEdit = { editItem = it }) { idx ->
+                    ShelfHeader("Video", subtitle = "Everything you can watch", onSeeAll = { libraryPillar = Pillar.VIDEO; showLibrary = true })
+                    MediaShelf(video, state, positions, wide = true, onEdit = { editItem = it }) { idx ->
                         vm.playOrToggle(video, idx); showPlayer = true
                     }
                 }
@@ -481,13 +484,18 @@ private fun HomeHeader(onSearch: () -> Unit, onAccount: () -> Unit) {
 }
 
 @Composable
-private fun ShelfHeader(title: String, onSeeAll: (() -> Unit)? = null) {
+private fun ShelfHeader(title: String, subtitle: String? = null, onSeeAll: (() -> Unit)? = null) {
     Row(
         Modifier.fillMaxWidth().padding(Space.xl, Space.lg, Space.xl, Space.xs),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Bottom
     ) {
-        Text(title, style = MaterialTheme.typography.titleLarge, color = MediaColors.Cream)
+        Column {
+            Text(title, style = MaterialTheme.typography.titleLarge, color = MediaColors.Cream)
+            if (subtitle != null) {
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamFaint)
+            }
+        }
         if (onSeeAll != null) {
             Text("See all", style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamDim,
                 modifier = Modifier.clickable(onClick = onSeeAll))
@@ -499,6 +507,7 @@ private fun ShelfHeader(title: String, onSeeAll: (() -> Unit)? = null) {
 private fun MediaShelf(
     items: List<AppMediaItem>,
     state: PlayerState,
+    positions: Map<Long, PlaybackPosition>,
     large: Boolean = false,
     wide: Boolean = false,
     onEdit: (AppMediaItem) -> Unit,
@@ -512,6 +521,7 @@ private fun MediaShelf(
             val item = items[idx]
             val isActive = state.currentUri == item.uri.toString()
             MediaCard(item, large = large, wide = wide,
+                savedPosition = positions[item.id],
                 isPlaying = isActive && state.isPlaying,
                 onLongPress = { onEdit(item) }) { onPlay(idx) }
         }
@@ -524,6 +534,7 @@ private fun MediaCard(
     item: AppMediaItem,
     large: Boolean,
     wide: Boolean,
+    savedPosition: PlaybackPosition?,
     isPlaying: Boolean,
     onLongPress: () -> Unit,
     onClick: () -> Unit
@@ -532,8 +543,19 @@ private fun MediaCard(
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(if (pressed) 0.96f else 1f, label = "press")
 
-    val artW = if (wide) 220.dp else if (large) 150.dp else 118.dp
-    val artH = if (wide) 124.dp else artW
+    // Per-pillar shape: books are tall, video is wide, music/podcasts are square.
+    // The wide/large flags (Video shelf / Continue shelf) still take precedence.
+    val isBook = item.pillar == Pillar.AUDIOBOOK
+    val artW = when {
+        wide -> 220.dp
+        large -> 150.dp
+        else -> 118.dp
+    }
+    val artH = when {
+        wide -> 124.dp
+        isBook && !large -> artW * 1.42f   // ~2:3 portrait book ratio
+        else -> artW
+    }
 
     Column(
         Modifier
@@ -559,6 +581,30 @@ private fun MediaCard(
                     tint = MediaColors.Ink, modifier = Modifier.size(20.dp)
                 )
             }
+            // Duration chip — shown on time-based content (podcasts, audiobooks,
+            // video), not music. Bottom-left so it clears the play button.
+            val showDuration = item.pillar != Pillar.MUSIC && item.durationMs > 0
+            if (showDuration) {
+                // "X left" when meaningfully in-progress (started, not near the end),
+                // otherwise total duration. Uses the saved resume position.
+                val remainingMs = savedPosition
+                    ?.takeIf { it.positionMs > 30_000L && it.positionMs < item.durationMs - 30_000L }
+                    ?.let { item.durationMs - it.positionMs }
+                val chipText = if (remainingMs != null) "${fmtLeft(remainingMs)} left"
+                               else fmtDuration(item.durationMs)
+                Box(
+                    Modifier.align(Alignment.BottomStart).padding(Space.sm)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(MediaColors.Ink.copy(alpha = 0.55f))
+                        .padding(horizontal = 7.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        chipText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MediaColors.Cream.copy(alpha = 0.92f)
+                    )
+                }
+            }
         }
         Spacer(Modifier.height(Space.sm))
         Text(item.title, style = MaterialTheme.typography.titleMedium, color = MediaColors.Cream,
@@ -570,6 +616,25 @@ private fun MediaCard(
                 color = MediaColors.CreamFaint, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
+}
+
+private fun fmtLeft(ms: Long): String {
+    val totalMin = (ms / 60000).toInt()
+    val h = totalMin / 60
+    val m = totalMin % 60
+    return when {
+        h > 0 -> "${h}h ${m}m"
+        totalMin > 0 -> "$totalMin min"
+        else -> "<1 min"
+    }
+}
+
+private fun fmtDuration(ms: Long): String {
+    val totalSec = (ms / 1000).toInt()
+    val h = totalSec / 3600
+    val m = (totalSec % 3600) / 60
+    val sec = totalSec % 60
+    return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
 }
 
 @Composable
