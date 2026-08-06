@@ -532,8 +532,19 @@ private fun MediaCard(
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(if (pressed) 0.96f else 1f, label = "press")
 
-    val artW = if (wide) 220.dp else if (large) 150.dp else 118.dp
-    val artH = if (wide) 124.dp else artW
+    // Per-pillar shape: books are tall, video is wide, music/podcasts are square.
+    // The wide/large flags (Video shelf / Continue shelf) still take precedence.
+    val isBook = item.pillar == Pillar.AUDIOBOOK
+    val artW = when {
+        wide -> 220.dp
+        large -> 150.dp
+        else -> 118.dp
+    }
+    val artH = when {
+        wide -> 124.dp
+        isBook && !large -> artW * 1.42f   // ~2:3 portrait book ratio
+        else -> artW
+    }
 
     Column(
         Modifier
@@ -559,6 +570,23 @@ private fun MediaCard(
                     tint = MediaColors.Ink, modifier = Modifier.size(20.dp)
                 )
             }
+            // Duration chip — shown on time-based content (podcasts, audiobooks,
+            // video), not music. Bottom-left so it clears the play button.
+            val showDuration = item.pillar != Pillar.MUSIC && item.durationMs > 0
+            if (showDuration) {
+                Box(
+                    Modifier.align(Alignment.BottomStart).padding(Space.sm)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(MediaColors.Ink.copy(alpha = 0.55f))
+                        .padding(horizontal = 7.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        fmtDuration(item.durationMs),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MediaColors.Cream.copy(alpha = 0.92f)
+                    )
+                }
+            }
         }
         Spacer(Modifier.height(Space.sm))
         Text(item.title, style = MaterialTheme.typography.titleMedium, color = MediaColors.Cream,
@@ -570,6 +598,14 @@ private fun MediaCard(
                 color = MediaColors.CreamFaint, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
+}
+
+private fun fmtDuration(ms: Long): String {
+    val totalSec = (ms / 1000).toInt()
+    val h = totalSec / 3600
+    val m = (totalSec % 3600) / 60
+    val sec = totalSec % 60
+    return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
 }
 
 @Composable
