@@ -81,19 +81,30 @@ fun CoverArt(
 ) {
     val context = LocalContext.current
     var art by remember(item.uri) { mutableStateOf<ImageBitmap?>(null) }
+    var loading by remember(item.uri) { mutableStateOf(true) }
 
     LaunchedEffect(item.uri) {
+        loading = true
         art = withContext(Dispatchers.IO) {
             runCatching {
                 val retriever = MediaMetadataRetriever()
                 retriever.setDataSource(context, item.uri)
-                val bytes = retriever.embeddedPicture
-                retriever.release()
-                bytes?.let {
-                    BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap()
+                // Audio: embedded cover art. Video: no embedded picture usually,
+                // so grab a representative frame (~1s in) like a video thumbnail.
+                val embedded = retriever.embeddedPicture
+                val bmp = if (embedded != null) {
+                    BitmapFactory.decodeByteArray(embedded, 0, embedded.size)
+                } else if (item.type == MediaType.VIDEO) {
+                    // 1s in avoids the black first frame; OPTION_CLOSEST_SYNC is fast.
+                    retriever.getFrameAtTime(1_000_000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                } else {
+                    null
                 }
+                retriever.release()
+                bmp?.asImageBitmap()
             }.getOrNull()
         }
+        loading = false
     }
 
     Box(
@@ -101,7 +112,11 @@ fun CoverArt(
         contentAlignment = Alignment.Center
     ) {
         val bitmap = art
-        if (bitmap != null) {
+        if (loading) {
+            // Neutral placeholder while art/frame loads — just the gradient wash,
+            // no drop-cap or badge, so the swap to a real frame is seamless.
+            Box(Modifier.fillMaxSize().background(gradientFor(item.title)))
+        } else if (bitmap != null) {
             Image(
                 bitmap = bitmap,
                 contentDescription = item.title,
