@@ -320,7 +320,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
 
             if (continueItems.isNotEmpty()) {
                 item {
-                    ShelfHeader("Continue")
+                    ShelfHeader("Continue", subtitle = "Pick up where you left off")
                     MediaShelf(continueItems, state, positions, large = true, onEdit = { editItem = it }) { idx ->
                         vm.playOrToggle(continueItems, idx)
                         if (continueItems[idx].type == MediaType.VIDEO) showPlayer = true
@@ -332,25 +332,25 @@ fun HomeScaffold(vm: PlayerViewModel) {
 
             if (music.isNotEmpty()) {
                 item {
-                    ShelfHeader("Music", onSeeAll = { libraryPillar = Pillar.MUSIC; showLibrary = true })
+                    ShelfHeader("Music", subtitle = "From your library", onSeeAll = { libraryPillar = Pillar.MUSIC; showLibrary = true })
                     MediaShelf(music, state, positions, onEdit = { editItem = it }) { idx -> vm.playOrToggle(music, idx) }
                 }
             }
             if (podcasts.isNotEmpty()) {
                 item {
-                    ShelfHeader("Podcasts", onSeeAll = { libraryPillar = Pillar.PODCAST; showLibrary = true })
+                    ShelfHeader("Podcasts", subtitle = "Shows and episodes", onSeeAll = { libraryPillar = Pillar.PODCAST; showLibrary = true })
                     MediaShelf(podcasts, state, positions, onEdit = { editItem = it }) { idx -> vm.playOrToggle(podcasts, idx) }
                 }
             }
             if (audiobooks.isNotEmpty()) {
                 item {
-                    ShelfHeader("Audiobooks", onSeeAll = { libraryPillar = Pillar.AUDIOBOOK; showLibrary = true })
+                    ShelfHeader("Audiobooks", subtitle = "Listen, chapter by chapter", onSeeAll = { libraryPillar = Pillar.AUDIOBOOK; showLibrary = true })
                     MediaShelf(audiobooks, state, positions, onEdit = { editItem = it }) { idx -> vm.playOrToggle(audiobooks, idx) }
                 }
             }
             if (video.isNotEmpty()) {
                 item {
-                    ShelfHeader("Video", onSeeAll = { libraryPillar = Pillar.VIDEO; showLibrary = true })
+                    ShelfHeader("Video", subtitle = "Everything you can watch", onSeeAll = { libraryPillar = Pillar.VIDEO; showLibrary = true })
                     MediaShelf(video, state, positions, wide = true, onEdit = { editItem = it }) { idx ->
                         vm.playOrToggle(video, idx); showPlayer = true
                     }
@@ -484,13 +484,18 @@ private fun HomeHeader(onSearch: () -> Unit, onAccount: () -> Unit) {
 }
 
 @Composable
-private fun ShelfHeader(title: String, onSeeAll: (() -> Unit)? = null) {
+private fun ShelfHeader(title: String, subtitle: String? = null, onSeeAll: (() -> Unit)? = null) {
     Row(
         Modifier.fillMaxWidth().padding(Space.xl, Space.lg, Space.xl, Space.xs),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Bottom
     ) {
-        Text(title, style = MaterialTheme.typography.titleLarge, color = MediaColors.Cream)
+        Column {
+            Text(title, style = MaterialTheme.typography.titleLarge, color = MediaColors.Cream)
+            if (subtitle != null) {
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamFaint)
+            }
+        }
         if (onSeeAll != null) {
             Text("See all", style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamDim,
                 modifier = Modifier.clickable(onClick = onSeeAll))
