@@ -280,6 +280,9 @@ fun HomeScaffold(vm: PlayerViewModel) {
     val overrides by remember {
         db.dao().observeAll().map { list -> list.associateBy { it.mediaId } }
     }.collectAsState(initial = emptyMap())
+    val positions by remember {
+        db.positionDao().observeAll().map { list -> list.associateBy { it.mediaId } }
+    }.collectAsState(initial = emptyMap())
 
     val allAudio = remember(overrides, reloadKey) { MediaRepository.audioWithOverrides(context, overrides) }
     val music = remember(allAudio) { allAudio.filter { it.pillar == Pillar.MUSIC } }
@@ -318,7 +321,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
             if (continueItems.isNotEmpty()) {
                 item {
                     ShelfHeader("Continue")
-                    MediaShelf(continueItems, state, large = true, onEdit = { editItem = it }) { idx ->
+                    MediaShelf(continueItems, state, positions, large = true, onEdit = { editItem = it }) { idx ->
                         vm.playOrToggle(continueItems, idx)
                         if (continueItems[idx].type == MediaType.VIDEO) showPlayer = true
                     }
@@ -330,25 +333,25 @@ fun HomeScaffold(vm: PlayerViewModel) {
             if (music.isNotEmpty()) {
                 item {
                     ShelfHeader("Music", onSeeAll = { libraryPillar = Pillar.MUSIC; showLibrary = true })
-                    MediaShelf(music, state, onEdit = { editItem = it }) { idx -> vm.playOrToggle(music, idx) }
+                    MediaShelf(music, state, positions, onEdit = { editItem = it }) { idx -> vm.playOrToggle(music, idx) }
                 }
             }
             if (podcasts.isNotEmpty()) {
                 item {
                     ShelfHeader("Podcasts", onSeeAll = { libraryPillar = Pillar.PODCAST; showLibrary = true })
-                    MediaShelf(podcasts, state, onEdit = { editItem = it }) { idx -> vm.playOrToggle(podcasts, idx) }
+                    MediaShelf(podcasts, state, positions, onEdit = { editItem = it }) { idx -> vm.playOrToggle(podcasts, idx) }
                 }
             }
             if (audiobooks.isNotEmpty()) {
                 item {
                     ShelfHeader("Audiobooks", onSeeAll = { libraryPillar = Pillar.AUDIOBOOK; showLibrary = true })
-                    MediaShelf(audiobooks, state, onEdit = { editItem = it }) { idx -> vm.playOrToggle(audiobooks, idx) }
+                    MediaShelf(audiobooks, state, positions, onEdit = { editItem = it }) { idx -> vm.playOrToggle(audiobooks, idx) }
                 }
             }
             if (video.isNotEmpty()) {
                 item {
                     ShelfHeader("Video", onSeeAll = { libraryPillar = Pillar.VIDEO; showLibrary = true })
-                    MediaShelf(video, state, wide = true, onEdit = { editItem = it }) { idx ->
+                    MediaShelf(video, state, positions, wide = true, onEdit = { editItem = it }) { idx ->
                         vm.playOrToggle(video, idx); showPlayer = true
                     }
                 }
@@ -499,6 +502,7 @@ private fun ShelfHeader(title: String, onSeeAll: (() -> Unit)? = null) {
 private fun MediaShelf(
     items: List<AppMediaItem>,
     state: PlayerState,
+    positions: Map<Long, PlaybackPosition>,
     large: Boolean = false,
     wide: Boolean = false,
     onEdit: (AppMediaItem) -> Unit,
@@ -512,6 +516,7 @@ private fun MediaShelf(
             val item = items[idx]
             val isActive = state.currentUri == item.uri.toString()
             MediaCard(item, large = large, wide = wide,
+                savedPosition = positions[item.id],
                 isPlaying = isActive && state.isPlaying,
                 onLongPress = { onEdit(item) }) { onPlay(idx) }
         }
@@ -524,6 +529,7 @@ private fun MediaCard(
     item: AppMediaItem,
     large: Boolean,
     wide: Boolean,
+    savedPosition: PlaybackPosition?,
     isPlaying: Boolean,
     onLongPress: () -> Unit,
     onClick: () -> Unit
@@ -574,6 +580,13 @@ private fun MediaCard(
             // video), not music. Bottom-left so it clears the play button.
             val showDuration = item.pillar != Pillar.MUSIC && item.durationMs > 0
             if (showDuration) {
+                // "X left" when meaningfully in-progress (started, not near the end),
+                // otherwise total duration. Uses the saved resume position.
+                val remainingMs = savedPosition
+                    ?.takeIf { it.positionMs > 30_000L && it.positionMs < item.durationMs - 30_000L }
+                    ?.let { item.durationMs - it.positionMs }
+                val chipText = if (remainingMs != null) "${fmtLeft(remainingMs)} left"
+                               else fmtDuration(item.durationMs)
                 Box(
                     Modifier.align(Alignment.BottomStart).padding(Space.sm)
                         .clip(RoundedCornerShape(6.dp))
@@ -581,7 +594,7 @@ private fun MediaCard(
                         .padding(horizontal = 7.dp, vertical = 3.dp)
                 ) {
                     Text(
-                        fmtDuration(item.durationMs),
+                        chipText,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MediaColors.Cream.copy(alpha = 0.92f)
                     )
@@ -597,6 +610,17 @@ private fun MediaCard(
             Text(item.details, style = MaterialTheme.typography.bodyMedium,
                 color = MediaColors.CreamFaint, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+    }
+}
+
+private fun fmtLeft(ms: Long): String {
+    val totalMin = (ms / 60000).toInt()
+    val h = totalMin / 60
+    val m = totalMin % 60
+    return when {
+        h > 0 -> "${h}h ${m}m"
+        totalMin > 0 -> "$totalMin min"
+        else -> "<1 min"
     }
 }
 

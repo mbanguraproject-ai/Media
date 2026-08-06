@@ -54,6 +54,9 @@ interface PositionDao {
 
     @Query("DELETE FROM playback_positions WHERE mediaId = :id")
     suspend fun clearOne(id: Long)
+
+    @Query("SELECT * FROM playback_positions")
+    fun observeAll(): Flow<List<PlaybackPosition>>
 }
 
 @Dao
