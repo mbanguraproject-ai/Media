@@ -58,6 +58,12 @@ import android.app.Activity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.Canvas
+import kotlinx.coroutines.delay
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeCap
@@ -368,11 +374,27 @@ fun HomeScaffold(vm: PlayerViewModel) {
             }
         }
 
-        if (state.hasItem) {
+        // Auto-hide: 10s after pausing, the mini-player slides away. Resuming or
+        // switching tracks brings it straight back.
+        var playerHidden by remember { mutableStateOf(false) }
+        LaunchedEffect(state.isPlaying, state.currentUri) {
+            if (state.isPlaying) {
+                playerHidden = false
+            } else if (state.hasItem) {
+                delay(10_000)
+                playerHidden = true
+            }
+        }
+        AnimatedVisibility(
+            visible = state.hasItem && !playerHidden,
+            enter = slideInVertically { it } + fadeIn(),
+            exit = slideOutVertically { it } + fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
             NowPlayingBar(
                 state, vm,
                 onExpand = { showPlayer = true },
-                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = BottomBarHeight + MiniPlayerGap, start = Space.md, end = Space.md)
+                modifier = Modifier.navigationBarsPadding().padding(bottom = BottomBarHeight + MiniPlayerGap, start = Space.md, end = Space.md)
             )
         }
         BottomBar(Modifier.align(Alignment.BottomCenter), onLibraryTab = { showLibrary = true }, onPodcastsTab = { showPodcasts = true }) { showAudiobooks = true }
