@@ -56,6 +56,10 @@ import android.widget.Toast
 import androidx.core.view.WindowCompat
 import android.app.Activity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
@@ -654,34 +658,74 @@ private fun EmptyState() {
 private fun NowPlayingBar(
     state: PlayerState, vm: PlayerViewModel, onExpand: () -> Unit, modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-            .background(MediaColors.InkRaised).clickable(onClick = onExpand)
+    val view = LocalView.current
+    val prog = if (state.durationMs > 0)
+        (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f) else 0f
+
+    // Lightweight AppMediaItem to drive the thumbnail from the current URI.
+    val artItem = state.currentUri?.let { uri ->
+        AppMediaItem(
+            id = uri.substringAfterLast('/').toLongOrNull() ?: 0L,
+            title = state.currentTitle, artist = state.currentArtist,
+            durationMs = state.durationMs, uri = android.net.Uri.parse(uri),
+            type = if (state.isVideo) MediaType.VIDEO else MediaType.AUDIO,
+            pillar = Pillar.MUSIC
+        )
+    }
+
+    Row(
+        modifier
+            .fillMaxWidth()
+            .shadow(14.dp, RoundedCornerShape(28.dp), clip = false)
+            .clip(RoundedCornerShape(28.dp))
+            .background(MediaColors.InkRaised)
+            .clickable(onClick = onExpand)
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            Modifier.fillMaxWidth().padding(Space.md, Space.sm),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(state.currentTitle, style = MaterialTheme.typography.titleMedium,
-                    color = MediaColors.Cream, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(state.currentArtist, style = MaterialTheme.typography.bodyMedium,
-                    color = MediaColors.CreamDim, maxLines = 1)
+        // Album-art thumbnail with a progress ring arcing around it.
+        Box(contentAlignment = Alignment.Center) {
+            if (artItem != null) {
+                CoverArt(artItem, Modifier.size(44.dp), corner = 22)
+            } else {
+                Box(Modifier.size(44.dp).clip(CircleShape).background(MediaColors.Ink))
             }
-            IconButton(onClick = { vm.togglePlayPause() }) {
-                Icon(
-                    if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    "Play/Pause", tint = MediaColors.Cream
+            val trackColor = MediaColors.InkHairline
+            val ringColor = MediaColors.Accent
+            Canvas(Modifier.size(52.dp)) {
+                val stroke = 3.dp.toPx()
+                drawArc(
+                    color = trackColor,
+                    startAngle = -90f, sweepAngle = 360f, useCenter = false,
+                    style = Stroke(width = stroke, cap = StrokeCap.Round),
+                    topLeft = androidx.compose.ui.geometry.Offset(stroke / 2, stroke / 2),
+                    size = androidx.compose.ui.geometry.Size(size.width - stroke, size.height - stroke)
+                )
+                drawArc(
+                    color = ringColor,
+                    startAngle = -90f, sweepAngle = 360f * prog, useCenter = false,
+                    style = Stroke(width = stroke, cap = StrokeCap.Round),
+                    topLeft = androidx.compose.ui.geometry.Offset(stroke / 2, stroke / 2),
+                    size = androidx.compose.ui.geometry.Size(size.width - stroke, size.height - stroke)
                 )
             }
         }
-        val prog = if (state.durationMs > 0) state.positionMs.toFloat() / state.durationMs else 0f
-        LinearProgressIndicator(
-            progress = { prog.coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth().height(2.dp),
-            color = MediaColors.Accent,
-            trackColor = MediaColors.InkHairline
-        )
+
+        Spacer(Modifier.width(Space.md))
+
+        Column(Modifier.weight(1f)) {
+            Text(state.currentTitle, style = MaterialTheme.typography.titleMedium,
+                color = MediaColors.Cream, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(state.currentArtist, style = MaterialTheme.typography.bodyMedium,
+                color = MediaColors.CreamDim, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+
+        IconButton(onClick = { view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP); vm.togglePlayPause() }) {
+            Icon(
+                if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                "Play/Pause", tint = MediaColors.Cream, modifier = Modifier.size(26.dp)
+            )
+        }
     }
 }
 
@@ -695,27 +739,37 @@ private fun BottomBar(modifier: Modifier = Modifier, onLibraryTab: () -> Unit, o
     ) {
         Row(
             Modifier.fillMaxWidth().height(BottomBarHeight),
-            horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            NavTab(Icons.Filled.Home, "Home", true) {}
-            NavTab(Icons.AutoMirrored.Outlined.LibraryBooks, "Library", false) { onLibraryTab() }
-            NavTab(Icons.Outlined.Podcasts, "Podcasts", false) { onPodcastsTab() }
-            NavTab(Icons.AutoMirrored.Outlined.MenuBook, "Audiobooks", false) { onAudiobooksTab() }
+            NavTab(Icons.Filled.Home, "Home", true, Modifier.weight(1f)) {}
+            NavTab(Icons.AutoMirrored.Outlined.LibraryBooks, "Library", false, Modifier.weight(1f)) { onLibraryTab() }
+            NavTab(Icons.Outlined.Podcasts, "Podcasts", false, Modifier.weight(1f)) { onPodcastsTab() }
+            NavTab(Icons.AutoMirrored.Outlined.MenuBook, "Audiobooks", false, Modifier.weight(1f)) { onAudiobooksTab() }
         }
     }
 }
 
 @Composable
-private fun NavTab(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, active: Boolean, onClick: () -> Unit) {
+private fun NavTab(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    active: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
     val tint = if (active) MediaColors.Cream else MediaColors.CreamFaint
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(3.dp),
-        modifier = Modifier.clickable(onClick = onClick)
+        modifier = modifier
+            .fillMaxHeight()
+            .clickable(onClick = onClick),
+        // center the icon+label group vertically within the bar
     ) {
-        Icon(icon, label, tint = tint, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.weight(1f))
+        Icon(icon, label, tint = tint, modifier = Modifier.size(24.dp))
         Text(label, style = MaterialTheme.typography.labelSmall, color = tint)
+        Spacer(Modifier.weight(1f))
     }
 }
 
