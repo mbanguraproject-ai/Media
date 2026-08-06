@@ -1,0 +1,23 @@
+{
+  "name": "Media (Android + JDK 17)",
+  "image": "mcr.microsoft.com/devcontainers/java:17",
+  "features": {
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "17",
+      "installGradle": false
+    }
+  },
+  "containerEnv": {
+    "ANDROID_HOME": "${containerEnv:HOME}/android-sdk",
+    "ANDROID_SDK_ROOT": "${containerEnv:HOME}/android-sdk"
+  },
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "fwcd.kotlin",
+        "vscjava.vscode-gradle"
+      ]
+    }
+  }
+}
