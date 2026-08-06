@@ -66,6 +66,13 @@ private fun pillarIcon(pillar: Pillar): ImageVector = when (pillar) {
     Pillar.VIDEO -> Icons.Filled.Movie
 }
 
+private fun pillarLabel(pillar: Pillar): String = when (pillar) {
+    Pillar.MUSIC -> "Music"
+    Pillar.PODCAST -> "Podcast"
+    Pillar.AUDIOBOOK -> "Audiobook"
+    Pillar.VIDEO -> "Video"
+}
+
 @Composable
 fun CoverArt(
     item: AppMediaItem,
@@ -129,7 +136,28 @@ fun CoverArt(
                         .align(Alignment.BottomStart)
                         .padding(start = (side.value * 0.08f).dp, bottom = (side.value * 0.02f).dp)
                 )
+
             }
+        }
+
+        // Type badge — quiet ink pill, top-left. Shown on EVERY cover (art and
+        // fallback alike) so the grid stays visually consistent. The translucent
+        // ink sits lightly on real artwork without fighting it.
+        Box(
+            Modifier
+                .align(Alignment.TopStart)
+                .padding(6.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(MediaColors.Ink.copy(alpha = 0.45f))
+                .padding(horizontal = 7.dp, vertical = 3.dp)
+        ) {
+            Text(
+                text = pillarLabel(item.pillar),
+                fontFamily = Inter,
+                fontWeight = FontWeight.Medium,
+                fontSize = 10.sp,
+                color = MediaColors.Cream.copy(alpha = 0.9f)
+            )
         }
     }
 }
