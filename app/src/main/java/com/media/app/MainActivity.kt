@@ -56,7 +56,9 @@ import android.widget.Toast
 import androidx.core.view.WindowCompat
 import android.app.Activity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.draw.shadow
@@ -673,6 +675,10 @@ private fun NowPlayingBar(
         )
     }
 
+    var dragX by remember { mutableStateOf(0f) }
+    var dragDown by remember { mutableStateOf(0f) }
+    val swipeThresholdPx = with(LocalDensity.current) { 60.dp.toPx() }
+
     Row(
         modifier
             .fillMaxWidth()
@@ -680,6 +686,34 @@ private fun NowPlayingBar(
             .clip(RoundedCornerShape(28.dp))
             .background(MediaColors.InkRaised)
             .clickable(onClick = onExpand)
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragEnd = {
+                        when {
+                            // Downward swipe dominates -> dismiss.
+                            dragDown > swipeThresholdPx && dragDown > kotlin.math.abs(dragX) -> {
+                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                vm.dismiss()
+                            }
+                            // Horizontal swipe -> skip.
+                            dragX <= -swipeThresholdPx -> {
+                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                vm.next()
+                            }
+                            dragX >= swipeThresholdPx -> {
+                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                vm.previous()
+                            }
+                        }
+                        dragX = 0f; dragDown = 0f
+                    },
+                    onDrag = { change, delta ->
+                        change.consume()
+                        dragX += delta.x
+                        if (delta.y > 0) dragDown += delta.y else dragDown = (dragDown + delta.y).coerceAtLeast(0f)
+                    }
+                )
+            }
             .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

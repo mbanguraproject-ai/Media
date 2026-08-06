@@ -305,6 +305,14 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun seekTo(ms: Long) { controller?.seekTo(ms) }
     fun next() { controller?.seekToNext() }
     fun previous() { controller?.seekToPrevious() }
+    fun dismiss() {
+        // Save any resume position first, then stop and clear so the mini-player
+        // (shown only when hasItem) disappears.
+        saveCurrentPosition()
+        controller?.stop()
+        controller?.clearMediaItems()
+        refresh()
+    }
 
     fun toggleShuffle() {
         val c = controller ?: return
