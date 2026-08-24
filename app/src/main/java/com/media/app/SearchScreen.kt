@@ -37,7 +37,7 @@ fun SearchScreen(
     }
 
     Column(
-        Modifier.fillMaxSize().background(MediaColors.Ink).statusBarsPadding()
+        Modifier.fillMaxSize().background(moodBackground()).statusBarsPadding()
     ) {
         Row(
             Modifier.fillMaxWidth().padding(Space.md, Space.md),

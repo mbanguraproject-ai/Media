@@ -16,3 +16,5 @@
 media-release.keystore
 keystore.properties
 .kotlin/
+_apk_out/
+gradle.local.properties

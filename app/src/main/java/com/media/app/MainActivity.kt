@@ -1,4 +1,7 @@
 package com.media.app
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
 
 import android.Manifest
 import android.content.ComponentName
@@ -98,15 +101,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val settings by SettingsStore.flow(this).collectAsState(initial = MediaSettings())
-            val dark = when (settings.themeMode) {
-                ThemeMode.LIGHT -> false
-                ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
-                else -> true
-            }
-            SetStatusBarIcons(dark)
-            MediaTheme(themeMode = settings.themeMode, fontScale = settings.fontScale) {
-                Surface(Modifier.fillMaxSize(), color = MediaColors.Ink) {
-                    AppRoot()
+            // Dark-only app: bars always use light icons.
+            SetStatusBarIcons(true)
+            // Active mood: re-themes the whole app (accent + glow) and is settable
+            // from the home screen via LocalMoodSetter. Purely visual.
+            var mood by remember { mutableStateOf(Mood.default) }
+            MediaTheme(themeMode = settings.themeMode, fontScale = settings.fontScale, mood = mood) {
+                androidx.compose.runtime.CompositionLocalProvider(LocalMoodSetter provides { mood = it }) {
+                    Surface(Modifier.fillMaxSize(), color = MediaColors.Ink) {
+                        AppRoot()
+                    }
                 }
             }
         }
@@ -269,6 +273,9 @@ fun HomeScaffold(vm: PlayerViewModel) {
     var showLibrary by remember { mutableStateOf(false) }
     var libraryPillar by remember { mutableStateOf<Pillar?>(null) }
     var showAudiobooks by remember { mutableStateOf(false) }
+    var currentTab by remember { mutableStateOf(0) }
+    var showPlaylists by remember { mutableStateOf(false) }
+    var addToItem by remember { mutableStateOf<AppMediaItem?>(null) }
     var showTerms by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
     var reloadKey by remember { mutableStateOf(0) }
@@ -302,10 +309,41 @@ fun HomeScaffold(vm: PlayerViewModel) {
     val audiobooks = remember(allAudio) { allAudio.filter { it.pillar == Pillar.AUDIOBOOK } }
     val video = remember(reloadKey) { MediaRepository.loadVideo(context) }
 
+    // Active mood + its whole-app theme setter (from MainActivity).
+    val setMood = LocalMoodSetter.current
+    val mood = LocalMood.current
+
+    // Favorites set (drives the heart icon everywhere).
+    val favorites by remember {
+        db.moodDao().observeMood(Mood.FAVORITES.key).map { list -> list.map { it.mediaId }.toSet() }
+    }.collectAsState(initial = emptySet())
+
+    // Live membership for the CURRENTLY selected mood (Workout/Late Night/Focus/Favorites).
+    // Re-subscribes whenever the mood changes, so Home updates instantly.
+    val moodMembers by remember(mood) {
+        if (mood.holdsSongs)
+            db.moodDao().observeMood(mood.key).map { list -> list.map { it.mediaId }.toSet() }
+        else
+            kotlinx.coroutines.flow.flowOf(emptySet())
+    }.collectAsState(initial = emptySet())
+
+    // All mood memberships (for smart-tab counts + add-to checkmarks).
+    val allMoodMembers by remember {
+        db.moodDao().observeAll()
+    }.collectAsState(initial = emptyList())
+    val moodCounts = remember(allMoodMembers) {
+        allMoodMembers.groupingBy { it.moodKey }.eachCount()
+    }
+    // User playlists + all playlist memberships.
+    val playlists by remember { db.playlistDao().observePlaylists() }.collectAsState(initial = emptyList())
+    val allPlaylistMembers by remember { db.playlistDao().observeAllMembers() }.collectAsState(initial = emptyList())
+
     // Edit sheet state
     var editItem by remember { mutableStateOf<AppMediaItem?>(null) }
 
     // Android back: close the topmost open overlay, step by step.
+    BackHandler(enabled = addToItem != null) { addToItem = null }
+    BackHandler(enabled = addToItem == null && showPlaylists) { showPlaylists = false }
     BackHandler(enabled = editItem != null) { editItem = null }
     BackHandler(enabled = editItem == null && showPlayer) { showPlayer = false }
     BackHandler(enabled = editItem == null && !showPlayer && showSearch) { showSearch = false }
@@ -319,85 +357,68 @@ fun HomeScaffold(vm: PlayerViewModel) {
         recentHistory.mapNotNull { byId[it.mediaId] }
     }
 
-    Box(Modifier.fillMaxSize().background(MediaColors.Ink)) {
+    // Outer container: home + all overlays render inside; the mini-player and
+    // bottom nav sit at the end so they PERSIST above every screen.
+    Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().background(moodBackground())) {
         // Bottom inset = real nav-bar inset + chrome offset (bottom bar + mini-
         // player), so the last shelf always clears the chrome on any device
         // (gesture or 3-button). No magic number.
         val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-        LazyColumn(
-            contentPadding = PaddingValues(bottom = 170.dp + navBottom),
-            modifier = Modifier.fillMaxSize().statusBarsPadding()
-        ) {
-            item { HomeHeader(onSearch = { showSearch = true }, onAccount = { showSettings = true }) }
 
-            if (continueItems.isNotEmpty()) {
-                item {
-                    ShelfHeader("Continue", subtitle = "Pick up where you left off")
-                    MediaShelf(continueItems, state, positions, large = true, onEdit = { editItem = it }) { idx ->
-                        vm.playOrToggle(continueItems, idx)
-                        if (continueItems[idx].type == MediaType.VIDEO) showPlayer = true
-                    }
-                }
-            }
+        // Favorites mood shows only favorited tracks; every other mood shows all music.
+        val shown = if (mood.holdsSongs) music.filter { moodMembers.contains(it.id) } else music
 
-            item { HorizontalDivider(color = MediaColors.InkHairline, modifier = Modifier.padding(horizontal = Space.xl)) }
-
-            if (music.isNotEmpty()) {
-                item {
-                    ShelfHeader("Music", subtitle = "From your library", onSeeAll = { libraryPillar = Pillar.MUSIC; showLibrary = true })
-                    MediaShelf(music, state, positions, onEdit = { editItem = it }) { idx -> vm.playOrToggle(music, idx) }
-                }
-            }
-            if (podcasts.isNotEmpty()) {
-                item {
-                    ShelfHeader("Podcasts", subtitle = "Shows and episodes", onSeeAll = { libraryPillar = Pillar.PODCAST; showLibrary = true })
-                    MediaShelf(podcasts, state, positions, onEdit = { editItem = it }) { idx -> vm.playOrToggle(podcasts, idx) }
-                }
-            }
-            if (audiobooks.isNotEmpty()) {
-                item {
-                    ShelfHeader("Audiobooks", subtitle = "Listen, chapter by chapter", onSeeAll = { libraryPillar = Pillar.AUDIOBOOK; showLibrary = true })
-                    MediaShelf(audiobooks, state, positions, onEdit = { editItem = it }) { idx -> vm.playOrToggle(audiobooks, idx) }
-                }
-            }
-            if (video.isNotEmpty()) {
-                item {
-                    ShelfHeader("Video", subtitle = "Everything you can watch", onSeeAll = { libraryPillar = Pillar.VIDEO; showLibrary = true })
-                    MediaShelf(video, state, positions, wide = true, onEdit = { editItem = it }) { idx ->
-                        vm.playOrToggle(video, idx); showPlayer = true
-                    }
-                }
-            }
-
-            if (music.isEmpty() && podcasts.isEmpty() && audiobooks.isEmpty() && video.isEmpty()) {
-                item { EmptyState() }
-            }
-        }
-
-        // Auto-hide: 10s after pausing, the mini-player slides away. Resuming or
-        // switching tracks brings it straight back.
-        var playerHidden by remember { mutableStateOf(false) }
-        LaunchedEffect(state.isPlaying, state.currentUri) {
-            if (state.isPlaying) {
-                playerHidden = false
-            } else if (state.hasItem) {
-                delay(10_000)
-                playerHidden = true
-            }
-        }
-        AnimatedVisibility(
-            visible = state.hasItem && !playerHidden,
-            enter = slideInVertically { it } + fadeIn(),
-            exit = slideOutVertically { it } + fadeOut(),
-            modifier = Modifier.align(Alignment.BottomCenter)
-        ) {
-            NowPlayingBar(
-                state, vm,
-                onExpand = { showPlayer = true },
-                modifier = Modifier.navigationBarsPadding().padding(bottom = BottomBarHeight + MiniPlayerGap, start = Space.md, end = Space.md)
+        Column(Modifier.fillMaxSize().statusBarsPadding()) {
+            // FIXED top region — does not scroll. Songs scroll underneath it.
+            StashHeader(
+                onSearch = { showSearch = true },
+                onRescan = { MediaRepository.refresh(); reloadKey++ },
+                onPlaylists = { showSettings = true }
             )
+            MoodChips(active = mood, onPick = { setMood(it) })
+            MoodBanner(mood)
+            Spacer(Modifier.height(Space.md))
+            StatCards(
+                mostPlayed = recentHistory.size,
+                recentlyAdded = music.size,
+                favorites = favorites.size
+            )
+            CountAndShuffle(count = shown.size, onShuffle = {
+                if (shown.isNotEmpty()) {
+                    if (!state.shuffle) vm.toggleShuffle()
+                    vm.play(shown, (shown.indices).random())
+                }
+            })
+
+            // SCROLLING list — only the tracks move.
+            if (shown.isEmpty()) {
+                EmptyState()
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(bottom = 170.dp + navBottom),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(shown.size) { idx ->
+                        val track = shown[idx]
+                        TrackRow(
+                            item = track,
+                            isPlaying = state.currentUri == track.uri.toString() && state.isPlaying,
+                            isFavorite = favorites.contains(track.id),
+                            onClick = { vm.playOrToggle(shown, idx) },
+                            onLongPress = { addToItem = track },
+                            onToggleFav = {
+                                scope.launch {
+                                    if (favorites.contains(track.id)) db.moodDao().remove(Mood.FAVORITES.key, track.id)
+                                    else db.moodDao().add(MoodMember(Mood.FAVORITES.key, track.id, System.currentTimeMillis()))
+                                }
+                            }
+                        )
+                    }
+                }
+            }
         }
-        BottomBar(Modifier.align(Alignment.BottomCenter), onLibraryTab = { showLibrary = true }, onPodcastsTab = { showPodcasts = true }) { showAudiobooks = true }
+
     }
 
     if (showPlayer) {
@@ -412,6 +433,45 @@ fun HomeScaffold(vm: PlayerViewModel) {
                 if (list[idx].type == MediaType.VIDEO) showPlayer = true
             },
             onClose = { showSearch = false }
+        )
+    }
+    if (showPlaylists) {
+        PlaylistsScreen(
+            playlists = playlists,
+            moodCounts = moodCounts,
+            onOpenMood = { m -> setMood(m); showPlaylists = false; currentTab = 0 },
+            onCreatePlaylist = { name ->
+                scope.launch { db.playlistDao().create(Playlist(name = name, createdAt = System.currentTimeMillis())) }
+            },
+            onOpenPlaylist = { /* playlist detail: future */ },
+            onDeletePlaylist = { pl ->
+                scope.launch { db.playlistDao().clearMembers(pl.id); db.playlistDao().deletePlaylist(pl.id) }
+            },
+            onClose = { showPlaylists = false }
+        )
+    }
+    addToItem?.let { item ->
+        val itemMoods = allMoodMembers.filter { it.mediaId == item.id }.map { it.moodKey }.toSet()
+        val itemPlaylists = allPlaylistMembers.filter { it.mediaId == item.id }.map { it.playlistId }.toSet()
+        AddToSheet(
+            item = item,
+            memberMoods = itemMoods,
+            playlists = playlists,
+            memberPlaylists = itemPlaylists,
+            onToggleMood = { m, nowMember ->
+                scope.launch {
+                    if (nowMember) db.moodDao().add(MoodMember(m.key, item.id, System.currentTimeMillis()))
+                    else db.moodDao().remove(m.key, item.id)
+                }
+            },
+            onTogglePlaylist = { pl, nowMember ->
+                scope.launch {
+                    if (nowMember) db.playlistDao().addMember(PlaylistMember(pl.id, item.id, System.currentTimeMillis()))
+                    else db.playlistDao().removeMember(pl.id, item.id)
+                }
+            },
+            onEditDetails = { editItem = item; addToItem = null },
+            onDismiss = { addToItem = null }
         )
     }
     if (showSettings) {
@@ -492,6 +552,38 @@ fun HomeScaffold(vm: PlayerViewModel) {
             onDismiss = { editItem = null }
         )
     }
+
+    // ---- PERSISTENT chrome: mini-player + bottom nav, above all overlays ----
+    var playerHidden by remember { mutableStateOf(false) }
+    LaunchedEffect(state.isPlaying, state.currentUri) {
+        if (state.isPlaying) playerHidden = false
+        else if (state.hasItem) { delay(10_000); playerHidden = true }
+    }
+    AnimatedVisibility(
+        visible = state.hasItem && !playerHidden,
+        enter = slideInVertically { it } + fadeIn(),
+        exit = slideOutVertically { it } + fadeOut(),
+        modifier = Modifier.align(Alignment.BottomCenter)
+    ) {
+        NowPlayingBar(
+            state, vm,
+            onExpand = { showPlayer = true },
+            modifier = Modifier.navigationBarsPadding().padding(bottom = BottomBarHeight + MiniPlayerGap, start = Space.md, end = Space.md)
+        )
+    }
+    BottomBar(Modifier.align(Alignment.BottomCenter), current = currentTab) { tab ->
+        // Every tab first clears ALL overlays (mutually exclusive), then opens its own.
+        showPlaylists = false; showSearch = false; showSettings = false
+        showLibrary = false; showPodcasts = false; showAudiobooks = false
+        currentTab = tab
+        when (tab) {
+            2 -> showPlaylists = true
+            3 -> showSearch = true
+            4 -> showSettings = true
+            // 0 Home, 1 Albums -> just the home surface (Albums has no screen yet)
+        }
+    }
+    } // close outer Box
 }
 
 @Composable
@@ -786,44 +878,80 @@ private fun NowPlayingBar(
 }
 
 @Composable
-private fun BottomBar(modifier: Modifier = Modifier, onLibraryTab: () -> Unit, onPodcastsTab: () -> Unit, onAudiobooksTab: () -> Unit) {
+private fun BottomBar(
+    modifier: Modifier = Modifier,
+    current: Int,
+    onSelect: (Int) -> Unit
+) {
+    // Glass bar floating over the gradient: translucent fill + hairline top edge.
     Column(
         modifier.fillMaxWidth()
-            .background(MediaColors.Ink)
-            .border(width = 0.5.dp, color = MediaColors.InkHairline)
+            .background(Color(0xFF120D1B))
+            .border(width = 0.5.dp, color = Color(0x14FFFFFF))
             .navigationBarsPadding()
     ) {
         Row(
             Modifier.fillMaxWidth().height(BottomBarHeight),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            NavTab(Icons.Filled.Home, "Home", true, Modifier.weight(1f)) {}
-            NavTab(Icons.AutoMirrored.Outlined.LibraryBooks, "Library", false, Modifier.weight(1f)) { onLibraryTab() }
-            NavTab(Icons.Outlined.Podcasts, "Podcasts", false, Modifier.weight(1f)) { onPodcastsTab() }
-            NavTab(Icons.AutoMirrored.Outlined.MenuBook, "Audiobooks", false, Modifier.weight(1f)) { onAudiobooksTab() }
+            NavTab(Icons.Filled.Home, Icons.Outlined.Home, "Home", current == 0, Modifier.weight(1f)) { onSelect(0) }
+            NavTab(Icons.Filled.Album, Icons.Outlined.Album, "Albums", current == 1, Modifier.weight(1f)) { onSelect(1) }
+            NavTab(Icons.Filled.QueueMusic, Icons.Outlined.QueueMusic, "Playlists", current == 2, Modifier.weight(1f)) { onSelect(2) }
+            NavTab(Icons.Filled.Search, Icons.Outlined.Search, "Search", current == 3, Modifier.weight(1f)) { onSelect(3) }
+            NavTab(Icons.Filled.Menu, Icons.Outlined.Menu, "More", current == 4, Modifier.weight(1f)) { onSelect(4) }
         }
     }
 }
 
 @Composable
 private fun NavTab(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconActive: androidx.compose.ui.graphics.vector.ImageVector,
+    iconIdle: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     active: Boolean,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    val tint = if (active) MediaColors.Cream else MediaColors.CreamFaint
+    // Interaction-driven animation: on select, icon pops (scale spring), tint
+    // fades to teal, and a glass pill grows behind it. No idle motion.
+    val accent = MediaColors.Accent
+    val tint by animateColorAsState(
+        if (active) accent else MediaColors.CreamFaint,
+        animationSpec = tween(220), label = "navTint"
+    )
+    val scale by animateFloatAsState(
+        if (active) 1.18f else 1f,
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = 0.42f, stiffness = 620f
+        ), label = "navScale"
+    )
+    val pill by animateFloatAsState(
+        if (active) 1f else 0f, animationSpec = tween(220), label = "navPill"
+    )
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(3.dp),
-        modifier = modifier
-            .fillMaxHeight()
-            .clickable(onClick = onClick),
-        // center the icon+label group vertically within the bar
+        modifier = modifier.fillMaxHeight()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
     ) {
         Spacer(Modifier.weight(1f))
-        Icon(icon, label, tint = tint, modifier = Modifier.size(24.dp))
+        Box(contentAlignment = Alignment.Center) {
+            // Glass pill behind the active icon.
+            Box(
+                Modifier.size(width = 46.dp, height = 30.dp)
+                    .graphicsLayer { alpha = pill; scaleX = 0.6f + 0.4f * pill }
+                    .clip(RoundedCornerShape(50))
+                    .background(accent.copy(alpha = 0.16f))
+            )
+            Icon(
+                if (active) iconActive else iconIdle, label, tint = tint,
+                modifier = Modifier.size(23.dp).graphicsLayer { scaleX = scale; scaleY = scale }
+            )
+        }
         Text(label, style = MaterialTheme.typography.labelSmall, color = tint)
         Spacer(Modifier.weight(1f))
     }

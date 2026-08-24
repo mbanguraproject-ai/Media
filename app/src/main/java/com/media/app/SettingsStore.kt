@@ -14,7 +14,7 @@ val Context.dataStore by preferencesDataStore(name = "media_settings")
 enum class ThemeMode { DARK, LIGHT, SYSTEM }
 
 data class MediaSettings(
-    val themeMode: ThemeMode = ThemeMode.LIGHT,
+    val themeMode: ThemeMode = ThemeMode.DARK,
     val fontScale: Float = 1.0f   // 0.9 = compact, 1.0 = default, 1.15 = large
 )
 
@@ -30,7 +30,7 @@ object SettingsStore {
                     "LIGHT" -> ThemeMode.LIGHT
                     "SYSTEM" -> ThemeMode.SYSTEM
                     "DARK" -> ThemeMode.DARK
-                    else -> ThemeMode.LIGHT
+                    else -> ThemeMode.DARK
                 },
                 fontScale = p[FONT] ?: 1.0f
             )

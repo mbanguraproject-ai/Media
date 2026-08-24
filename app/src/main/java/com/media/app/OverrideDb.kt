@@ -32,6 +32,51 @@ data class PlaybackPosition(
     val speed: Float = 1.0f // remembered playback speed for this item
 )
 
+// One row per favorited track. Presence = favorited. Keyed by MediaStore id.
+@Entity(tableName = "favorites")
+data class Favorite(
+    @PrimaryKey val mediaId: Long,
+    val addedAt: Long   // epoch millis
+)
+
+// Generalized mood membership: one row = a track belongs to a mood list.
+// moodKey is the Mood enum name lowercased (late_night, workout, focus, favorites).
+// 'all' is never stored here — it always means the whole library.
+@Entity(tableName = "mood_members", primaryKeys = ["moodKey", "mediaId"])
+data class MoodMember(
+    val moodKey: String,
+    val mediaId: Long,
+    val addedAt: Long
+)
+
+// User-created playlists (My Playlists tab).
+@Entity(tableName = "playlists")
+data class Playlist(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val createdAt: Long
+)
+
+@Entity(tableName = "playlist_members", primaryKeys = ["playlistId", "mediaId"])
+data class PlaylistMember(
+    val playlistId: Long,
+    val mediaId: Long,
+    val addedAt: Long
+)
+
+// Folders (Folders tab).
+@Entity(tableName = "folders")
+data class MediaFolder(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String
+)
+
+@Entity(tableName = "folder_members", primaryKeys = ["folderId", "mediaId"])
+data class FolderMember(
+    val folderId: Long,
+    val mediaId: Long
+)
+
 @Dao
 interface HistoryDao {
     @Upsert
@@ -60,6 +105,81 @@ interface PositionDao {
 }
 
 @Dao
+interface FavoriteDao {
+    @Query("SELECT * FROM favorites ORDER BY addedAt DESC")
+    fun observeAll(): Flow<List<Favorite>>
+
+    @Upsert
+    suspend fun add(fav: Favorite)
+
+    @Query("DELETE FROM favorites WHERE mediaId = :id")
+    suspend fun remove(id: Long)
+}
+
+@Dao
+interface MoodDao {
+    @Query("SELECT * FROM mood_members WHERE moodKey = :key ORDER BY addedAt DESC")
+    fun observeMood(key: String): Flow<List<MoodMember>>
+
+    @Query("SELECT * FROM mood_members")
+    fun observeAll(): Flow<List<MoodMember>>
+
+    @Upsert
+    suspend fun add(m: MoodMember)
+
+    @Query("DELETE FROM mood_members WHERE moodKey = :key AND mediaId = :id")
+    suspend fun remove(key: String, id: Long)
+}
+
+@Dao
+interface PlaylistDao {
+    @Query("SELECT * FROM playlists ORDER BY createdAt DESC")
+    fun observePlaylists(): Flow<List<Playlist>>
+
+    @Query("SELECT * FROM playlist_members WHERE playlistId = :pid ORDER BY addedAt DESC")
+    fun observeMembers(pid: Long): Flow<List<PlaylistMember>>
+
+    @Query("SELECT * FROM playlist_members")
+    fun observeAllMembers(): Flow<List<PlaylistMember>>
+
+    @Insert
+    suspend fun create(p: Playlist): Long
+
+    @Query("DELETE FROM playlists WHERE id = :pid")
+    suspend fun deletePlaylist(pid: Long)
+
+    @Query("DELETE FROM playlist_members WHERE playlistId = :pid")
+    suspend fun clearMembers(pid: Long)
+
+    @Upsert
+    suspend fun addMember(m: PlaylistMember)
+
+    @Query("DELETE FROM playlist_members WHERE playlistId = :pid AND mediaId = :id")
+    suspend fun removeMember(pid: Long, id: Long)
+}
+
+@Dao
+interface FolderDao {
+    @Query("SELECT * FROM folders ORDER BY name")
+    fun observeFolders(): Flow<List<MediaFolder>>
+
+    @Query("SELECT * FROM folder_members WHERE folderId = :fid")
+    fun observeMembers(fid: Long): Flow<List<FolderMember>>
+
+    @Insert
+    suspend fun create(f: MediaFolder): Long
+
+    @Query("DELETE FROM folders WHERE id = :fid")
+    suspend fun deleteFolder(fid: Long)
+
+    @Upsert
+    suspend fun addMember(m: FolderMember)
+
+    @Query("DELETE FROM folder_members WHERE folderId = :fid AND mediaId = :id")
+    suspend fun removeMember(fid: Long, id: Long)
+}
+
+@Dao
 interface OverrideDao {
     @Query("SELECT * FROM overrides")
     fun observeAll(): Flow<List<MediaOverride>>
@@ -74,11 +194,15 @@ interface OverrideDao {
     suspend fun delete(id: Long)
 }
 
-@Database(entities = [MediaOverride::class, PlayHistory::class, PlaybackPosition::class], version = 4, exportSchema = false)
+@Database(entities = [MediaOverride::class, PlayHistory::class, PlaybackPosition::class, Favorite::class, MoodMember::class, Playlist::class, PlaylistMember::class, MediaFolder::class, FolderMember::class], version = 6, exportSchema = false)
 abstract class OverrideDatabase : RoomDatabase() {
     abstract fun dao(): OverrideDao
     abstract fun historyDao(): HistoryDao
     abstract fun positionDao(): PositionDao
+    abstract fun favoriteDao(): FavoriteDao
+    abstract fun moodDao(): MoodDao
+    abstract fun playlistDao(): PlaylistDao
+    abstract fun folderDao(): FolderDao
 
     companion object {
         @Volatile private var INSTANCE: OverrideDatabase? = null
@@ -115,13 +239,38 @@ abstract class OverrideDatabase : RoomDatabase() {
             }
         }
 
+        // v4 -> v5: add favorites table, all existing data preserved.
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `favorites` " +
+                    "(`mediaId` INTEGER NOT NULL, `addedAt` INTEGER NOT NULL, " +
+                    "PRIMARY KEY(`mediaId`))"
+                )
+            }
+        }
+
+        // v5 -> v6: mood membership, playlists, folders. Existing favorites are
+        // copied into mood_members(moodKey='favorites') so no hearts are lost.
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `mood_members` (`moodKey` TEXT NOT NULL, `mediaId` INTEGER NOT NULL, `addedAt` INTEGER NOT NULL, PRIMARY KEY(`moodKey`, `mediaId`))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `playlists` (`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `name` TEXT NOT NULL, `createdAt` INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `playlist_members` (`playlistId` INTEGER NOT NULL, `mediaId` INTEGER NOT NULL, `addedAt` INTEGER NOT NULL, PRIMARY KEY(`playlistId`, `mediaId`))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `folders` (`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `name` TEXT NOT NULL)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `folder_members` (`folderId` INTEGER NOT NULL, `mediaId` INTEGER NOT NULL, PRIMARY KEY(`folderId`, `mediaId`))")
+                // Preserve existing favorites.
+                db.execSQL("INSERT OR IGNORE INTO `mood_members` (`moodKey`, `mediaId`, `addedAt`) SELECT 'favorites', `mediaId`, `addedAt` FROM `favorites`")
+            }
+        }
+
         fun get(context: Context): OverrideDatabase =
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,
                     OverrideDatabase::class.java,
                     "media_overrides.db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6).build().also { INSTANCE = it }
             }
     }
 }
