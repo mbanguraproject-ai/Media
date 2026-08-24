@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
@@ -75,6 +76,8 @@ fun PlayerSurface(
         Animatable(if (expanded) 1f else 0f).apply { updateBounds(0f, 1f) }
     }
     var showSleepSheet by remember { mutableStateOf(false) }
+    var showQueue by remember { mutableStateOf(false) }
+    val queue by vm.queue.collectAsState()
 
     // External toggles (tap, back press) animate; drag drives it directly.
     LaunchedEffect(expanded) {
@@ -247,7 +250,10 @@ fun PlayerSurface(
                     Spacer(Modifier.weight(1f))
                     Text("Now playing", style = Typo.Tertiary, color = MediaColors.CreamDim)
                     Spacer(Modifier.weight(1f))
-                    Spacer(Modifier.size(28.dp))
+                    Icon(
+                        Icons.AutoMirrored.Filled.QueueMusic, "Queue", tint = MediaColors.Cream,
+                        modifier = Modifier.size(28.dp).pressScale(haptic = true) { showQueue = true }
+                    )
                 }
 
                 Column(
@@ -333,6 +339,18 @@ fun PlayerSurface(
                 }
             }
         }
+    }
+
+    if (showQueue) {
+        QueueSheet(
+            queue = queue,
+            currentIndex = state.queueIndex,
+            onPlayIndex = { vm.playQueueIndex(it) },
+            onMove = { from, to -> vm.moveQueueItem(from, to) },
+            onRemove = { vm.removeQueueItem(it) },
+            onClearUpNext = { vm.clearUpNext() },
+            onDismiss = { showQueue = false }
+        )
     }
 
     if (showSleepSheet) {

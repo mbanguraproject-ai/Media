@@ -32,7 +32,17 @@ data class PlayerState(
     val isVideo: Boolean = false,
     val sleepActive: Boolean = false,
     val sleepRemainingMs: Long = 0L,
-    val sleepEndOfTrack: Boolean = false
+    val sleepEndOfTrack: Boolean = false,
+    val queueIndex: Int = 0,
+    val queueSize: Int = 0
+)
+
+/** One row of the Media3 timeline, flattened for the queue sheet (§25). */
+data class QueueEntry(
+    val mediaId: Long,
+    val title: String,
+    val artist: String,
+    val uri: String
 )
 
 class PlayerViewModel(app: Application) : AndroidViewModel(app) {
@@ -66,6 +76,11 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             refresh()
         }
         override fun onPlaybackStateChanged(playbackState: Int) = refresh()
+
+        // Timeline edits (add / move / remove) land here.
+        override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
+            refreshQueue(); refresh()
+        }
     }
 
     init {
@@ -76,6 +91,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         val future = MediaController.Builder(app, token).buildAsync()
         future.addListener({
             controller = future.get().also { it.addListener(listener) }
+            refreshQueue()
             refresh()
             startPositionUpdates()
         }, MoreExecutors.directExecutor())
@@ -193,8 +209,59 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             isVideo = c.currentMediaItem?.localConfiguration?.uri?.toString()?.contains("/video/") == true,
             sleepActive = prev.sleepActive,
             sleepRemainingMs = prev.sleepRemainingMs,
-            sleepEndOfTrack = prev.sleepEndOfTrack
+            sleepEndOfTrack = prev.sleepEndOfTrack,
+            queueIndex = c.currentMediaItemIndex,
+            queueSize = c.mediaItemCount
         )
+    }
+
+    // ---- QUEUE (§25) ----
+    // Kept in its own flow rather than inside PlayerState: the position ticker
+    // rebuilds PlayerState twice a second and the timeline changes rarely, so
+    // folding the queue in would rebuild the whole list 120 times a minute.
+    private val _queue = MutableStateFlow<List<QueueEntry>>(emptyList())
+    val queue: StateFlow<List<QueueEntry>> = _queue
+
+    private fun refreshQueue() {
+        val c = controller ?: return
+        _queue.value = (0 until c.mediaItemCount).map { i ->
+            val mi = c.getMediaItemAt(i)
+            QueueEntry(
+                mediaId = mi.mediaId.toLongOrNull() ?: 0L,
+                title = mi.mediaMetadata.title?.toString() ?: "Untitled",
+                artist = mi.mediaMetadata.artist?.toString() ?: "",
+                uri = mi.localConfiguration?.uri?.toString() ?: ""
+            )
+        }
+    }
+
+    fun moveQueueItem(from: Int, to: Int) {
+        val c = controller ?: return
+        if (from == to || from !in 0 until c.mediaItemCount || to !in 0 until c.mediaItemCount) return
+        c.moveMediaItem(from, to)
+        refreshQueue(); refresh()
+    }
+
+    fun removeQueueItem(index: Int) {
+        val c = controller ?: return
+        if (index !in 0 until c.mediaItemCount) return
+        c.removeMediaItem(index)
+        refreshQueue(); refresh()
+    }
+
+    fun playQueueIndex(index: Int) {
+        val c = controller ?: return
+        if (index !in 0 until c.mediaItemCount) return
+        c.seekTo(index, 0L); c.play()
+        refresh()
+    }
+
+    /** Clears everything AFTER the current track — never stops what's playing. */
+    fun clearUpNext() {
+        val c = controller ?: return
+        val next = c.currentMediaItemIndex + 1
+        if (next < c.mediaItemCount) c.removeMediaItems(next, c.mediaItemCount)
+        refreshQueue(); refresh()
     }
 
     fun play(items: List<AppMediaItem>, startIndex: Int) {
