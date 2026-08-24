@@ -69,7 +69,11 @@ fun PlayerSurface(
 ) {
     val reduced = LocalReducedMotion.current
     val scope = rememberCoroutineScope()
-    val expansion = remember { Animatable(if (expanded) 1f else 0f) }
+    // Bounded: Motion.spatial() is underdamped (0.82) and WILL overshoot past
+    // 1.0, which drove Modifier.padding negative and crashed on expand.
+    val expansion = remember {
+        Animatable(if (expanded) 1f else 0f).apply { updateBounds(0f, 1f) }
+    }
     var showSleepSheet by remember { mutableStateOf(false) }
 
     // External toggles (tap, back press) animate; drag drives it directly.
@@ -81,7 +85,8 @@ fun PlayerSurface(
         }
     }
 
-    val e = expansion.value
+    // Belt and braces: nothing downstream may ever see a value outside 0..1.
+    val e = expansion.value.coerceIn(0f, 1f)
     val artItem = rememberArtItem(state)
 
     BoxWithConstraints(modifier.fillMaxSize()) {
@@ -90,7 +95,8 @@ fun PlayerSurface(
         val swipePx = with(density) { 60.dp.toPx() }
 
         // ---- container: pill -> full screen, expressed as lerped insets ----
-        val collapsedTop = maxHeight - bottomInset - MINI_HEIGHT.dp
+        // Guard tiny screens / large insets: this must never go negative either.
+        val collapsedTop = (maxHeight - bottomInset - MINI_HEIGHT.dp).coerceAtLeast(0.dp)
         val topPad = lerpDp(collapsedTop, 0.dp, e)
         val sidePad = lerpDp(PILL_MARGIN.dp, 0.dp, e)
         val botPad = lerpDp(bottomInset, 0.dp, e)
