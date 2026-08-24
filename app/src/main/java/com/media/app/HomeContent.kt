@@ -26,14 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 // Flat solid tile color seeded by title — clean, no gradient noise, no fallback junk.
-private fun tileColor(seed: String): Color {
-    val c = listOf(
-        Color(0xFFF5A623), Color(0xFF2DD4BF), Color(0xFF5B8DEF),
-        Color(0xFFEC4899), Color(0xFF9B7CFF), Color(0xFF34D399)
-    )
-    val i = (seed.sumOf { it.code } % c.size).let { if (it < 0) it + c.size else it }
-    return c[i]
-}
+
 
 private fun greeting(): String {
     val h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
@@ -48,10 +41,9 @@ fun StashHeader(onSearch: () -> Unit, onRescan: () -> Unit, onPlaylists: () -> U
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
-            Text(greeting(), fontSize = 13.sp, fontWeight = FontWeight.Normal, color = MediaColors.CreamDim)
-            Spacer(Modifier.height(1.dp))
-            Text("Your Media", fontSize = 24.sp, fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.5).sp, color = MediaColors.Cream,
+            Text(greeting(), style = Typo.Secondary, color = MediaColors.CreamDim)
+            Spacer(Modifier.height(Space.xxs))
+            Text("Your Media", style = Typo.Display, color = MediaColors.Cream,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Spacer(Modifier.width(Space.md))
@@ -95,8 +87,7 @@ fun MoodChips(active: Mood, onPick: (Mood) -> Unit) {
                     .padding(horizontal = 18.dp, vertical = 10.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(mood.label, fontSize = 14.sp,
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                Text(mood.label, style = Typo.Label,
                     color = if (selected) Color.White else MediaColors.CreamDim)
             }
         }
@@ -122,8 +113,7 @@ fun MoodBanner(mood: Mood) {
     ) {
         Icon(icon, null, tint = mood.accent, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(Space.md))
-        Text(msg, fontSize = 14.sp, fontWeight = FontWeight.Medium,
-            color = MediaColors.Cream, modifier = Modifier.weight(1f))
+        Text(msg, style = Typo.Label, color = MediaColors.Cream, modifier = Modifier.weight(1f))
         Icon(Icons.Filled.MusicNote, null, tint = mood.accent.copy(alpha = 0.6f),
             modifier = Modifier.size(15.dp))
     }
@@ -161,9 +151,9 @@ fun StatCards(recentlyPlayed: Int, allTracks: Int, favorites: Int) {
                 ) { Icon(st.icon, null, tint = st.tint, modifier = Modifier.size(19.dp)) }
                 Spacer(Modifier.width(Space.md))
                 Column {
-                    Text(st.label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
-                        color = MediaColors.Cream, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("${st.count}", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = st.tint)
+                    Text(st.label, style = Typo.Primary, color = MediaColors.Cream,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("${st.count}", style = Typo.Section, color = st.tint)
                 }
             }
         }
@@ -178,7 +168,7 @@ fun CountAndShuffle(count: Int, onShuffle: () -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("$count tracks", fontSize = 14.sp, color = MediaColors.CreamDim)
+        Text("$count tracks", style = Typo.Secondary, color = MediaColors.CreamDim)
         Row(
             Modifier.clip(RoundedCornerShape(20.dp))
                 .border(1.dp, MediaColors.Accent.copy(alpha = 0.55f), RoundedCornerShape(20.dp))
@@ -188,7 +178,7 @@ fun CountAndShuffle(count: Int, onShuffle: () -> Unit) {
         ) {
             Icon(Icons.Filled.Shuffle, null, tint = MediaColors.Accent, modifier = Modifier.size(15.dp))
             Spacer(Modifier.width(Space.sm))
-            Text("Shuffle", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MediaColors.Accent)
+            Text("Shuffle", style = Typo.Label, color = MediaColors.Accent)
         }
     }
 }
@@ -210,25 +200,26 @@ fun TrackRow(
             .padding(Space.xl, 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Clean flat tile + note glyph. NO CoverArt, NO badge, NO letter.
-        Box(
-            Modifier.size(50.dp).clip(RoundedCornerShape(12.dp)).background(tileColor(item.title)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Filled.MusicNote, null, tint = Color.White.copy(alpha = 0.92f),
-                modifier = Modifier.size(22.dp))
-        }
+        // §10: rows carry real artwork. Falls back to a generative composition
+        // when the file has none. No badge at this size — it would be clutter.
+        CoverArt(
+            item = item,
+            modifier = Modifier.size(50.dp),
+            corner = 12,
+            targetPx = 144,
+            showBadge = false
+        )
         Spacer(Modifier.width(Space.md))
         Column(Modifier.weight(1f)) {
-            Text(item.title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+            Text(item.title, style = Typo.Primary,
                 color = if (isPlaying) MediaColors.Accent else MediaColors.Cream,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Spacer(Modifier.height(2.dp))
-            Text(item.artist, fontSize = 12.sp,
+            Spacer(Modifier.height(Space.xxs))
+            Text(item.artist, style = Typo.Secondary,
                 color = MediaColors.CreamFaint, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Spacer(Modifier.width(Space.sm))
-        Text(fmtDur(item.durationMs), fontSize = 13.sp, color = MediaColors.CreamFaint)
+        Text(fmtDur(item.durationMs), style = Typo.Tertiary, color = MediaColors.CreamFaint)
         Spacer(Modifier.width(Space.md))
         Icon(
             if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,

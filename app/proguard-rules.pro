@@ -45,6 +45,8 @@
 
 # ---- Our data models referenced across the app ----
 -keep class com.media.app.AppMediaItem { *; }
+-keep class com.media.app.Album { *; }
+-keep class com.media.app.Artist { *; }
 -keep class com.media.app.MediaSettings { *; }
 -keep enum com.media.app.** { *; }
 

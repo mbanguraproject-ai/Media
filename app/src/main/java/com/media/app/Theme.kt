@@ -1,6 +1,8 @@
 package com.media.app
 
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.SpringSpec
+import androidx.compose.animation.core.spring
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
@@ -94,8 +96,11 @@ val LocalMoodSetter = androidx.compose.runtime.staticCompositionLocalOf<(Mood) -
 
 // ---- Semantic color tokens (resolved per theme) ----
 class Palette(
-    val bg: Color,          // background
-    val raised: Color,      // cards, sheets
+    val bg: Color,          // background — the floor
+    val surface: Color,     // primary surface: list rows, inline fills
+    val elevated: Color,    // cards, panels sitting above content
+    val floating: Color,    // mini-player, FABs, anything over scroll
+    val modal: Color,       // sheets and dialogs
     val hairline: Color,    // dividers, borders
     val text: Color,        // primary text
     val textDim: Color,     // secondary
@@ -108,7 +113,10 @@ class Palette(
 // Dark — deep near-black with a cool base. The mood glow paints over this.
 val DarkPalette = Palette(
     bg = Color(0xFF17141F),          // deep desaturated purple-navy (mockup base)
-    raised = Color(0xFF1E1B2E),      // slightly lifted card
+    surface = Color(0xFF1C1928),     // +1 step
+    elevated = Color(0xFF221E31),    // +2
+    floating = Color(0xFF29243A),    // +3 — reads above scrolling content
+    modal = Color(0xFF2F2942),       // +4 — sheets sit highest
     hairline = Color(0xFF2E2A40),    // soft violet-grey rule
     text = Color(0xFFF3F1F7),
     textDim = Color(0xFF9C97AE),
@@ -119,9 +127,13 @@ val DarkPalette = Palette(
 )
 
 // Light kept as a graceful fallback (screenshots are dark-first).
+// Light stays a stub until it gets designed properly (§49) rather than inverted.
 val LightPalette = Palette(
     bg = Color(0xFFF4F4F7),
-    raised = Color(0xFFFFFFFF),
+    surface = Color(0xFFFAFAFC),
+    elevated = Color(0xFFFFFFFF),
+    floating = Color(0xFFFFFFFF),
+    modal = Color(0xFFFFFFFF),
     hairline = Color(0xFFE4E4EC),
     text = Color(0xFF16161C),
     textDim = Color(0xFF5C5C68),
@@ -137,7 +149,11 @@ val LocalPalette = androidx.compose.runtime.staticCompositionLocalOf { DarkPalet
 // so every screen keeps compiling; only the resolved values are new.
 object MediaColors {
     val Ink @Composable get() = LocalPalette.current.bg
-    val InkRaised @Composable get() = LocalPalette.current.raised
+    val InkRaised @Composable get() = LocalPalette.current.elevated   // legacy alias
+    val Surface @Composable get() = LocalPalette.current.surface
+    val Elevated @Composable get() = LocalPalette.current.elevated
+    val Floating @Composable get() = LocalPalette.current.floating
+    val Modal @Composable get() = LocalPalette.current.modal
     val InkHairline @Composable get() = LocalPalette.current.hairline
     val Cream @Composable get() = LocalPalette.current.text
     val CreamDim @Composable get() = LocalPalette.current.textDim
@@ -162,31 +178,131 @@ fun moodBackground(): Brush = Brush.verticalGradient(
     1.00f to Color(0xFF0B0810)            // deep floor (slightly lifted, crisper)
 )
 
-// ---- Typography: Inter only, bolder + tighter for the new look ----
+// ============================================================================
+//  TYPOGRAPHY (§3)
+//  Five semantic levels, exactly as the spec names them. Hierarchy comes from
+//  WEIGHT + TRACKING + COLOR, not from size alone — Primary and Secondary sit
+//  only 2sp apart and separate cleanly on weight (600 vs 400).
+//  Every level carries an explicit lineHeight, and every level scales with the
+//  user's text-size preference. 38 raw `fontSize =` literals used to bypass
+//  this, which is why "Text size: Large" did nothing to most screens.
+// ============================================================================
 val Inter = FontFamily(Font(R.font.inter_variable))
 // Fraunces retained as an alias so CoverArt.kt still resolves until reskinned.
 val Fraunces = Inter
 
-private fun typography(scale: Float) = Typography(
-    displayLarge = TextStyle(fontFamily = Inter, fontWeight = FontWeight.Bold,
-        fontSize = (32 * scale).sp, letterSpacing = (-0.8).sp),
-    displaySmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.Bold,
-        fontSize = (26 * scale).sp, letterSpacing = (-0.5).sp),
-    titleLarge = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold,
-        fontSize = (18 * scale).sp, letterSpacing = (-0.2).sp),
-    titleMedium = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold,
-        fontSize = (14 * scale).sp),
-    bodyLarge = TextStyle(fontFamily = Inter, fontWeight = FontWeight.Normal,
-        fontSize = (15 * scale).sp),
-    bodyMedium = TextStyle(fontFamily = Inter, fontWeight = FontWeight.Normal,
-        fontSize = (12 * scale).sp),
-    labelSmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.Medium,
-        fontSize = (10 * scale).sp, letterSpacing = 0.3.sp),
+class TypeScale(
+    val displayLarge: TextStyle,  // onboarding hero
+    val display: TextStyle,       // "Good evening", screen titles
+    val section: TextStyle,       // "Continue listening" shelf headers
+    val primary: TextStyle,       // track / album / artist name
+    val secondary: TextStyle,     // artist / album metadata
+    val tertiary: TextStyle,      // duration / format / file info
+    val body: TextStyle,          // running prose (About, Terms)
+    val label: TextStyle,         // chips, buttons
+    val micro: TextStyle          // letterspaced caps eyebrows ("MOODS")
 )
 
+private fun level(
+    size: Float, weight: FontWeight, tracking: Float, lineRatio: Float, scale: Float
+) = TextStyle(
+    fontFamily = Inter,
+    fontWeight = weight,
+    fontSize = (size * scale).sp,
+    letterSpacing = tracking.sp,
+    lineHeight = (size * scale * lineRatio).sp
+)
+
+fun typeScale(scale: Float) = TypeScale(
+    displayLarge = level(34f, FontWeight.Bold,     -0.9f, 1.18f, scale),
+    display      = level(28f, FontWeight.Bold,     -0.6f, 1.20f, scale),
+    section      = level(19f, FontWeight.SemiBold, -0.3f, 1.26f, scale),
+    primary      = level(15f, FontWeight.SemiBold, -0.1f, 1.33f, scale),
+    secondary    = level(13f, FontWeight.Normal,    0.0f, 1.38f, scale),
+    tertiary     = level(11.5f, FontWeight.Medium,  0.2f, 1.30f, scale),
+    body         = level(15f, FontWeight.Normal,    0.0f, 1.47f, scale),
+    label        = level(13f, FontWeight.SemiBold,  0.1f, 1.23f, scale),
+    micro        = level(10.5f, FontWeight.SemiBold, 0.8f, 1.33f, scale)
+)
+
+val LocalTypeScale = androidx.compose.runtime.staticCompositionLocalOf { typeScale(1f) }
+
+// Composable getters, same shim pattern as MediaColors.
+object Typo {
+    val DisplayLarge @Composable get() = LocalTypeScale.current.displayLarge
+    val Display   @Composable get() = LocalTypeScale.current.display
+    val Section   @Composable get() = LocalTypeScale.current.section
+    val Primary   @Composable get() = LocalTypeScale.current.primary
+    val Secondary @Composable get() = LocalTypeScale.current.secondary
+    val Tertiary  @Composable get() = LocalTypeScale.current.tertiary
+    val Body      @Composable get() = LocalTypeScale.current.body
+    val Label     @Composable get() = LocalTypeScale.current.label
+    val Micro     @Composable get() = LocalTypeScale.current.micro
+}
+
+// Material3 Typography is DERIVED from the same scale, so Material components
+// and hand-built ones can never drift apart.
+private fun typography(scale: Float): Typography {
+    val t = typeScale(scale)
+    return Typography(
+        displayLarge = t.displayLarge,
+        displaySmall = t.display,
+        titleLarge = t.section,
+        titleMedium = t.primary,
+        bodyLarge = t.body,
+        bodyMedium = t.secondary,
+        labelSmall = t.tertiary,
+        labelMedium = t.label
+    )
+}
+
+object Motion {
+    const val Fast = 160        // 120–180ms: taps, toggles, icon morphs
+    const val Standard = 260    // 220–320ms: sheets, fades, tab changes
+    const val Large = 420       // 350–500ms: shared elements, screen transitions
+
+    // Emphasized decelerate: quick departure, long settle. The default.
+    val Emphasized = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+    // Symmetrical, for things that move and return (press states).
+    val Smooth = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)
+
+    // Spatial: things that MOVE. Settles without visible wobble.
+    fun <T> spatial(): SpringSpec<T> = spring(dampingRatio = 0.82f, stiffness = 380f)
+    // Bouncy: things that RESPOND to a finger. Slight overshoot is the point.
+    fun <T> bouncy(): SpringSpec<T> = spring(dampingRatio = 0.55f, stiffness = 700f)
+    // Snappy: small state flips that should feel instant but not robotic.
+    fun <T> snappy(): SpringSpec<T> = spring(dampingRatio = 1f, stiffness = 900f)
+}
+
+// ============================================================================
+//  GEOMETRY (§33) — 8dp grid, one radius scale, one icon scale.
+//  Space.xl was 22dp, which sat off-grid; it is 24dp now. Every screen shifts
+//  2dp as a result. That is the point: measured, not arbitrary.
+// ============================================================================
 object Space {
-    val xs = 4.dp; val sm = 8.dp; val md = 12.dp
-    val lg = 16.dp; val xl = 22.dp; val xxl = 32.dp
+    val xxs = 2.dp; val xs = 4.dp; val sm = 8.dp; val md = 12.dp
+    val lg = 16.dp; val xl = 24.dp; val xxl = 32.dp; val xxxl = 48.dp
+}
+
+object Radius {
+    val xs = 6.dp    // chips, badges
+    val sm = 10.dp   // small thumbnails
+    val md = 14.dp   // rows, list tiles
+    val lg = 20.dp   // cards, panels
+    val xl = 28.dp   // sheets, mini-player
+    val pill = 999.dp
+}
+
+object IconSize {
+    val sm = 16.dp   // inline, secondary
+    val md = 20.dp   // standard UI
+    val lg = 24.dp   // nav, primary actions
+    val xl = 32.dp   // transport controls
+}
+
+// Elevation is expressed as tonal surface steps, not shadows (§47).
+object Elevation {
+    val none = 0.dp; val low = 2.dp; val mid = 8.dp; val high = 16.dp
 }
 
 @Composable
@@ -204,12 +320,13 @@ fun MediaTheme(
     // always renders the intended dark UI (the mockup is dark-first).
     val palette = DarkPalette
     val scheme = darkColorScheme(primary = mood.accent, background = palette.bg,
-        surface = palette.raised, onBackground = palette.text,
+        surface = palette.elevated, onBackground = palette.text,
         onSurface = palette.text, onPrimary = palette.onAccent)
 
     androidx.compose.runtime.CompositionLocalProvider(
         LocalPalette provides palette,
-        LocalMood provides mood
+        LocalMood provides mood,
+        LocalTypeScale provides typeScale(fontScale)
     ) {
         MaterialTheme(colorScheme = scheme, typography = typography(fontScale), content = content)
     }

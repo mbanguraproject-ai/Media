@@ -53,8 +53,8 @@ fun PlaylistsScreen(
                 Modifier.fillMaxWidth().padding(Space.xl, Space.lg, Space.lg, Space.md),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Playlists", fontSize = 26.sp, fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.5).sp, color = MediaColors.Cream, modifier = Modifier.weight(1f))
+                Text("Playlists", style = Typo.Display,
+                    color = MediaColors.Cream, modifier = Modifier.weight(1f))
                 Row(
                     Modifier.clip(RoundedCornerShape(20.dp))
                         .background(MediaColors.Accent)
@@ -64,7 +64,7 @@ fun PlaylistsScreen(
                 ) {
                     Icon(Icons.Filled.Add, null, tint = Color.White, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("New", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                    Text("New", style = Typo.Label, color = Color.White)
                 }
             }
 
@@ -85,8 +85,7 @@ fun PlaylistsScreen(
                             .padding(vertical = 11.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(label, fontSize = 13.sp,
-                            fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Medium,
+                        Text(label, style = Typo.Label,
                             color = if (sel) Color.White else MediaColors.CreamDim,
                             maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
@@ -147,7 +146,7 @@ private fun MyPlaylistsTab(
                         contentAlignment = Alignment.Center
                     ) { Icon(Icons.Filled.QueueMusic, null, tint = MediaColors.Accent, modifier = Modifier.size(22.dp)) }
                     Spacer(Modifier.width(Space.md))
-                    Text(pl.name, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                    Text(pl.name, style = Typo.Primary,
                         color = MediaColors.Cream, modifier = Modifier.weight(1f),
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                     IconButton({ onDelete(pl) }) {
@@ -165,7 +164,7 @@ private fun SmartTab(moodCounts: Map<String, Int>, onOpenMood: (Mood) -> Unit) {
     val moods = Mood.values().filter { it.holdsSongs } // exclude ALL
     LazyColumn(contentPadding = PaddingValues(bottom = 170.dp)) {
         item {
-            Text("Tap a mood to play it on Home", fontSize = 12.sp, color = MediaColors.CreamFaint,
+            Text("Tap a mood to play it on Home", style = Typo.Tertiary, color = MediaColors.CreamFaint,
                 modifier = Modifier.padding(Space.xl, 0.dp, Space.xl, Space.sm))
         }
         items(moods) { mood ->
@@ -192,8 +191,8 @@ private fun SmartTab(moodCounts: Map<String, Int>, onOpenMood: (Mood) -> Unit) {
                 ) { Icon(icon, null, tint = mood.accent, modifier = Modifier.size(22.dp)) }
                 Spacer(Modifier.width(Space.md))
                 Column(Modifier.weight(1f)) {
-                    Text(mood.label, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MediaColors.Cream)
-                    Text(if (count == 1) "1 song" else "$count songs", fontSize = 12.sp, color = MediaColors.CreamFaint)
+                    Text(mood.label, style = Typo.Primary, color = MediaColors.Cream)
+                    Text(if (count == 1) "1 song" else "$count songs", style = Typo.Tertiary, color = MediaColors.CreamFaint)
                 }
                 Icon(Icons.Filled.PlayArrow, "Play", tint = mood.accent, modifier = Modifier.size(22.dp))
             }
@@ -227,11 +226,10 @@ fun PlaylistDetailScreen(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MediaColors.Cream)
             }
             Column(Modifier.weight(1f)) {
-                Text(playlist.name, fontSize = 22.sp, fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.5).sp, color = MediaColors.Cream,
+                Text(playlist.name, style = Typo.Display, color = MediaColors.Cream,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(if (tracks.size == 1) "1 song" else "${tracks.size} songs",
-                    fontSize = 12.sp, color = MediaColors.CreamFaint)
+                    style = Typo.Tertiary, color = MediaColors.CreamFaint)
             }
         }
 
@@ -250,7 +248,7 @@ fun PlaylistDetailScreen(
                 ) {
                     Icon(Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Play", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                    Text("Play", style = Typo.Label, color = Color.White)
                 }
                 Row(
                     Modifier.weight(1f).clip(RoundedCornerShape(20.dp))
@@ -262,7 +260,7 @@ fun PlaylistDetailScreen(
                 ) {
                     Icon(Icons.Filled.Shuffle, null, tint = MediaColors.Accent, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Shuffle", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MediaColors.Accent)
+                    Text("Shuffle", style = Typo.Label, color = MediaColors.Accent)
                 }
             }
         }
@@ -304,15 +302,15 @@ fun EmptyBlock(icon: ImageVector, title: String, subtitle: String, cta: String?,
             contentAlignment = Alignment.Center
         ) { Icon(icon, null, tint = MediaColors.Accent, modifier = Modifier.size(40.dp)) }
         Spacer(Modifier.height(Space.xl))
-        Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MediaColors.Cream)
-        Spacer(Modifier.height(6.dp))
-        Text(subtitle, fontSize = 14.sp, color = MediaColors.CreamDim)
+        Text(title, style = Typo.Section, color = MediaColors.Cream)
+        Spacer(Modifier.height(Space.sm))
+        Text(subtitle, style = Typo.Secondary, color = MediaColors.CreamDim)
         if (cta != null) {
             Spacer(Modifier.height(Space.xl))
             Box(
                 Modifier.clip(RoundedCornerShape(22.dp)).background(MediaColors.Accent)
                     .clickable(onClick = onCta).padding(horizontal = 28.dp, vertical = 14.dp)
-            ) { Text(cta, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White) }
+            ) { Text(cta, style = Typo.Primary, color = Color.White) }
         }
         Spacer(Modifier.height(120.dp))
     }
@@ -331,18 +329,18 @@ private fun CreatePlaylistSheet(onCreate: (String) -> Unit, onDismiss: () -> Uni
                 .background(Color(0xFF1B1628)).border(1.dp, G_BORDER, RoundedCornerShape(20.dp))
                 .clickable(enabled = false) {}.padding(Space.xl),
         ) {
-            Text("New Playlist", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MediaColors.Cream)
+            Text("New Playlist", style = Typo.Section, color = MediaColors.Cream)
             Spacer(Modifier.height(Space.lg))
             Box(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
                     .background(G_FILL).border(1.dp, G_BORDER, RoundedCornerShape(12.dp))
                     .padding(Space.lg, 14.dp)
             ) {
-                if (name.isEmpty()) Text("Playlist name", fontSize = 15.sp, color = MediaColors.CreamFaint)
+                if (name.isEmpty()) Text("Playlist name", style = Typo.Body, color = MediaColors.CreamFaint)
                 BasicTextField(
                     value = name, onValueChange = { name = it },
                     singleLine = true,
-                    textStyle = TextStyle(color = MediaColors.Cream, fontSize = 15.sp),
+                    textStyle = Typo.Body.copy(color = MediaColors.Cream),
                     cursorBrush = SolidColor(MediaColors.Accent),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -351,7 +349,7 @@ private fun CreatePlaylistSheet(onCreate: (String) -> Unit, onDismiss: () -> Uni
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 Box(Modifier.clip(RoundedCornerShape(18.dp)).clickable(onClick = onDismiss)
                     .padding(horizontal = Space.lg, vertical = 10.dp)) {
-                    Text("Cancel", fontSize = 14.sp, color = MediaColors.CreamDim)
+                    Text("Cancel", style = Typo.Label, color = MediaColors.CreamDim)
                 }
                 Spacer(Modifier.width(Space.sm))
                 Box(
@@ -359,7 +357,7 @@ private fun CreatePlaylistSheet(onCreate: (String) -> Unit, onDismiss: () -> Uni
                         .background(if (name.isBlank()) MediaColors.Accent.copy(alpha = 0.4f) else MediaColors.Accent)
                         .clickable(enabled = name.isNotBlank()) { onCreate(name.trim()) }
                         .padding(horizontal = Space.lg, vertical = 10.dp)
-                ) { Text("Create", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White) }
+                ) { Text("Create", style = Typo.Label, color = Color.White) }
             }
         }
     }

@@ -19,7 +19,8 @@ data class MediaOverride(
 @Entity(tableName = "play_history")
 data class PlayHistory(
     @PrimaryKey val mediaId: Long,
-    val lastPlayed: Long   // epoch millis
+    val lastPlayed: Long,      // epoch millis
+    val playCount: Int = 0     // §9 "Most played" / §8 "keep coming back to"
 )
 
 // Resume position for long-form items (audiobooks/podcasts). One row per file.
@@ -79,8 +80,23 @@ data class FolderMember(
 
 @Dao
 interface HistoryDao {
-    @Upsert
-    suspend fun record(entry: PlayHistory)
+    // Increment-or-insert. Deliberately NOT an upsert: @Upsert replaces the row
+    // and would reset playCount to 0 every play. Deliberately NOT
+    // "ON CONFLICT DO UPDATE" either — that needs SQLite 3.24 (API 30+) and
+    // minSdk here is 24.
+    @Query("UPDATE play_history SET lastPlayed = :at, playCount = playCount + 1 WHERE mediaId = :id")
+    suspend fun touch(id: Long, at: Long): Int
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertNew(entry: PlayHistory)
+
+    @Transaction
+    suspend fun record(id: Long, at: Long) {
+        if (touch(id, at) == 0) insertNew(PlayHistory(id, at, 1))
+    }
+
+    @Query("SELECT * FROM play_history ORDER BY playCount DESC, lastPlayed DESC LIMIT :limit")
+    fun observeMostPlayed(limit: Int): Flow<List<PlayHistory>>
 
     @Query("SELECT * FROM play_history ORDER BY lastPlayed DESC LIMIT :limit")
     fun observeRecent(limit: Int): kotlinx.coroutines.flow.Flow<List<PlayHistory>>
@@ -194,7 +210,7 @@ interface OverrideDao {
     suspend fun delete(id: Long)
 }
 
-@Database(entities = [MediaOverride::class, PlayHistory::class, PlaybackPosition::class, Favorite::class, MoodMember::class, Playlist::class, PlaylistMember::class, MediaFolder::class, FolderMember::class], version = 6, exportSchema = false)
+@Database(entities = [MediaOverride::class, PlayHistory::class, PlaybackPosition::class, Favorite::class, MoodMember::class, Playlist::class, PlaylistMember::class, MediaFolder::class, FolderMember::class], version = 7, exportSchema = false)
 abstract class OverrideDatabase : RoomDatabase() {
     abstract fun dao(): OverrideDao
     abstract fun historyDao(): HistoryDao
@@ -264,13 +280,22 @@ abstract class OverrideDatabase : RoomDatabase() {
             }
         }
 
+        // v6 -> v7: play_history gains playCount. Existing rows have been played
+        // at least once, so they seed at 1 rather than 0.
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `play_history` ADD COLUMN `playCount` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("UPDATE `play_history` SET `playCount` = 1 WHERE `playCount` = 0")
+            }
+        }
+
         fun get(context: Context): OverrideDatabase =
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,
                     OverrideDatabase::class.java,
                     "media_overrides.db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7).build().also { INSTANCE = it }
             }
     }
 }

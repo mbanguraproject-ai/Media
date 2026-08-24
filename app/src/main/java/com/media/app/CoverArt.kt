@@ -28,11 +28,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -54,24 +52,6 @@ private fun tintFor(seed: String): Color {
 
 // A two-stop diagonal gradient derived from the base tint — a designed surface,
 // not a flat block. The second stop is a lightened shift of the same hue.
-private fun gradientFor(seed: String): Brush {
-    val base = tintFor(seed)
-    val lifted = Color(
-        red = (base.red + 0.10f).coerceAtMost(1f),
-        green = (base.green + 0.10f).coerceAtMost(1f),
-        blue = (base.blue + 0.12f).coerceAtMost(1f),
-        alpha = 1f
-    )
-    return Brush.linearGradient(listOf(lifted, base))
-}
-
-private fun pillarIcon(pillar: Pillar): ImageVector = when (pillar) {
-    Pillar.MUSIC -> Icons.Filled.MusicNote
-    Pillar.PODCAST -> Icons.Filled.Podcasts
-    Pillar.AUDIOBOOK -> Icons.AutoMirrored.Filled.MenuBook
-    Pillar.VIDEO -> Icons.Filled.Movie
-}
-
 private fun pillarLabel(pillar: Pillar): String = when (pillar) {
     Pillar.MUSIC -> "Music"
     Pillar.PODCAST -> "Podcast"
@@ -189,7 +169,8 @@ fun CoverArt(
     item: AppMediaItem,
     modifier: Modifier = Modifier,
     corner: Int = 12,
-    targetPx: Int = 384
+    targetPx: Int = 384,
+    showBadge: Boolean = true
 ) {
     val context = LocalContext.current
     val key = "${item.uri}@$targetPx"
@@ -212,9 +193,10 @@ fun CoverArt(
     ) {
         val bitmap = art
         if (loading) {
-            // Neutral placeholder while art/frame loads — just the gradient wash,
-            // no drop-cap or badge, so the swap to a real frame is seamless.
-            Box(Modifier.fillMaxSize().background(gradientFor(item.title)))
+            // §21: the placeholder IS the final fallback, same seed. If the file
+            // turns out to have no art there is no swap at all; if it does, the
+            // incoming image is already tonally matched.
+            GenerativeArtwork(item, Modifier.fillMaxSize())
         } else if (bitmap != null) {
             Image(
                 bitmap = bitmap,
@@ -223,41 +205,14 @@ fun CoverArt(
                 contentScale = ContentScale.Crop
             )
         } else {
-            // Designed fallback: gradient wash + faint pillar watermark bleeding
-            // off the top-right + a bold Fraunces drop-cap anchored bottom-left.
-            BoxWithConstraints(Modifier.fillMaxSize().background(gradientFor(item.title))) {
-                val side = if (maxWidth < maxHeight) maxWidth else maxHeight
-                val capSize = (side.value * 0.46f).sp
-                val markSize = side * 0.9f
-
-                Icon(
-                    imageVector = pillarIcon(item.pillar),
-                    contentDescription = null,
-                    tint = MediaColors.Cream.copy(alpha = 0.10f),
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = (side.value * 0.06f).dp, end = (side.value * 0.02f).dp)
-                        .size(markSize)
-                )
-
-                Text(
-                    text = item.title.firstOrNull { it.isLetterOrDigit() }?.uppercase() ?: "M",
-                    fontFamily = Fraunces,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = capSize,
-                    color = MediaColors.Cream.copy(alpha = 0.88f),
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = (side.value * 0.08f).dp, bottom = (side.value * 0.02f).dp)
-                )
-
-            }
+            // §5: composed generative identity, not a letter in a colored box.
+            GenerativeArtwork(item, Modifier.fillMaxSize())
         }
 
         // Type badge — quiet ink pill, top-left. Shown on EVERY cover (art and
         // fallback alike) so the grid stays visually consistent. The translucent
         // ink sits lightly on real artwork without fighting it.
-        Box(
+        if (showBadge) Box(
             Modifier
                 .align(Alignment.TopStart)
                 .padding(6.dp)
@@ -269,7 +224,7 @@ fun CoverArt(
                 text = pillarLabel(item.pillar),
                 fontFamily = Inter,
                 fontWeight = FontWeight.Medium,
-                fontSize = 10.sp,
+                fontSize = 10.sp,   // badge: intentionally fixed, not text-scaled
                 color = MediaColors.Cream.copy(alpha = 0.9f)
             )
         }

@@ -54,16 +54,16 @@ fun AddToSheet(
             Box(Modifier.align(Alignment.CenterHorizontally).width(38.dp).height(4.dp)
                 .clip(CircleShape).background(Color(0x33FFFFFF)))
             Spacer(Modifier.height(Space.lg))
-            Text("Add to", fontSize = 13.sp, color = MediaColors.CreamFaint)
-            Text(item.title, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = MediaColors.Cream,
+            Text("Add to", style = Typo.Tertiary, color = MediaColors.CreamFaint)
+            Text(item.title, style = Typo.Section, color = MediaColors.Cream,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(Space.lg))
 
             LazyColumn(Modifier.heightIn(max = 420.dp)) {
                 // Moods (song-holding only)
                 item {
-                    Text("MOODS", fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
-                        color = MediaColors.CreamFaint, modifier = Modifier.padding(bottom = 6.dp))
+                    Text("MOODS", style = Typo.Micro,
+                        color = MediaColors.CreamFaint, modifier = Modifier.padding(bottom = Space.sm))
                 }
                 items(Mood.values().filter { it.holdsSongs }) { mood ->
                     val inList = memberMoods.contains(mood.key)
@@ -78,9 +78,9 @@ fun AddToSheet(
 
                 if (playlists.isNotEmpty()) {
                     item {
-                        Text("PLAYLISTS", fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+                        Text("PLAYLISTS", style = Typo.Micro,
                             color = MediaColors.CreamFaint,
-                            modifier = Modifier.padding(top = Space.md, bottom = 6.dp))
+                            modifier = Modifier.padding(top = Space.md, bottom = Space.sm))
                     }
                     items(playlists) { pl ->
                         val inList = memberPlaylists.contains(pl.id)
@@ -105,7 +105,7 @@ fun AddToSheet(
                     contentAlignment = Alignment.Center
                 ) { Icon(Icons.Filled.Edit, null, tint = MediaColors.Cream, modifier = Modifier.size(19.dp)) }
                 Spacer(Modifier.width(Space.md))
-                Text("Edit details", fontSize = 15.sp, fontWeight = FontWeight.Medium,
+                Text("Edit details", style = Typo.Primary,
                     color = MediaColors.Cream, modifier = Modifier.weight(1f))
                 Icon(Icons.Filled.ChevronRight, null, tint = MediaColors.CreamFaint, modifier = Modifier.size(22.dp))
             }
@@ -125,7 +125,7 @@ private fun ToggleRow(icon: ImageVector, label: String, tint: Color, checked: Bo
             contentAlignment = Alignment.Center
         ) { Icon(icon, null, tint = tint, modifier = Modifier.size(20.dp)) }
         Spacer(Modifier.width(Space.md))
-        Text(label, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = MediaColors.Cream,
+        Text(label, style = Typo.Primary, color = MediaColors.Cream,
             modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
         Icon(
             if (checked) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,

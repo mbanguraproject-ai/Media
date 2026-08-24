@@ -326,7 +326,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
     LaunchedEffect(Unit) {
         vm.onQualifyingPlay = { mediaId ->
             scope.launch {
-                db.historyDao().record(PlayHistory(mediaId, System.currentTimeMillis()))
+                db.historyDao().record(mediaId, System.currentTimeMillis())
             }
         }
     }
