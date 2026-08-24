@@ -78,6 +78,39 @@ data class FolderMember(
     val mediaId: Long
 )
 
+/**
+ * Cached bass-energy curve for one track. Stored as a blob: a 4-minute track
+ * at 20Hz is 4,800 floats = ~19KB, and only tracks you actually play get one.
+ *
+ * [dateModified] is copied from MediaStore so a re-encoded or replaced file
+ * invalidates its own envelope instead of pulsing to the wrong audio.
+ */
+@Entity(tableName = "audio_envelopes")
+class AudioEnvelope(
+    @PrimaryKey val mediaId: Long,
+    val hz: Int,
+    val dateModified: Long,
+    val data: ByteArray
+)
+
+@Dao
+interface EnvelopeDao {
+    @Query("SELECT * FROM audio_envelopes WHERE mediaId = :id")
+    suspend fun get(id: Long): AudioEnvelope?
+
+    @Upsert
+    suspend fun put(entry: AudioEnvelope)
+
+    @Query("DELETE FROM audio_envelopes WHERE mediaId = :id")
+    suspend fun delete(id: Long)
+
+    @Query("DELETE FROM audio_envelopes")
+    suspend fun clear()
+
+    @Query("SELECT COALESCE(SUM(LENGTH(data)), 0) FROM audio_envelopes")
+    suspend fun totalBytes(): Long
+}
+
 @Dao
 interface HistoryDao {
     // Increment-or-insert. Deliberately NOT an upsert: @Upsert replaces the row
@@ -214,10 +247,11 @@ interface OverrideDao {
     suspend fun delete(id: Long)
 }
 
-@Database(entities = [MediaOverride::class, PlayHistory::class, PlaybackPosition::class, Favorite::class, MoodMember::class, Playlist::class, PlaylistMember::class, MediaFolder::class, FolderMember::class], version = 7, exportSchema = false)
+@Database(entities = [MediaOverride::class, PlayHistory::class, PlaybackPosition::class, Favorite::class, MoodMember::class, Playlist::class, PlaylistMember::class, MediaFolder::class, FolderMember::class, AudioEnvelope::class], version = 8, exportSchema = false)
 abstract class OverrideDatabase : RoomDatabase() {
     abstract fun dao(): OverrideDao
     abstract fun historyDao(): HistoryDao
+    abstract fun envelopeDao(): EnvelopeDao
     abstract fun positionDao(): PositionDao
     abstract fun favoriteDao(): FavoriteDao
     abstract fun moodDao(): MoodDao
@@ -293,13 +327,27 @@ abstract class OverrideDatabase : RoomDatabase() {
             }
         }
 
+        // v7 -> v8: cached bass envelopes. Pure addition, nothing to backfill.
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `audio_envelopes` (" +
+                        "`mediaId` INTEGER NOT NULL, " +
+                        "`hz` INTEGER NOT NULL, " +
+                        "`dateModified` INTEGER NOT NULL, " +
+                        "`data` BLOB NOT NULL, " +
+                        "PRIMARY KEY(`mediaId`))"
+                )
+            }
+        }
+
         fun get(context: Context): OverrideDatabase =
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,
                     OverrideDatabase::class.java,
                     "media_overrides.db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8).build().also { INSTANCE = it }
             }
     }
 }

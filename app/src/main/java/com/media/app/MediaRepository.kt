@@ -27,6 +27,7 @@ data class AppMediaItem(
     val trackNo: Int = 0,
     val year: Int = 0,
     val dateAdded: Long = 0L,     // epoch seconds, from MediaStore
+    val dateModified: Long = 0L,  // invalidates cached analysis when a file changes
     val mimeType: String = "",
     val relPath: String = ""
 )
@@ -175,6 +176,7 @@ object MediaRepository {
             MediaStore.Audio.Media.TRACK,
             MediaStore.Audio.Media.YEAR,
             MediaStore.Audio.Media.DATE_ADDED,
+            MediaStore.Audio.Media.DATE_MODIFIED,
             MediaStore.Audio.Media.MIME_TYPE
         )
         context.contentResolver.query(
@@ -192,6 +194,7 @@ object MediaRepository {
             val trackCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.TRACK)
             val yearCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.YEAR)
             val addedCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
+            val modifiedCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
             val mimeCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.MIME_TYPE)
             val albumArtBase = Uri.parse("content://media/external/audio/albumart")
             while (c.moveToNext()) {
@@ -217,6 +220,7 @@ object MediaRepository {
                     trackNo = if (rawTrack > 1000) rawTrack % 1000 else rawTrack,
                     year = c.getInt(yearCol),
                     dateAdded = c.getLong(addedCol),
+                    dateModified = c.getLong(modifiedCol),
                     mimeType = c.getString(mimeCol) ?: "",
                     relPath = relPath
                 )
