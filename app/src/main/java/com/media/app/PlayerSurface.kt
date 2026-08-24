@@ -11,6 +11,8 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -94,6 +96,35 @@ fun PlayerSurface(
     val artItem = rememberArtItem(state)
     // §12: the environment takes its tone from the current cover.
     val ambient = rememberAmbientColor(artItem)
+    val envelope = rememberEnvelope(artItem)
+
+    // Bass-reactive level, 0..1.
+    //
+    // state.positionMs only ticks at 2Hz, so it CANNOT drive a 60fps pulse on
+    // its own. Instead each frame extrapolates from the last known position
+    // using the frame clock, and the effect re-keys on positionMs so it
+    // resyncs to truth twice a second — drift never accumulates.
+    //
+    // Attack fast, release slow (0.55 / 0.10), the way a compressor envelope
+    // behaves. Symmetric smoothing reads as a wobble; asymmetric as a hit.
+    var level by remember { mutableStateOf(0f) }
+    LaunchedEffect(envelope, state.isPlaying, state.positionMs, state.speed, reduced, e > 0.5f) {
+        if (envelope == null || !state.isPlaying || reduced || e <= 0.5f) {
+            level = 0f
+            return@LaunchedEffect
+        }
+        val base = state.positionMs
+        val speed = state.speed
+        var t0 = 0L
+        while (true) {
+            withFrameNanos { now ->
+                if (t0 == 0L) t0 = now
+                val ms = base + ((now - t0) / 1_000_000f * speed).toLong()
+                val target = envelope.levelAt(ms)
+                level += (target - level) * (if (target > level) 0.55f else 0.10f)
+            }
+        }
+    }
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         val density = LocalDensity.current
@@ -190,9 +221,35 @@ fun PlayerSurface(
                 )
             }
 
+            // Bloom behind the artwork — grows and brightens on the beat.
+            // Drawn before the art so it reads as light spilling out from
+            // behind it rather than a ring stuck on top.
+            if (level > 0.01f) {
+                val grow = artSize * (0.16f + 0.22f * level)
+                Box(
+                    Modifier
+                        .offset(x = artX - grow / 2f, y = artY - grow / 2f)
+                        .size(artSize + grow)
+                        .background(
+                            Brush.radialGradient(
+                                listOf(
+                                    ambient.copy(alpha = 0.55f * level),
+                                    ambient.copy(alpha = 0.18f * level),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+            }
+
             // ---------------- shared artwork ----------------
             Box(
                 Modifier.offset(x = artX, y = artY).size(artSize)
+                    // §33: measured, not showy. 4.5% at full level.
+                    .graphicsLayer {
+                        val s = 1f + level * 0.045f
+                        scaleX = s; scaleY = s
+                    }
                     .clip(RoundedCornerShape(artCorner))
             ) {
                 // §12: track changes cross-dissolve with a scale drift. Artwork
