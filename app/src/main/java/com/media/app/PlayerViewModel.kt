@@ -285,6 +285,14 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     fun clearError() { _error.value = null }
 
+    /**
+     * The live session controller, for PlayerView to render video frames into.
+     * The old FullPlayer built a SECOND MediaController inside the PlayerView
+     * factory — two controllers bound to one session. Read via AndroidView's
+     * update block so it picks the controller up as soon as the session binds.
+     */
+    fun boundPlayer(): Player? = controller
+
     /** §22 "Try again" — re-prepare without losing the queue or position. */
     fun retryPlayback() {
         val c = controller ?: return

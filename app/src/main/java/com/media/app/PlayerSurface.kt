@@ -36,6 +36,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -62,6 +65,7 @@ private const val MINI_HEIGHT = 60
 private const val PILL_MARGIN = 12
 private const val MINI_ART = 44
 
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 fun PlayerSurface(
     state: PlayerState,
@@ -268,13 +272,26 @@ fun PlayerSurface(
                     },
                     label = "artwork"
                 ) { item ->
-                    if (item != null) {
-                        CoverArt(
+                    when {
+                        // Video renders INSIDE the morphing box, so it scales
+                        // and travels with everything else. factory runs once,
+                        // so the surface is never recreated mid-animation.
+                        state.isVideo -> AndroidView(
+                            factory = { ctx ->
+                                PlayerView(ctx).apply {
+                                    useController = false
+                                    setBackgroundColor(android.graphics.Color.BLACK)
+                                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                                }
+                            },
+                            update = { it.player = vm.boundPlayer() },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        item != null -> CoverArt(
                             item, Modifier.fillMaxSize(), corner = 0,
                             targetPx = if (e > 0.5f) 768 else 144, showBadge = false
                         )
-                    } else {
-                        Box(Modifier.fillMaxSize().background(MediaColors.Ink))
+                        else -> Box(Modifier.fillMaxSize().background(MediaColors.Ink))
                     }
                 }
             }

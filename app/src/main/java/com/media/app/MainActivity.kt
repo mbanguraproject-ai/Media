@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.border
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -435,13 +436,26 @@ fun HomeScaffold(vm: PlayerViewModel) {
 
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             // FIXED top region — does not scroll. Songs scroll underneath it.
+            // §16: header state derives from scroll position. derivedStateOf
+            // means only the header recomposes as you scroll, not the tree.
+            val homeListState = rememberLazyListState()
+            val collapse by remember {
+                derivedStateOf {
+                    if (homeListState.firstVisibleItemIndex > 0) 1f
+                    else (homeListState.firstVisibleItemScrollOffset / 220f).coerceIn(0f, 1f)
+                }
+            }
+
             StashHeader(
                 onSearch = { showSearch = true },
                 onRescan = { MediaRepository.refresh(); reloadKey++ },
-                onPlaylists = { showPlaylists = true; currentTab = 2 }
+                onPlaylists = { showPlaylists = true; currentTab = 2 },
+                collapse = collapse
             )
+            // Mood chips stay put: they are the control surface, and §16 wants
+            // sticky elements where useful.
             MoodChips(active = mood, onPick = { setMood(it) })
-            MoodBanner(mood)
+            MoodBanner(mood, collapse = collapse)
             // §8: sections are derived from the library, not declared. Empty
             // ones simply don't exist, so Home fills in as history accumulates.
             val sections = remember(music, favorites, lastPlayedMap, playCountMap, positions) {
@@ -456,6 +470,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
                 EmptyState()
             } else {
                 LazyColumn(
+                    state = homeListState,
                     contentPadding = PaddingValues(bottom = 170.dp + navBottom),
                     modifier = Modifier.fillMaxSize()
                 ) {

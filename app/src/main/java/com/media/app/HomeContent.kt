@@ -22,7 +22,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 
 // Flat solid tile color seeded by title — clean, no gradient noise, no fallback junk.
@@ -35,16 +37,47 @@ private fun greeting(): String {
 
 // ------------------------------------------------------------------ HEADER
 @Composable
-fun StashHeader(onSearch: () -> Unit, onRescan: () -> Unit, onPlaylists: () -> Unit) {
+fun StashHeader(
+    onSearch: () -> Unit,
+    onRescan: () -> Unit,
+    onPlaylists: () -> Unit,
+    // §16: 0 = full, 1 = compact. Driven by scroll, not by a hide/show toggle —
+    // the doc explicitly rejects "distracting scroll-hide experiments".
+    collapse: Float = 0f
+) {
+    val c = collapse.coerceIn(0f, 1f)
     Row(
-        Modifier.fillMaxWidth().padding(Space.xl, Space.lg, Space.lg, Space.md),
+        Modifier.fillMaxWidth()
+            .padding(
+                start = Space.xl, end = Space.lg,
+                top = lerp(Space.lg, Space.sm, c),
+                bottom = lerp(Space.md, Space.sm, c)
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
-            Text(greeting(), style = Typo.Secondary, color = MediaColors.CreamDim)
-            Spacer(Modifier.height(Space.xxs))
-            Text("Your Media", style = Typo.Display, color = MediaColors.Cream,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // Greeting is the first thing to go: it is context, not identity.
+            if (c < 0.99f) {
+                Text(
+                    greeting(), style = Typo.Secondary, color = MediaColors.CreamDim,
+                    maxLines = 1,
+                    modifier = Modifier
+                        .height(lerp(18.dp, 0.dp, c))
+                        .alpha((1f - c * 2f).coerceIn(0f, 1f))
+                )
+                Spacer(Modifier.height(lerp(Space.xxs, 0.dp, c)))
+            }
+            // Title shrinks Display -> Section rather than cutting between two
+            // styles, so the transition is continuous.
+            Text(
+                "Your Media",
+                style = Typo.Display.copy(
+                    fontSize = lerp(Typo.Display.fontSize, Typo.Section.fontSize, c),
+                    lineHeight = lerp(Typo.Display.lineHeight, Typo.Section.lineHeight, c)
+                ),
+                color = MediaColors.Cream,
+                maxLines = 1, overflow = TextOverflow.Ellipsis
+            )
         }
         Spacer(Modifier.width(Space.md))
         CircleButton(Icons.Filled.QueueMusic, "Playlists", onPlaylists)
@@ -96,8 +129,11 @@ fun MoodChips(active: Mood, onPick: (Mood) -> Unit) {
 
 // ------------------------------------------------------------------ MOOD BANNER
 @Composable
-fun MoodBanner(mood: Mood) {
+fun MoodBanner(mood: Mood, collapse: Float = 0f) {
     val msg = mood.banner ?: return
+    val c = collapse.coerceIn(0f, 1f)
+    // Banner is atmosphere, not navigation — it leaves entirely on collapse.
+    if (c > 0.98f) return
     val icon = when (mood) {
         Mood.LATE_NIGHT -> Icons.Filled.Bedtime
         Mood.WORKOUT -> Icons.Filled.Bolt
@@ -105,10 +141,15 @@ fun MoodBanner(mood: Mood) {
         else -> Icons.Filled.MusicNote
     }
     Row(
-        Modifier.fillMaxWidth().padding(Space.xl, Space.md, Space.xl, Space.xs)
-            .clip(RoundedCornerShape(14.dp))
+        Modifier.fillMaxWidth()
+            .padding(
+                start = Space.xl, end = Space.xl,
+                top = lerp(Space.md, 0.dp, c), bottom = lerp(Space.xs, 0.dp, c)
+            )
+            .alpha(1f - c)
+            .clip(RoundedCornerShape(Radius.md))
             .background(mood.accent.copy(alpha = 0.16f))
-            .padding(Space.lg, 15.dp),
+            .padding(horizontal = Space.lg, vertical = lerp(15.dp, 0.dp, c)),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, null, tint = mood.accent, modifier = Modifier.size(18.dp))

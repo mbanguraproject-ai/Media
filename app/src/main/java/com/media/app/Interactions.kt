@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -78,6 +79,9 @@ fun Modifier.pressScale(
     )
     return this
         .graphicsLayer { scaleX = scale; scaleY = scale }
+        // §35: restores the 48dp minimum this lost when it replaced
+        // IconButton. Expands the touch area only — never shrinks a large one.
+        .minimumInteractiveComponentSize()
         .clickable(
             interactionSource = interaction,
             indication = null,
