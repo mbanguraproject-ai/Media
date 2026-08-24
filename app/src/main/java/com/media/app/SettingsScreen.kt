@@ -49,7 +49,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val privacyUrl = "https://bangscc10-dev.github.io/Media/privacy.html"
     Column(
-        Modifier.fillMaxSize().background(MediaColors.Ink).statusBarsPadding()
+        Modifier.fillMaxSize().background(moodBackground()).statusBarsPadding()
             .verticalScroll(rememberScrollState())
     ) {
         Row(
