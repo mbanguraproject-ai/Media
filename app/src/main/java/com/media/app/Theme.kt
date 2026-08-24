@@ -326,7 +326,8 @@ fun MediaTheme(
     androidx.compose.runtime.CompositionLocalProvider(
         LocalPalette provides palette,
         LocalMood provides mood,
-        LocalTypeScale provides typeScale(fontScale)
+        LocalTypeScale provides typeScale(fontScale),
+        LocalReducedMotion provides rememberReducedMotion()
     ) {
         MaterialTheme(colorScheme = scheme, typography = typography(fontScale), content = content)
     }

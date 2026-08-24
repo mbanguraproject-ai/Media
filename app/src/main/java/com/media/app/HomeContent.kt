@@ -219,14 +219,17 @@ fun TrackRow(
                 color = MediaColors.CreamFaint, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Spacer(Modifier.width(Space.sm))
-        Text(fmtDur(item.durationMs), style = Typo.Tertiary, color = MediaColors.CreamFaint)
+        // §10: an animated equalizer replaces the duration on the playing row.
+        if (isPlaying) {
+            PlayingEqualizer(
+                playing = true, color = MediaColors.Accent,
+                modifier = Modifier.size(16.dp, 14.dp)
+            )
+        } else {
+            Text(fmtDur(item.durationMs), style = Typo.Tertiary, color = MediaColors.CreamFaint)
+        }
         Spacer(Modifier.width(Space.md))
-        Icon(
-            if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-            "Favorite",
-            tint = if (isFavorite) Color(0xFFEC4899) else MediaColors.CreamFaint,
-            modifier = Modifier.size(21.dp).clickable(onClick = onToggleFav)
-        )
+        FavoriteButton(isFavorite, Modifier.size(21.dp), onToggleFav)
     }
 }
 

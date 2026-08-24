@@ -305,6 +305,8 @@ fun HomeScaffold(vm: PlayerViewModel) {
     var showSearch by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showLibrary by remember { mutableStateOf(false) }
+    var openAlbum by remember { mutableStateOf<Album?>(null) }
+    var openArtist by remember { mutableStateOf<Artist?>(null) }
     var libraryPillar by remember { mutableStateOf<Pillar?>(null) }
     var currentTab by remember { mutableStateOf(0) }
     var showPlaylists by remember { mutableStateOf(false) }
@@ -333,6 +335,11 @@ fun HomeScaffold(vm: PlayerViewModel) {
     val overrides by remember {
         db.dao().observeAll().map { list -> list.associateBy { it.mediaId } }
     }.collectAsState(initial = emptyMap())
+
+    val allHistory by remember { db.historyDao().observeAllHistory() }
+        .collectAsState(initial = emptyList())
+    val lastPlayedMap = remember(allHistory) { allHistory.associate { it.mediaId to it.lastPlayed } }
+    val playCountMap = remember(allHistory) { allHistory.associate { it.mediaId to it.playCount } }
 
     // MediaStore scan runs on IO and lands back as state. Bumping reloadKey
     // (rescan) re-runs it. `scanning` distinguishes "still loading" from
@@ -391,7 +398,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // also resets currentTab so the nav highlight doesn't lie.
     val anyOverlay = addToItem != null || editItem != null || showTerms || showAbout ||
         showPlayer || showSearch || showSettings || openPlaylist != null ||
-        showPlaylists || showLibrary
+        showPlaylists || openAlbum != null || openArtist != null || showLibrary
     BackHandler(enabled = anyOverlay) {
         when {
             addToItem != null -> addToItem = null
@@ -402,6 +409,8 @@ fun HomeScaffold(vm: PlayerViewModel) {
             showSearch -> { showSearch = false; currentTab = 0 }
             showSettings -> { showSettings = false; currentTab = 0 }
             openPlaylist != null -> openPlaylist = null
+            openAlbum != null -> openAlbum = null
+            openArtist != null -> openArtist = null
             showPlaylists -> { showPlaylists = false; currentTab = 0 }
             showLibrary -> { showLibrary = false; libraryPillar = null; currentTab = 0 }
         }
@@ -551,12 +560,55 @@ fun HomeScaffold(vm: PlayerViewModel) {
             all = allAudio + video,
             state = state,
             initialPillar = libraryPillar,
+            lastPlayed = lastPlayedMap,
+            playCounts = playCountMap,
             onPlay = { list, idx ->
                 vm.playOrToggle(list, idx)
                 if (list[idx].type == MediaType.VIDEO) showPlayer = true
             },
+            onOpenAlbum = { openAlbum = it },
+            onOpenArtist = { openArtist = it },
             onEdit = { editItem = it },
             onClose = { showLibrary = false; libraryPillar = null; currentTab = 0 }
+        )
+    }
+    openAlbum?.let { album ->
+        AlbumDetailScreen(
+            album = album,
+            state = state,
+            onPlay = { idx -> vm.playOrToggle(album.tracks, idx) },
+            onShuffle = {
+                if (album.tracks.isNotEmpty()) {
+                    if (!state.shuffle) vm.toggleShuffle()
+                    vm.play(album.tracks, album.tracks.indices.random())
+                }
+            },
+            onLongPress = { addToItem = it },
+            // §26 "View artist" — jump straight across from the album header.
+            onOpenArtist = {
+                MediaRepository.artistsOf(allAudio).firstOrNull { a ->
+                    a.id == album.tracks.firstOrNull()?.artistId
+                }?.let { openArtist = it; openAlbum = null }
+            },
+            onClose = { openAlbum = null }
+        )
+    }
+    openArtist?.let { artist ->
+        val artistAlbums = remember(artist) { MediaRepository.albumsOf(artist.tracks) }
+        ArtistDetailScreen(
+            artist = artist,
+            albums = artistAlbums,
+            state = state,
+            onPlay = { idx -> vm.playOrToggle(artist.tracks, idx) },
+            onShuffle = {
+                if (artist.tracks.isNotEmpty()) {
+                    if (!state.shuffle) vm.toggleShuffle()
+                    vm.play(artist.tracks, artist.tracks.indices.random())
+                }
+            },
+            onOpenAlbum = { openAlbum = it; openArtist = null },
+            onLongPress = { addToItem = it },
+            onClose = { openArtist = null }
         )
     }
     editItem?.let { item ->
@@ -609,6 +661,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
         // Every tab first clears ALL overlays (mutually exclusive), then opens its own.
         showPlaylists = false; showSearch = false; showSettings = false
         showLibrary = false; libraryPillar = null; openPlaylist = null
+        openAlbum = null; openArtist = null
         currentTab = tab
         when (tab) {
             1 -> showLibrary = true
@@ -783,12 +836,13 @@ private fun NowPlayingBar(
                 color = MediaColors.CreamDim, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
 
-        IconButton(onClick = { view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP); vm.togglePlayPause() }) {
-            Icon(
-                if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                "Play/Pause", tint = MediaColors.Cream, modifier = Modifier.size(26.dp)
-            )
-        }
+        // §13: the glyph morphs rather than swapping.
+        PlayPauseIcon(
+            playing = state.isPlaying,
+            tint = MediaColors.Cream,
+            contentDescription = "Play/Pause",
+            modifier = Modifier.size(26.dp).pressScale(haptic = true) { vm.togglePlayPause() }
+        )
     }
 }
 
@@ -1009,16 +1063,22 @@ private fun FullPlayer(state: PlayerState, vm: PlayerViewModel, onClose: () -> U
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton({ view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP); vm.previous() }) { Icon(Icons.Filled.SkipPrevious, "Previous", tint = MediaColors.Cream, modifier = Modifier.size(34.dp)) }
+                Icon(Icons.Filled.SkipPrevious, "Previous", tint = MediaColors.Cream,
+                    modifier = Modifier.size(34.dp).pressScale(haptic = true) { vm.previous() })
                 Box(
                     Modifier.size(64.dp).clip(CircleShape).background(MediaColors.Cream)
-                        .clickable { view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP); vm.togglePlayPause() },
+                        .pressScale(scaleDown = 0.92f, haptic = true) { vm.togglePlayPause() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow, "Play/Pause",
-                        tint = MediaColors.OnInverse, modifier = Modifier.size(34.dp))
+                    PlayPauseIcon(
+                        playing = state.isPlaying,
+                        tint = MediaColors.OnInverse,
+                        contentDescription = "Play/Pause",
+                        modifier = Modifier.size(34.dp)
+                    )
                 }
-                IconButton({ view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP); vm.next() }) { Icon(Icons.Filled.SkipNext, "Next", tint = MediaColors.Cream, modifier = Modifier.size(34.dp)) }
+                Icon(Icons.Filled.SkipNext, "Next", tint = MediaColors.Cream,
+                    modifier = Modifier.size(34.dp).pressScale(haptic = true) { vm.next() })
             }
 
             // Secondary row: shuffle / repeat / speed

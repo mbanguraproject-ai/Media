@@ -98,6 +98,10 @@ interface HistoryDao {
     @Query("SELECT * FROM play_history ORDER BY playCount DESC, lastPlayed DESC LIMIT :limit")
     fun observeMostPlayed(limit: Int): Flow<List<PlayHistory>>
 
+    // Full table — feeds the RECENTLY_PLAYED / MOST_PLAYED sort keys (§9).
+    @Query("SELECT * FROM play_history")
+    fun observeAllHistory(): Flow<List<PlayHistory>>
+
     @Query("SELECT * FROM play_history ORDER BY lastPlayed DESC LIMIT :limit")
     fun observeRecent(limit: Int): kotlinx.coroutines.flow.Flow<List<PlayHistory>>
 
