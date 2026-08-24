@@ -668,6 +668,20 @@ fun HomeScaffold(vm: PlayerViewModel) {
     if (showAbout) {
         AboutScreen(version = BuildConfig.VERSION_NAME, onClose = { showAbout = false })
     }
+    // §22: sits above the player pill, below everything else. Non-blocking —
+    // the queue, scroll position and current screen are all preserved.
+    val playbackError by vm.error.collectAsState()
+    ErrorBanner(
+        error = playbackError,
+        modifier = Modifier.align(Alignment.BottomCenter)
+            .navigationBarsPadding()
+            .padding(bottom = BottomBarHeight + MiniPlayerGap + 68.dp),
+        onRetry = { vm.retryPlayback() },
+        onSkip = { vm.skipFailedItem() },
+        onRescan = { MediaRepository.refresh(); reloadKey++; vm.clearError() },
+        onDismiss = { vm.clearError() }
+    )
+
     // §11/§15: ONE surface. Sits above the bottom bar so the expanded state
     // is never painted over, and collapses to a pill docked above it.
     if (state.hasItem && !playerHidden) {

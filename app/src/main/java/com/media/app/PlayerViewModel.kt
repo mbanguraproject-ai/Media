@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.media3.common.MediaItem as ExoMediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -36,6 +37,52 @@ data class PlayerState(
     val queueIndex: Int = 0,
     val queueSize: Int = 0
 )
+
+// ============================================================================
+//  PLAYBACK ERRORS (§22)
+//  Errors are translated into something a person can act on. Never
+//  "ERROR_CODE_IO_FILE_NOT_FOUND" — that is the shape §22 explicitly rejects.
+// ============================================================================
+enum class ErrorKind { MISSING, FORMAT, PERMISSION, GENERIC }
+
+data class PlaybackError(
+    val kind: ErrorKind,
+    val headline: String,
+    val detail: String,
+    val trackTitle: String,
+    val uri: String?
+)
+
+internal fun playbackErrorFrom(e: PlaybackException, title: String, uri: String?): PlaybackError =
+    when (e.errorCode) {
+        PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND ->
+            PlaybackError(
+                ErrorKind.MISSING, "This file is no longer available",
+                "It may have been moved, renamed, or deleted since your library was scanned.",
+                title, uri
+            )
+        PlaybackException.ERROR_CODE_IO_NO_PERMISSION ->
+            PlaybackError(
+                ErrorKind.PERMISSION, "Media couldn't open this file",
+                "Access to this file was denied. Check the app's media permission.",
+                title, uri
+            )
+        PlaybackException.ERROR_CODE_DECODING_FAILED,
+        PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
+        PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
+        PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED ->
+            PlaybackError(
+                ErrorKind.FORMAT, "Couldn't play this track",
+                "This device can't decode the file, or it's damaged.",
+                title, uri
+            )
+        else ->
+            PlaybackError(
+                ErrorKind.GENERIC, "Couldn't play this track",
+                "Something went wrong starting playback.",
+                title, uri
+            )
+    }
 
 /** One row of the Media3 timeline, flattened for the queue sheet (§25). */
 data class QueueEntry(
@@ -76,6 +123,17 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             refresh()
         }
         override fun onPlaybackStateChanged(playbackState: Int) = refresh()
+
+        // §22: nothing used to handle this — a deleted file failed silently.
+        override fun onPlayerError(error: PlaybackException) {
+            val c = controller
+            _error.value = playbackErrorFrom(
+                error,
+                c?.mediaMetadata?.title?.toString() ?: "this track",
+                c?.currentMediaItem?.localConfiguration?.uri?.toString()
+            )
+            refresh()
+        }
 
         // Timeline edits (add / move / remove) land here.
         override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
@@ -221,6 +279,34 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     // folding the queue in would rebuild the whole list 120 times a minute.
     private val _queue = MutableStateFlow<List<QueueEntry>>(emptyList())
     val queue: StateFlow<List<QueueEntry>> = _queue
+
+    private val _error = MutableStateFlow<PlaybackError?>(null)
+    val error: StateFlow<PlaybackError?> = _error
+
+    fun clearError() { _error.value = null }
+
+    /** §22 "Try again" — re-prepare without losing the queue or position. */
+    fun retryPlayback() {
+        val c = controller ?: return
+        c.prepare(); c.play()
+        _error.value = null
+    }
+
+    /**
+     * §22 "Errors should not destroy current context": drop only the offending
+     * item and carry on with the rest of the queue.
+     */
+    fun skipFailedItem() {
+        val c = controller ?: return
+        if (c.mediaItemCount > 1) {
+            c.removeMediaItem(c.currentMediaItemIndex)
+            c.prepare(); c.play()
+        } else {
+            c.clearMediaItems()
+        }
+        _error.value = null
+        refreshQueue(); refresh()
+    }
 
     private fun refreshQueue() {
         val c = controller ?: return
