@@ -336,6 +336,11 @@ fun HomeScaffold(vm: PlayerViewModel) {
         db.dao().observeAll().map { list -> list.associateBy { it.mediaId } }
     }.collectAsState(initial = emptyMap())
 
+    // Re-instated: this fed only dead code before, now it drives §8's
+    // "Continue listening".
+    val positions by remember {
+        db.positionDao().observeAll().map { list -> list.associateBy { it.mediaId } }
+    }.collectAsState(initial = emptyMap())
     val allHistory by remember { db.historyDao().observeAllHistory() }
         .collectAsState(initial = emptyList())
     val lastPlayedMap = remember(allHistory) { allHistory.associate { it.mediaId to it.lastPlayed } }
@@ -437,20 +442,14 @@ fun HomeScaffold(vm: PlayerViewModel) {
             )
             MoodChips(active = mood, onPick = { setMood(it) })
             MoodBanner(mood)
-            Spacer(Modifier.height(Space.md))
-            StatCards(
-                recentlyPlayed = recentHistory.size,
-                allTracks = music.size,
-                favorites = favorites.size
-            )
-            CountAndShuffle(count = shown.size, onShuffle = {
-                if (shown.isNotEmpty()) {
-                    if (!state.shuffle) vm.toggleShuffle()
-                    vm.play(shown, (shown.indices).random())
-                }
-            })
+            // §8: sections are derived from the library, not declared. Empty
+            // ones simply don't exist, so Home fills in as history accumulates.
+            val sections = remember(music, favorites, lastPlayedMap, playCountMap, positions) {
+                buildHomeSections(music, favorites, lastPlayedMap, playCountMap, positions)
+            }
 
-            // SCROLLING list — only the tracks move.
+            // SCROLLING content — stats, shelves and tracks all move together
+            // so the shelves aren't pinned above a scrolling list.
             if (scanning) {
                 ScanningState()
             } else if (shown.isEmpty()) {
@@ -460,6 +459,40 @@ fun HomeScaffold(vm: PlayerViewModel) {
                     contentPadding = PaddingValues(bottom = 170.dp + navBottom),
                     modifier = Modifier.fillMaxSize()
                 ) {
+                    item {
+                        Spacer(Modifier.height(Space.md))
+                        StatCards(
+                            recentlyPlayed = recentHistory.size,
+                            allTracks = music.size,
+                            favorites = favorites.size
+                        )
+                    }
+                    items(sections.size) { s ->
+                        when (val sec = sections[s]) {
+                            is HomeSection.Tracks -> {
+                                SectionHeader(sec.title)
+                                TrackShelf(
+                                    items = sec.items,
+                                    currentUri = state.currentUri,
+                                    onPlay = { i -> vm.playOrToggle(sec.items, i) },
+                                    onLongPress = { addToItem = it }
+                                )
+                            }
+                            is HomeSection.Albums -> {
+                                SectionHeader(sec.title)
+                                AlbumShelf(sec.items) { openAlbum = it }
+                            }
+                        }
+                    }
+                    item {
+                        if (sections.isNotEmpty()) SectionHeader("All tracks")
+                        CountAndShuffle(count = shown.size, onShuffle = {
+                            if (shown.isNotEmpty()) {
+                                if (!state.shuffle) vm.toggleShuffle()
+                                vm.play(shown, (shown.indices).random())
+                            }
+                        })
+                    }
                     items(shown.size) { idx ->
                         val track = shown[idx]
                         TrackRow(
