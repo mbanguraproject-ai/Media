@@ -645,18 +645,6 @@ fun HomeScaffold(vm: PlayerViewModel) {
         if (state.isPlaying) playerHidden = false
         else if (state.hasItem) { delay(10_000); playerHidden = true }
     }
-    AnimatedVisibility(
-        visible = state.hasItem && !playerHidden,
-        enter = slideInVertically { it } + fadeIn(),
-        exit = slideOutVertically { it } + fadeOut(),
-        modifier = Modifier.align(Alignment.BottomCenter)
-    ) {
-        NowPlayingBar(
-            state, vm,
-            onExpand = { showPlayer = true },
-            modifier = Modifier.navigationBarsPadding().padding(bottom = BottomBarHeight + MiniPlayerGap, start = Space.md, end = Space.md)
-        )
-    }
     BottomBar(Modifier.align(Alignment.BottomCenter), current = currentTab) { tab ->
         // Every tab first clears ALL overlays (mutually exclusive), then opens its own.
         showPlaylists = false; showSearch = false; showSettings = false
@@ -680,8 +668,17 @@ fun HomeScaffold(vm: PlayerViewModel) {
     if (showAbout) {
         AboutScreen(version = BuildConfig.VERSION_NAME, onClose = { showAbout = false })
     }
-    if (showPlayer) {
-        FullPlayer(state, vm) { showPlayer = false }
+    // §11/§15: ONE surface. Sits above the bottom bar so the expanded state
+    // is never painted over, and collapses to a pill docked above it.
+    if (state.hasItem && !playerHidden) {
+        val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        PlayerSurface(
+            state = state,
+            vm = vm,
+            expanded = showPlayer,
+            bottomInset = navBottom + BottomBarHeight + MiniPlayerGap,
+            onExpandedChange = { showPlayer = it }
+        )
     }
     addToItem?.let { item ->
         val itemMoods = allMoodMembers.filter { it.mediaId == item.id }.map { it.moodKey }.toSet()
@@ -735,114 +732,6 @@ private fun EmptyState() {
         Spacer(Modifier.height(Space.sm))
         Text("Add music or video to your device to see it here.",
             style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamDim)
-    }
-}
-
-@Composable
-private fun NowPlayingBar(
-    state: PlayerState, vm: PlayerViewModel, onExpand: () -> Unit, modifier: Modifier = Modifier
-) {
-    val view = LocalView.current
-    val prog = if (state.durationMs > 0)
-        (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f) else 0f
-
-    // Lightweight AppMediaItem to drive the thumbnail from the current URI.
-    val artItem = state.currentUri?.let { uri ->
-        AppMediaItem(
-            id = uri.substringAfterLast('/').toLongOrNull() ?: 0L,
-            title = state.currentTitle, artist = state.currentArtist,
-            durationMs = state.durationMs, uri = android.net.Uri.parse(uri),
-            type = if (state.isVideo) MediaType.VIDEO else MediaType.AUDIO,
-            pillar = Pillar.MUSIC
-        )
-    }
-
-    var dragX by remember { mutableStateOf(0f) }
-    var dragDown by remember { mutableStateOf(0f) }
-    val swipeThresholdPx = with(LocalDensity.current) { 60.dp.toPx() }
-
-    Row(
-        modifier
-            .fillMaxWidth()
-            .shadow(14.dp, RoundedCornerShape(28.dp), clip = false)
-            .clip(RoundedCornerShape(28.dp))
-            .background(MediaColors.InkRaised)
-            .clickable(onClick = onExpand)
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragEnd = {
-                        when {
-                            // Downward swipe dominates -> dismiss.
-                            dragDown > swipeThresholdPx && dragDown > kotlin.math.abs(dragX) -> {
-                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                vm.dismiss()
-                            }
-                            // Horizontal swipe -> skip.
-                            dragX <= -swipeThresholdPx -> {
-                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                vm.next()
-                            }
-                            dragX >= swipeThresholdPx -> {
-                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                vm.previous()
-                            }
-                        }
-                        dragX = 0f; dragDown = 0f
-                    },
-                    onDrag = { change, delta ->
-                        change.consume()
-                        dragX += delta.x
-                        if (delta.y > 0) dragDown += delta.y else dragDown = (dragDown + delta.y).coerceAtLeast(0f)
-                    }
-                )
-            }
-            .padding(horizontal = 8.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Album-art thumbnail with a progress ring arcing around it.
-        Box(contentAlignment = Alignment.Center) {
-            if (artItem != null) {
-                CoverArt(artItem, Modifier.size(44.dp), corner = 22)
-            } else {
-                Box(Modifier.size(44.dp).clip(CircleShape).background(MediaColors.Ink))
-            }
-            val trackColor = MediaColors.InkHairline
-            val ringColor = MediaColors.Accent
-            Canvas(Modifier.size(52.dp)) {
-                val stroke = 3.dp.toPx()
-                drawArc(
-                    color = trackColor,
-                    startAngle = -90f, sweepAngle = 360f, useCenter = false,
-                    style = Stroke(width = stroke, cap = StrokeCap.Round),
-                    topLeft = androidx.compose.ui.geometry.Offset(stroke / 2, stroke / 2),
-                    size = androidx.compose.ui.geometry.Size(size.width - stroke, size.height - stroke)
-                )
-                drawArc(
-                    color = ringColor,
-                    startAngle = -90f, sweepAngle = 360f * prog, useCenter = false,
-                    style = Stroke(width = stroke, cap = StrokeCap.Round),
-                    topLeft = androidx.compose.ui.geometry.Offset(stroke / 2, stroke / 2),
-                    size = androidx.compose.ui.geometry.Size(size.width - stroke, size.height - stroke)
-                )
-            }
-        }
-
-        Spacer(Modifier.width(Space.md))
-
-        Column(Modifier.weight(1f)) {
-            Text(state.currentTitle, style = MaterialTheme.typography.titleMedium,
-                color = MediaColors.Cream, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(state.currentArtist, style = MaterialTheme.typography.bodyMedium,
-                color = MediaColors.CreamDim, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-
-        // §13: the glyph morphs rather than swapping.
-        PlayPauseIcon(
-            playing = state.isPlaying,
-            tint = MediaColors.Cream,
-            contentDescription = "Play/Pause",
-            modifier = Modifier.size(26.dp).pressScale(haptic = true) { vm.togglePlayPause() }
-        )
     }
 }
 
@@ -927,222 +816,9 @@ private fun NavTab(
     }
 }
 
-@UnstableApi
-@Composable
-private fun FullPlayer(state: PlayerState, vm: PlayerViewModel, onClose: () -> Unit) {
-    val context = LocalContext.current
-    val view = LocalView.current
-    var showSleepSheet by remember { mutableStateOf(false) }
-    val dragY = remember { Animatable(0f) }
-    val dragScope = rememberCoroutineScope()
-    val dragThresholdPx = with(androidx.compose.ui.platform.LocalDensity.current) { 150.dp.toPx() }
-
-    // Lightweight item to drive CoverArt from the current URI.
-    val artItem = state.currentUri?.let { uri ->
-        AppMediaItem(
-            id = uri.substringAfterLast('/').toLongOrNull() ?: 0L,
-            title = state.currentTitle, artist = state.currentArtist,
-            durationMs = state.durationMs, uri = android.net.Uri.parse(uri),
-            type = if (state.isVideo) MediaType.VIDEO else MediaType.AUDIO,
-            pillar = Pillar.MUSIC
-        )
-    }
-
-    Box(
-        Modifier.fillMaxSize().background(MediaColors.Ink)
-            .offset { IntOffset(0, dragY.value.roundToInt()) }
-            .pointerInput(Unit) {
-                detectVerticalDragGestures(
-                    onDragEnd = {
-                        if (dragY.value > dragThresholdPx) {
-                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                            onClose()
-                            dragScope.launch { dragY.snapTo(0f) }
-                        } else {
-                            // Below threshold: spring back into place.
-                            dragScope.launch { dragY.animateTo(0f, spring()) }
-                        }
-                    },
-                    onVerticalDrag = { _, delta ->
-                        dragScope.launch { dragY.snapTo((dragY.value + delta).coerceAtLeast(0f)) }
-                    }
-                )
-            }
-    ) {
-        Column(Modifier.fillMaxSize()) {
-            // HERO — bleeds to the true top edge (behind the status bar). Video
-            // fills the surface; audio art is centered. Art has NO top inset:
-            // this is the edge-to-edge "wow" surface. Legibility of the status
-            // icons over the art is guaranteed by the scrim overlay below.
-            Box(
-                Modifier.fillMaxWidth().weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                if (state.isVideo) {
-                    AndroidView(
-                        factory = { ctx ->
-                            PlayerView(ctx).apply {
-                                useController = false
-                                setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                                val token = SessionToken(ctx, ComponentName(ctx, PlaybackService::class.java))
-                                val future = MediaController.Builder(ctx, token).buildAsync()
-                                future.addListener({ player = future.get() }, MoreExecutors.directExecutor())
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                } else if (artItem != null) {
-                    // Full-bleed hero: ask for a larger decode than the 384px
-                    // list default so it isn't soft on high-density screens.
-                    CoverArt(artItem, Modifier.fillMaxWidth().aspectRatio(1f).padding(Space.xl),
-                        corner = 18, targetPx = 768)
-                }
-
-                // Top scrim: ink -> transparent, tall enough to cover the status
-                // bar zone. Keeps clock/battery legible over any album art.
-                Box(
-                    Modifier.fillMaxWidth().align(Alignment.TopCenter)
-                        .height(120.dp)
-                        .background(
-                            Brush.verticalGradient(
-                                0f to MediaColors.Ink.copy(alpha = 0.55f),
-                                1f to Color.Transparent
-                            )
-                        )
-                )
-
-                // Close row floats over the art, inset below the status bar.
-                Row(
-                    Modifier.fillMaxWidth().align(Alignment.TopCenter)
-                        .statusBarsPadding().padding(Space.sm, Space.sm),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClose) {
-                        Icon(Icons.Filled.KeyboardArrowDown, "Close", tint = MediaColors.Cream,
-                            modifier = Modifier.size(28.dp))
-                    }
-                    Spacer(Modifier.weight(1f))
-                    Text("Now playing",
-                        style = MaterialTheme.typography.bodyMedium, color = MediaColors.Cream)
-                    Spacer(Modifier.weight(1f))
-                    Spacer(Modifier.size(48.dp))
-                }
-            }
-
-            // Title block — serif title, editorial
-            Column(Modifier.fillMaxWidth().padding(Space.xl, 0.dp, Space.xl, Space.md)) {
-                Text(state.currentTitle, style = MaterialTheme.typography.titleLarge,
-                    color = MediaColors.Cream, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(state.currentArtist, style = MaterialTheme.typography.bodyLarge,
-                    color = MediaColors.CreamDim, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-
-            // Scrubber with time labels
-            Column(Modifier.fillMaxWidth().padding(Space.xl, 0.dp)) {
-                if (state.durationMs > 0) {
-                    Slider(
-                        value = state.positionMs.toFloat().coerceIn(0f, state.durationMs.toFloat()),
-                        onValueChange = { vm.seekTo(it.toLong()) },
-                        valueRange = 0f..state.durationMs.toFloat(),
-                        colors = SliderDefaults.colors(
-                            thumbColor = MediaColors.Cream,
-                            activeTrackColor = MediaColors.Accent,
-                            inactiveTrackColor = MediaColors.InkHairline
-                        )
-                    )
-                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                        Text(fmtTime(state.positionMs), style = MaterialTheme.typography.labelSmall, color = MediaColors.CreamFaint)
-                        Text(fmtTime(state.durationMs), style = MaterialTheme.typography.labelSmall, color = MediaColors.CreamFaint)
-                    }
-                }
-            }
-
-            // Primary transport
-            Row(
-                Modifier.fillMaxWidth().padding(Space.xl, Space.md),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Filled.SkipPrevious, "Previous", tint = MediaColors.Cream,
-                    modifier = Modifier.size(34.dp).pressScale(haptic = true) { vm.previous() })
-                Box(
-                    Modifier.size(64.dp).clip(CircleShape).background(MediaColors.Cream)
-                        .pressScale(scaleDown = 0.92f, haptic = true) { vm.togglePlayPause() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    PlayPauseIcon(
-                        playing = state.isPlaying,
-                        tint = MediaColors.OnInverse,
-                        contentDescription = "Play/Pause",
-                        modifier = Modifier.size(34.dp)
-                    )
-                }
-                Icon(Icons.Filled.SkipNext, "Next", tint = MediaColors.Cream,
-                    modifier = Modifier.size(34.dp).pressScale(haptic = true) { vm.next() })
-            }
-
-            // Secondary row: shuffle / repeat / speed
-            Row(
-                Modifier.fillMaxWidth().navigationBarsPadding().padding(Space.xl, 0.dp, Space.xl, Space.xl),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton({ vm.toggleShuffle() }) {
-                    Icon(Icons.Filled.Shuffle, "Shuffle",
-                        tint = if (state.shuffle) MediaColors.Accent else MediaColors.CreamDim,
-                        modifier = Modifier.size(22.dp))
-                }
-                IconButton({ vm.cycleRepeat() }) {
-                    Icon(
-                        if (state.repeatMode == 1) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
-                        "Repeat",
-                        tint = if (state.repeatMode != 0) MediaColors.Accent else MediaColors.CreamDim,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-                Box(
-                    Modifier.clip(RoundedCornerShape(8.dp)).clickable { vm.cycleSpeed() }
-                        .padding(horizontal = Space.md, vertical = Space.xs),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("${state.speed}x".replace(".0x", "x"),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = if (state.speed != 1.0f) MediaColors.Accent else MediaColors.CreamDim)
-                }
-                // Sleep timer slot: inactive = moon; countdown = live mm:ss; end-of-track = accent moon.
-                Box(
-                    Modifier.clip(RoundedCornerShape(8.dp)).clickable { showSleepSheet = true }
-                        .padding(horizontal = Space.md, vertical = Space.xs),
-                    contentAlignment = Alignment.Center
-                ) {
-                    when {
-                        state.sleepActive && !state.sleepEndOfTrack ->
-                            Text(fmtTime(state.sleepRemainingMs),
-                                style = MaterialTheme.typography.titleMedium, color = MediaColors.Accent)
-                        else ->
-                            Icon(Icons.Filled.Bedtime, "Sleep timer",
-                                tint = if (state.sleepActive) MediaColors.Accent else MediaColors.CreamDim,
-                                modifier = Modifier.size(22.dp))
-                    }
-                }
-            }
-        }
-    }
-
-    if (showSleepSheet) {
-        SleepTimerSheet(
-            state = state,
-            onPick = { minutes -> vm.startSleepTimer(minutes); showSleepSheet = false },
-            onEndOfTrack = { vm.startSleepEndOfTrack(); showSleepSheet = false },
-            onCancelTimer = { vm.cancelSleepTimer(); showSleepSheet = false },
-            onDismiss = { showSleepSheet = false }
-        )
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SleepTimerSheet(
+fun SleepTimerSheet(
     state: PlayerState,
     onPick: (Int) -> Unit,
     onEndOfTrack: () -> Unit,
@@ -1188,9 +864,3 @@ private fun SleepRow(label: String, active: Boolean, onClick: () -> Unit) {
     }
 }
 
-private fun fmtTime(ms: Long): String {
-    val totalSec = (ms / 1000).toInt()
-    val m = totalSec / 60
-    val sec = totalSec % 60
-    return "%d:%02d".format(m, sec)
-}
