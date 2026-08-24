@@ -43,14 +43,34 @@ private fun seedOf(id: Long, title: String): Int {
     return (h and 0x7FFFFFFF).toInt()
 }
 
-/** deep base, mid tone, lifted accent — all restrained by construction. */
-private fun paletteFor(seed: Int): Triple<Color, Color, Color> {
-    val hue = (seed % 360).toFloat()
+/**
+ * deep base, mid tone, lifted accent.
+ *
+ * Hue is anchored to the ACTIVE MOOD ACCENT and allowed to wander only +/-32
+ * degrees around it. Letting it run the full 0-360 produced greens and olives
+ * sitting on an indigo app — varied, but incoherent. Anchoring means the
+ * library reads as one palette, and it shifts wholesale when the mood changes.
+ */
+private fun paletteFor(seed: Int, baseHue: Float): Triple<Color, Color, Color> {
+    val spread = ((seed % 65) - 32).toFloat()
+    val hue = (((baseHue + spread) % 360f) + 360f) % 360f
     return Triple(
-        Color.hsl(hue, 0.24f, 0.14f),
-        Color.hsl((hue + 16f) % 360f, 0.30f, 0.28f),
-        Color.hsl((hue + 42f) % 360f, 0.36f, 0.48f)
+        Color.hsl(hue, 0.30f, 0.11f),
+        Color.hsl((hue + 10f) % 360f, 0.34f, 0.21f),
+        Color.hsl((hue + 24f) % 360f, 0.42f, 0.42f)
     )
+}
+
+/** Hue of the current accent, so artwork can be anchored to the live theme. */
+private fun hueOf(color: Color): Float {
+    val hsv = FloatArray(3)
+    android.graphics.Color.RGBToHSV(
+        (color.red * 255f).toInt().coerceIn(0, 255),
+        (color.green * 255f).toInt().coerceIn(0, 255),
+        (color.blue * 255f).toInt().coerceIn(0, 255),
+        hsv
+    )
+    return hsv[0]
 }
 
 // ---- compositions ----------------------------------------------------------
@@ -69,7 +89,7 @@ private fun DrawScope.rings(rnd: Random, mid: Color, light: Color) {
             color = if (i % 2 == 0) light else mid,
             radius = maxR * t,
             center = c,
-            alpha = 0.10f + 0.16f * (1f - t),
+            alpha = 0.16f + 0.22f * (1f - t),
             style = Stroke(width = size.minDimension * (0.012f + 0.022f * (1f - t)))
         )
     }
@@ -92,7 +112,7 @@ private fun DrawScope.waveform(rnd: Random, mid: Color, light: Color) {
             topLeft = Offset(i * gap + (gap - w) * 0.5f, midY - h * 0.5f),
             size = Size(w, h),
             cornerRadius = CornerRadius(w * 0.5f),
-            alpha = 0.22f + 0.20f * a
+            alpha = 0.30f + 0.26f * a
         )
     }
 }
@@ -108,7 +128,7 @@ private fun DrawScope.bands(rnd: Random, mid: Color, light: Color) {
                 color = if (i % 2 == 0) light else mid,
                 topLeft = Offset(-size.width * 0.5f, -size.height * 0.5f + i * step),
                 size = Size(size.width * 2f, step * (0.34f + 0.12f * (i % 3))),
-                alpha = 0.09f + 0.05f * (i % 3)
+                alpha = 0.14f + 0.07f * (i % 3)
             )
         }
     }
@@ -131,7 +151,7 @@ private fun DrawScope.strata(rnd: Random, mid: Color, light: Color) {
             ),
             size = Size(w, h),
             cornerRadius = CornerRadius(size.minDimension * 0.15f * t),
-            alpha = 0.11f + 0.10f * (1f - t)
+            alpha = 0.16f + 0.13f * (1f - t)
         )
     }
 }
@@ -176,9 +196,12 @@ private fun DrawScope.bloom(rnd: Random, mid: Color, light: Color) {
 @Composable
 fun GenerativeArtwork(id: Long, title: String, modifier: Modifier = Modifier) {
     val seed = remember(id, title) { seedOf(id, title) }
+    // MediaColors.* are @Composable getters — read outside the DrawScope.
+    val accent = MediaColors.Accent
+    val baseHue = remember(accent) { hueOf(accent) }
     Canvas(modifier) {
         val rnd = Random(seed)
-        val (deep, mid, light) = paletteFor(seed)
+        val (deep, mid, light) = paletteFor(seed, baseHue)
         drawRect(Brush.linearGradient(listOf(deep, mid)))
         when (seed % 5) {
             0 -> rings(rnd, mid, light)

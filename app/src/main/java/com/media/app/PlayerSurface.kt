@@ -117,6 +117,11 @@ fun PlayerSurface(
 
         Box(
             Modifier
+                // fillMaxSize FIRST: without it the Box shrink-wraps its content,
+                // so the expanded state collapsed to the height of whatever was
+                // inside it instead of filling the screen. Padding after fill
+                // insets the painted/interactive area down to the pill at e=0.
+                .fillMaxSize()
                 .padding(start = sidePad, end = sidePad, top = topPad, bottom = botPad)
                 .clip(RoundedCornerShape(corner))
                 .background(bg)
