@@ -715,6 +715,18 @@ fun HomeScaffold(vm: PlayerViewModel) {
                 }
             },
             onEditDetails = { editItem = item; addToItem = null },
+            onPlayNext = { vm.playNext(item) },
+            onAddToQueue = { vm.addToQueue(item) },
+            // Null when the track has no real album/artist metadata — the row
+            // is then absent rather than present and dead.
+            onViewAlbum = if (item.album != UNKNOWN_ALBUM) ({
+                MediaRepository.albumsOf(allAudio).firstOrNull { it.id == item.albumId }
+                    ?.let { openAlbum = it; openArtist = null }
+            }) else null,
+            onViewArtist = if (item.artist != UNKNOWN_ARTIST) ({
+                MediaRepository.artistsOf(allAudio).firstOrNull { it.id == item.artistId }
+                    ?.let { openArtist = it; openAlbum = null }
+            }) else null,
             onDismiss = { addToItem = null }
         )
     }

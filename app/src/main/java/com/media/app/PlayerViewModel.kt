@@ -350,20 +350,44 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         refreshQueue(); refresh()
     }
 
+    // Single source of truth for AppMediaItem -> Media3. Queue inserts (§26
+    // "Play next" / "Add to queue") must produce identical metadata to a normal
+    // play, or the queue sheet and notification show blanks for inserted rows.
+    private fun exoItemFor(item: AppMediaItem): ExoMediaItem =
+        ExoMediaItem.Builder()
+            .setUri(item.uri)
+            .setMediaId(item.id.toString())
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(item.title)
+                    .setArtist(item.artist)
+                    .apply { item.artworkUri?.let { setArtworkUri(it) } }
+                    .build()
+            )
+            .build()
+
+    /** §26: insert directly after whatever is playing. */
+    fun playNext(item: AppMediaItem) {
+        val c = controller ?: return
+        pillarById = pillarById + (item.id to item.pillar)
+        if (c.mediaItemCount == 0) { play(listOf(item), 0); return }
+        c.addMediaItem((c.currentMediaItemIndex + 1).coerceAtMost(c.mediaItemCount), exoItemFor(item))
+        refreshQueue(); refresh()
+    }
+
+    /** §26: append to the end of the queue. */
+    fun addToQueue(item: AppMediaItem) {
+        val c = controller ?: return
+        pillarById = pillarById + (item.id to item.pillar)
+        if (c.mediaItemCount == 0) { play(listOf(item), 0); return }
+        c.addMediaItem(exoItemFor(item))
+        refreshQueue(); refresh()
+    }
+
     fun play(items: List<AppMediaItem>, startIndex: Int) {
         val c = controller ?: return
-        val exoItems = items.map { item ->
-            ExoMediaItem.Builder()
-                .setUri(item.uri)
-                .setMediaMetadata(
-                    MediaMetadata.Builder()
-                        .setTitle(item.title)
-                        .setArtist(item.artist)
-                        .apply { item.artworkUri?.let { setArtworkUri(it) } }
-                        .build()
-                )
-                .build()
-        }
+        if (items.isEmpty() || startIndex !in items.indices) return
+        val exoItems = items.map { exoItemFor(it) }
         pillarById = items.associate { it.id to it.pillar }
         val startItem = items[startIndex]
         val longForm = startItem.pillar == Pillar.AUDIOBOOK || startItem.pillar == Pillar.PODCAST
