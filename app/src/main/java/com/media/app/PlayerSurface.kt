@@ -10,6 +10,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -91,6 +92,8 @@ fun PlayerSurface(
     // Belt and braces: nothing downstream may ever see a value outside 0..1.
     val e = expansion.value.coerceIn(0f, 1f)
     val artItem = rememberArtItem(state)
+    // §12: the environment takes its tone from the current cover.
+    val ambient = rememberAmbientColor(artItem)
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         val density = LocalDensity.current
@@ -105,6 +108,7 @@ fun PlayerSurface(
         val botPad = lerpDp(bottomInset, 0.dp, e)
         val corner = lerpDp(28.dp, 0.dp, e)
         val bg = lerpColor(MediaColors.Floating, MediaColors.Ink, e)
+        val ink = MediaColors.Ink
 
         // ---- shared artwork geometry ----
         val artSize = lerpDp(MINI_ART.dp, maxWidth * 0.76f, e)
@@ -165,6 +169,27 @@ fun PlayerSurface(
                     } else Modifier
                 )
         ) {
+            // §12/§4: ambient wash, strongest behind the artwork and gone by
+            // mid-screen. Fades in with expansion so the collapsed pill keeps
+            // its flat surface. Sits UNDER everything else.
+            if (e > 0.01f) {
+                Box(
+                    Modifier.matchParentSize().background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                ambient.copy(alpha = 0.95f * e),
+                                ambient.copy(alpha = 0.45f * e),
+                                ink.copy(alpha = 0f)
+                            ),
+                            // heightPx, not maxHeight: BoxWithConstraintsScope
+                            // isn't reachable as an implicit receiver from
+                            // inside the inner Box's BoxScope.
+                            endY = heightPx * 0.72f
+                        )
+                    )
+                )
+            }
+
             // ---------------- shared artwork ----------------
             Box(
                 Modifier.offset(x = artX, y = artY).size(artSize)

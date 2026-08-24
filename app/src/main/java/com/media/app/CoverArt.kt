@@ -127,7 +127,7 @@ private fun downscale(bmp: Bitmap, target: Int): Bitmap {
 }
 
 // Cheapest source first, file extraction last.
-private fun loadArt(context: Context, item: AppMediaItem, target: Int): ImageBitmap? {
+internal fun loadArt(context: Context, item: AppMediaItem, target: Int): ImageBitmap? {
     // 1. Audio: the MediaStore album-art URI. Far cheaper than opening the file.
     if (item.type == MediaType.AUDIO) {
         item.artworkUri?.let { uri ->

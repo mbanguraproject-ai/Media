@@ -81,6 +81,8 @@ dependencies {
     // Provides androidx.lifecycle.compose.LocalLifecycleOwner (the Compose-UI
     // one is deprecated) for the on-resume permission re-check.
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
+    // §4/§12: ambient colour extracted from the current artwork.
+    implementation("androidx.palette:palette-ktx:1.0.0")
 
     implementation("androidx.media3:media3-exoplayer:1.4.1")
     implementation("androidx.media3:media3-ui:1.4.1")
