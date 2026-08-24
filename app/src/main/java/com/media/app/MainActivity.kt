@@ -42,6 +42,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.icons.automirrored.outlined.LibraryBooks
+import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -152,10 +153,44 @@ fun AppRoot(vm: PlayerViewModel = viewModel()) {
             ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
         })
     }
+    // Re-check on every resume: a user who denies, grants manually in system
+    // Settings, then returns would otherwise stay stuck on the gate forever.
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                granted = requiredPermissions().all {
+                    ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+    }
+
     val introSeen by SettingsStore.introSeenFlow(context).collectAsState(initial = null)
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { result -> granted = result.values.all { it } }
+
+    // POST_NOTIFICATIONS is OPTIONAL and deliberately NOT part of
+    // requiredPermissions(): it gates the media notification + lock-screen
+    // controls, not the app itself. Denying it must never block the UI, so it
+    // is asked separately, once, after media access is already granted.
+    // Without this request the Media3 notification silently never posts on
+    // Android 13+.
+    val notifLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* denial is fine: playback works, just no notification */ }
+
+    LaunchedEffect(granted) {
+        if (granted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+        ) {
+            notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     // Local step for the first-run flow: 0 = welcome, 1 = permission explainer.
     var onboardStep by remember { mutableStateOf(0) }
@@ -269,12 +304,11 @@ fun HomeScaffold(vm: PlayerViewModel) {
     var showPlayer by remember { mutableStateOf(false) }
     var showSearch by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
-    var showPodcasts by remember { mutableStateOf(false) }
     var showLibrary by remember { mutableStateOf(false) }
     var libraryPillar by remember { mutableStateOf<Pillar?>(null) }
-    var showAudiobooks by remember { mutableStateOf(false) }
     var currentTab by remember { mutableStateOf(0) }
     var showPlaylists by remember { mutableStateOf(false) }
+    var openPlaylist by remember { mutableStateOf<Playlist?>(null) }
     var addToItem by remember { mutableStateOf<AppMediaItem?>(null) }
     var showTerms by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
@@ -299,15 +333,24 @@ fun HomeScaffold(vm: PlayerViewModel) {
     val overrides by remember {
         db.dao().observeAll().map { list -> list.associateBy { it.mediaId } }
     }.collectAsState(initial = emptyMap())
-    val positions by remember {
-        db.positionDao().observeAll().map { list -> list.associateBy { it.mediaId } }
-    }.collectAsState(initial = emptyMap())
 
-    val allAudio = remember(overrides, reloadKey) { MediaRepository.audioWithOverrides(context, overrides) }
+    // MediaStore scan runs on IO and lands back as state. Bumping reloadKey
+    // (rescan) re-runs it. `scanning` distinguishes "still loading" from
+    // "genuinely empty" so the empty state can't flash on launch.
+    var rawAudio by remember { mutableStateOf<List<AppMediaItem>>(emptyList()) }
+    var video by remember { mutableStateOf<List<AppMediaItem>>(emptyList()) }
+    var scanning by remember { mutableStateOf(true) }
+    LaunchedEffect(reloadKey) {
+        scanning = true
+        rawAudio = MediaRepository.loadAudio(context)
+        video = MediaRepository.loadVideo(context)
+        scanning = false
+    }
+
+    // Override application is pure and cheap, so an edit re-maps in place
+    // without re-querying MediaStore.
+    val allAudio = remember(rawAudio, overrides) { MediaRepository.applyOverrides(rawAudio, overrides) }
     val music = remember(allAudio) { allAudio.filter { it.pillar == Pillar.MUSIC } }
-    val podcasts = remember(allAudio) { allAudio.filter { it.pillar == Pillar.PODCAST } }
-    val audiobooks = remember(allAudio) { allAudio.filter { it.pillar == Pillar.AUDIOBOOK } }
-    val video = remember(reloadKey) { MediaRepository.loadVideo(context) }
 
     // Active mood + its whole-app theme setter (from MainActivity).
     val setMood = LocalMoodSetter.current
@@ -341,20 +384,27 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // Edit sheet state
     var editItem by remember { mutableStateOf<AppMediaItem?>(null) }
 
-    // Android back: close the topmost open overlay, step by step.
-    BackHandler(enabled = addToItem != null) { addToItem = null }
-    BackHandler(enabled = addToItem == null && showPlaylists) { showPlaylists = false }
-    BackHandler(enabled = editItem != null) { editItem = null }
-    BackHandler(enabled = editItem == null && showPlayer) { showPlayer = false }
-    BackHandler(enabled = editItem == null && !showPlayer && showSearch) { showSearch = false }
-    BackHandler(enabled = editItem == null && !showPlayer && !showSearch && showSettings) { showSettings = false }
-    BackHandler(enabled = editItem == null && !showPlayer && !showSearch && !showSettings && showLibrary) { showLibrary = false; libraryPillar = null }
-    BackHandler(enabled = editItem == null && !showPlayer && !showSearch && !showSettings && !showLibrary && showPodcasts) { showPodcasts = false }
-    BackHandler(enabled = editItem == null && !showPlayer && !showSearch && !showSettings && !showLibrary && !showPodcasts && showAudiobooks) { showAudiobooks = false }
-
-    val continueItems = remember(recentHistory, music, podcasts, audiobooks, video) {
-        val byId = (music + podcasts + audiobooks + video).associateBy { it.id }
-        recentHistory.mapNotNull { byId[it.mediaId] }
+    // Android back: ONE handler with an explicit priority order, topmost first.
+    // This was a chain of nine BackHandlers whose enabled-guards had to be kept
+    // mutually exclusive by hand — and Terms/About had no handler at all, so
+    // back exited the app instead of closing them. Returning from a tab screen
+    // also resets currentTab so the nav highlight doesn't lie.
+    val anyOverlay = addToItem != null || editItem != null || showTerms || showAbout ||
+        showPlayer || showSearch || showSettings || openPlaylist != null ||
+        showPlaylists || showLibrary
+    BackHandler(enabled = anyOverlay) {
+        when {
+            addToItem != null -> addToItem = null
+            editItem != null -> editItem = null
+            showTerms -> showTerms = false
+            showAbout -> showAbout = false
+            showPlayer -> showPlayer = false
+            showSearch -> { showSearch = false; currentTab = 0 }
+            showSettings -> { showSettings = false; currentTab = 0 }
+            openPlaylist != null -> openPlaylist = null
+            showPlaylists -> { showPlaylists = false; currentTab = 0 }
+            showLibrary -> { showLibrary = false; libraryPillar = null; currentTab = 0 }
+        }
     }
 
     // Outer container: home + all overlays render inside; the mini-player and
@@ -374,14 +424,14 @@ fun HomeScaffold(vm: PlayerViewModel) {
             StashHeader(
                 onSearch = { showSearch = true },
                 onRescan = { MediaRepository.refresh(); reloadKey++ },
-                onPlaylists = { showSettings = true }
+                onPlaylists = { showPlaylists = true; currentTab = 2 }
             )
             MoodChips(active = mood, onPick = { setMood(it) })
             MoodBanner(mood)
             Spacer(Modifier.height(Space.md))
             StatCards(
-                mostPlayed = recentHistory.size,
-                recentlyAdded = music.size,
+                recentlyPlayed = recentHistory.size,
+                allTracks = music.size,
                 favorites = favorites.size
             )
             CountAndShuffle(count = shown.size, onShuffle = {
@@ -392,7 +442,9 @@ fun HomeScaffold(vm: PlayerViewModel) {
             })
 
             // SCROLLING list — only the tracks move.
-            if (shown.isEmpty()) {
+            if (scanning) {
+                ScanningState()
+            } else if (shown.isEmpty()) {
                 EmptyState()
             } else {
                 LazyColumn(
@@ -421,9 +473,6 @@ fun HomeScaffold(vm: PlayerViewModel) {
 
     }
 
-    if (showPlayer) {
-        FullPlayer(state, vm) { showPlayer = false }
-    }
     if (showSearch) {
         SearchScreen(
             all = allAudio + video,
@@ -443,35 +492,43 @@ fun HomeScaffold(vm: PlayerViewModel) {
             onCreatePlaylist = { name ->
                 scope.launch { db.playlistDao().create(Playlist(name = name, createdAt = System.currentTimeMillis())) }
             },
-            onOpenPlaylist = { /* playlist detail: future */ },
+            onOpenPlaylist = { pl -> openPlaylist = pl },
             onDeletePlaylist = { pl ->
+                if (openPlaylist?.id == pl.id) openPlaylist = null
                 scope.launch { db.playlistDao().clearMembers(pl.id); db.playlistDao().deletePlaylist(pl.id) }
             },
-            onClose = { showPlaylists = false }
+            onClose = { showPlaylists = false; currentTab = 0 }
         )
     }
-    addToItem?.let { item ->
-        val itemMoods = allMoodMembers.filter { it.mediaId == item.id }.map { it.moodKey }.toSet()
-        val itemPlaylists = allPlaylistMembers.filter { it.mediaId == item.id }.map { it.playlistId }.toSet()
-        AddToSheet(
-            item = item,
-            memberMoods = itemMoods,
-            playlists = playlists,
-            memberPlaylists = itemPlaylists,
-            onToggleMood = { m, nowMember ->
-                scope.launch {
-                    if (nowMember) db.moodDao().add(MoodMember(m.key, item.id, System.currentTimeMillis()))
-                    else db.moodDao().remove(m.key, item.id)
+    openPlaylist?.let { pl ->
+        // Members carry addedAt, so honour insertion order rather than whatever
+        // order the flat observeAllMembers query happens to return.
+        val byId = remember(allAudio, video) { (allAudio + video).associateBy { it.id } }
+        val tracks = remember(allPlaylistMembers, pl.id, byId) {
+            allPlaylistMembers.filter { it.playlistId == pl.id }
+                .sortedBy { it.addedAt }
+                .mapNotNull { byId[it.mediaId] }
+        }
+        PlaylistDetailScreen(
+            playlist = pl,
+            tracks = tracks,
+            state = state,
+            favorites = favorites,
+            onPlay = { idx -> vm.playOrToggle(tracks, idx) },
+            onShuffle = {
+                if (tracks.isNotEmpty()) {
+                    if (!state.shuffle) vm.toggleShuffle()
+                    vm.play(tracks, tracks.indices.random())
                 }
             },
-            onTogglePlaylist = { pl, nowMember ->
+            onLongPress = { addToItem = it },
+            onToggleFav = { track ->
                 scope.launch {
-                    if (nowMember) db.playlistDao().addMember(PlaylistMember(pl.id, item.id, System.currentTimeMillis()))
-                    else db.playlistDao().removeMember(pl.id, item.id)
+                    if (favorites.contains(track.id)) db.moodDao().remove(Mood.FAVORITES.key, track.id)
+                    else db.moodDao().add(MoodMember(Mood.FAVORITES.key, track.id, System.currentTimeMillis()))
                 }
             },
-            onEditDetails = { editItem = item; addToItem = null },
-            onDismiss = { addToItem = null }
+            onClose = { openPlaylist = null }
         )
     }
     if (showSettings) {
@@ -479,7 +536,6 @@ fun HomeScaffold(vm: PlayerViewModel) {
             audioCount = allAudio.size,
             videoCount = video.size,
             settings = settings,
-            onThemeChange = { mode -> scope.launch { SettingsStore.setTheme(context, mode) } },
             onFontScaleChange = { scale -> scope.launch { SettingsStore.setFontScale(context, scale) } },
             onRescan = {
                 MediaRepository.refresh()
@@ -488,28 +544,6 @@ fun HomeScaffold(vm: PlayerViewModel) {
             onOpenTerms = { showTerms = true },
             onOpenAbout = { showAbout = true },
             onClose = { showSettings = false }
-        )
-    }
-    if (showPodcasts) {
-        PodcastsScreen(
-            podcasts = podcasts,
-            state = state,
-            onPlay = { idx -> vm.playOrToggle(podcasts, idx) },
-            onClose = { showPodcasts = false }
-        )
-    }
-    if (showTerms) {
-        TermsScreen(onClose = { showTerms = false })
-    }
-    if (showAbout) {
-        AboutScreen(version = "1.0", onClose = { showAbout = false })
-    }
-    if (showAudiobooks) {
-        AudiobooksScreen(
-            audiobooks = audiobooks,
-            state = state,
-            onPlay = { idx -> vm.playOrToggle(audiobooks, idx) },
-            onClose = { showAudiobooks = false }
         )
     }
     if (showLibrary) {
@@ -522,7 +556,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
                 if (list[idx].type == MediaType.VIDEO) showPlayer = true
             },
             onEdit = { editItem = it },
-            onClose = { showLibrary = false; libraryPillar = null }
+            onClose = { showLibrary = false; libraryPillar = null; currentTab = 0 }
         )
     }
     editItem?.let { item ->
@@ -574,187 +608,68 @@ fun HomeScaffold(vm: PlayerViewModel) {
     BottomBar(Modifier.align(Alignment.BottomCenter), current = currentTab) { tab ->
         // Every tab first clears ALL overlays (mutually exclusive), then opens its own.
         showPlaylists = false; showSearch = false; showSettings = false
-        showLibrary = false; showPodcasts = false; showAudiobooks = false
+        showLibrary = false; libraryPillar = null; openPlaylist = null
         currentTab = tab
         when (tab) {
+            1 -> showLibrary = true
             2 -> showPlaylists = true
             3 -> showSearch = true
             4 -> showSettings = true
-            // 0 Home, 1 Albums -> just the home surface (Albums has no screen yet)
+            // 0 Home -> the home surface itself, no overlay
         }
+    }
+    // ---- Surfaces that must sit ABOVE the persistent chrome ----
+    // Order matters: everything below is drawn after BottomBar, so the nav bar
+    // and mini-player no longer paint over the full player and the info pages.
+    if (showTerms) {
+        TermsScreen(onClose = { showTerms = false })
+    }
+    if (showAbout) {
+        AboutScreen(version = BuildConfig.VERSION_NAME, onClose = { showAbout = false })
+    }
+    if (showPlayer) {
+        FullPlayer(state, vm) { showPlayer = false }
+    }
+    addToItem?.let { item ->
+        val itemMoods = allMoodMembers.filter { it.mediaId == item.id }.map { it.moodKey }.toSet()
+        val itemPlaylists = allPlaylistMembers.filter { it.mediaId == item.id }.map { it.playlistId }.toSet()
+        AddToSheet(
+            item = item,
+            memberMoods = itemMoods,
+            playlists = playlists,
+            memberPlaylists = itemPlaylists,
+            onToggleMood = { m, nowMember ->
+                scope.launch {
+                    if (nowMember) db.moodDao().add(MoodMember(m.key, item.id, System.currentTimeMillis()))
+                    else db.moodDao().remove(m.key, item.id)
+                }
+            },
+            onTogglePlaylist = { pl, nowMember ->
+                scope.launch {
+                    if (nowMember) db.playlistDao().addMember(PlaylistMember(pl.id, item.id, System.currentTimeMillis()))
+                    else db.playlistDao().removeMember(pl.id, item.id)
+                }
+            },
+            onEditDetails = { editItem = item; addToItem = null },
+            onDismiss = { addToItem = null }
+        )
     }
     } // close outer Box
 }
 
 @Composable
-private fun HomeHeader(onSearch: () -> Unit, onAccount: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().padding(Space.xl, Space.xl, Space.xl, Space.sm),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text("Media", style = MaterialTheme.typography.displaySmall, color = MediaColors.Cream)
-        Row(horizontalArrangement = Arrangement.spacedBy(Space.lg)) {
-            Icon(Icons.Outlined.Search, "Search", tint = MediaColors.CreamDim,
-                modifier = Modifier.clickable(onClick = onSearch))
-            Icon(Icons.Outlined.AccountCircle, "You", tint = MediaColors.CreamDim,
-                modifier = Modifier.clickable(onClick = onAccount))
-        }
-    }
-}
-
-@Composable
-private fun ShelfHeader(title: String, subtitle: String? = null, onSeeAll: (() -> Unit)? = null) {
-    Row(
-        Modifier.fillMaxWidth().padding(Space.xl, Space.lg, Space.xl, Space.xs),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Bottom
-    ) {
-        Column {
-            Text(title, style = MaterialTheme.typography.titleLarge, color = MediaColors.Cream)
-            if (subtitle != null) {
-                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamFaint)
-            }
-        }
-        if (onSeeAll != null) {
-            Text("See all", style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamDim,
-                modifier = Modifier.clickable(onClick = onSeeAll))
-        }
-    }
-}
-
-@Composable
-private fun MediaShelf(
-    items: List<AppMediaItem>,
-    state: PlayerState,
-    positions: Map<Long, PlaybackPosition>,
-    large: Boolean = false,
-    wide: Boolean = false,
-    onEdit: (AppMediaItem) -> Unit,
-    onPlay: (Int) -> Unit
-) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = Space.xl, vertical = Space.md),
-        horizontalArrangement = Arrangement.spacedBy(Space.md)
-    ) {
-        items(items.size) { idx ->
-            val item = items[idx]
-            val isActive = state.currentUri == item.uri.toString()
-            MediaCard(item, large = large, wide = wide,
-                savedPosition = positions[item.id],
-                isPlaying = isActive && state.isPlaying,
-                onLongPress = { onEdit(item) }) { onPlay(idx) }
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun MediaCard(
-    item: AppMediaItem,
-    large: Boolean,
-    wide: Boolean,
-    savedPosition: PlaybackPosition?,
-    isPlaying: Boolean,
-    onLongPress: () -> Unit,
-    onClick: () -> Unit
-) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.96f else 1f, label = "press")
-
-    // Per-pillar shape: books are tall, video is wide, music/podcasts are square.
-    // The wide/large flags (Video shelf / Continue shelf) still take precedence.
-    val isBook = item.pillar == Pillar.AUDIOBOOK
-    val artW = when {
-        wide -> 220.dp
-        large -> 150.dp
-        else -> 118.dp
-    }
-    val artH = when {
-        wide -> 124.dp
-        isBook && !large -> artW * 1.42f   // ~2:3 portrait book ratio
-        else -> artW
-    }
-
+private fun ScanningState() {
     Column(
-        Modifier
-            .width(artW)
-            .scale(scale)
-            .combinedClickable(
-                interactionSource = interaction,
-                indication = null,
-                onClick = onClick,
-                onLongClick = onLongPress
-            )
+        Modifier.fillMaxWidth().padding(Space.xl, 80.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box {
-            CoverArt(item, Modifier.width(artW).height(artH), corner = if (large || wide) 14 else 12)
-            Box(
-                Modifier.align(Alignment.BottomEnd).padding(Space.sm)
-                    .size(34.dp).clip(CircleShape).background(MediaColors.Cream),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    if (isPlaying) "Pause" else "Play",
-                    tint = MediaColors.Ink, modifier = Modifier.size(20.dp)
-                )
-            }
-            // Duration chip — shown on time-based content (podcasts, audiobooks,
-            // video), not music. Bottom-left so it clears the play button.
-            val showDuration = item.pillar != Pillar.MUSIC && item.durationMs > 0
-            if (showDuration) {
-                // "X left" when meaningfully in-progress (started, not near the end),
-                // otherwise total duration. Uses the saved resume position.
-                val remainingMs = savedPosition
-                    ?.takeIf { it.positionMs > 30_000L && it.positionMs < item.durationMs - 30_000L }
-                    ?.let { item.durationMs - it.positionMs }
-                val chipText = if (remainingMs != null) "${fmtLeft(remainingMs)} left"
-                               else fmtDuration(item.durationMs)
-                Box(
-                    Modifier.align(Alignment.BottomStart).padding(Space.sm)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(MediaColors.Ink.copy(alpha = 0.55f))
-                        .padding(horizontal = 7.dp, vertical = 3.dp)
-                ) {
-                    Text(
-                        chipText,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MediaColors.Cream.copy(alpha = 0.92f)
-                    )
-                }
-            }
-        }
-        Spacer(Modifier.height(Space.sm))
-        Text(item.title, style = MaterialTheme.typography.titleMedium, color = MediaColors.Cream,
-            maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(item.artist, style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamDim,
-            maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (!item.details.isNullOrBlank()) {
-            Text(item.details, style = MaterialTheme.typography.bodyMedium,
-                color = MediaColors.CreamFaint, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
+        CircularProgressIndicator(
+            modifier = Modifier.size(22.dp), strokeWidth = 2.dp, color = MediaColors.Accent
+        )
+        Spacer(Modifier.height(Space.lg))
+        Text("Reading your library\u2026",
+            style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamDim)
     }
-}
-
-private fun fmtLeft(ms: Long): String {
-    val totalMin = (ms / 60000).toInt()
-    val h = totalMin / 60
-    val m = totalMin % 60
-    return when {
-        h > 0 -> "${h}h ${m}m"
-        totalMin > 0 -> "$totalMin min"
-        else -> "<1 min"
-    }
-}
-
-private fun fmtDuration(ms: Long): String {
-    val totalSec = (ms / 1000).toInt()
-    val h = totalSec / 3600
-    val m = (totalSec % 3600) / 60
-    val sec = totalSec % 60
-    return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
 }
 
 @Composable
@@ -895,7 +810,8 @@ private fun BottomBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             NavTab(Icons.Filled.Home, Icons.Outlined.Home, "Home", current == 0, Modifier.weight(1f)) { onSelect(0) }
-            NavTab(Icons.Filled.Album, Icons.Outlined.Album, "Albums", current == 1, Modifier.weight(1f)) { onSelect(1) }
+            NavTab(Icons.AutoMirrored.Filled.LibraryBooks, Icons.AutoMirrored.Outlined.LibraryBooks,
+                "Library", current == 1, Modifier.weight(1f)) { onSelect(1) }
             NavTab(Icons.Filled.QueueMusic, Icons.Outlined.QueueMusic, "Playlists", current == 2, Modifier.weight(1f)) { onSelect(2) }
             NavTab(Icons.Filled.Search, Icons.Outlined.Search, "Search", current == 3, Modifier.weight(1f)) { onSelect(3) }
             NavTab(Icons.Filled.Menu, Icons.Outlined.Menu, "More", current == 4, Modifier.weight(1f)) { onSelect(4) }
@@ -1022,7 +938,10 @@ private fun FullPlayer(state: PlayerState, vm: PlayerViewModel, onClose: () -> U
                         modifier = Modifier.fillMaxWidth()
                     )
                 } else if (artItem != null) {
-                    CoverArt(artItem, Modifier.fillMaxWidth().aspectRatio(1f).padding(Space.xl), corner = 18)
+                    // Full-bleed hero: ask for a larger decode than the 384px
+                    // list default so it isn't soft on high-density screens.
+                    CoverArt(artItem, Modifier.fillMaxWidth().aspectRatio(1f).padding(Space.xl),
+                        corner = 18, targetPx = 768)
                 }
 
                 // Top scrim: ink -> transparent, tall enough to cover the status

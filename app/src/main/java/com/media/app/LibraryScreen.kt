@@ -47,7 +47,9 @@ fun LibraryScreen(
         if (filter.pillar == null) all else all.filter { it.pillar == filter.pillar }
     }
 
-    Column(Modifier.fillMaxSize().background(MediaColors.Ink).statusBarsPadding()) {
+    // Library is a primary tab destination now, so it wears the same mood
+    // gradient as Home / Playlists / Search rather than a flat ink fill.
+    Column(Modifier.fillMaxSize().background(moodBackground()).statusBarsPadding()) {
         Row(
             Modifier.fillMaxWidth().padding(Space.sm, Space.sm),
             verticalAlignment = Alignment.CenterVertically

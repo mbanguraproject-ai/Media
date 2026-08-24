@@ -78,10 +78,11 @@ fun SearchScreen(
         when {
             query.isBlank() -> CenterHint("Find anything in your library")
             results.isEmpty() -> CenterHint("No results for \"$query\"")
-            else -> LazyColumn(contentPadding = PaddingValues(bottom = bottomSafePadding())) {
-                items(results) { item ->
-                    val idx = results.indexOf(item)
-                    SearchRow(item) { onPlay(results, idx) }
+            // gap must clear the bottom nav (58dp) + mini-player, not just the
+            // system inset — the default 22dp gap left results under the bar.
+            else -> LazyColumn(contentPadding = PaddingValues(bottom = bottomSafePadding(gap = 100.dp))) {
+                items(results.size) { idx ->
+                    SearchRow(results[idx]) { onPlay(results, idx) }
                 }
             }
         }

@@ -3,6 +3,8 @@ package com.media.app
 import android.content.Context
 import android.net.Uri
 import android.provider.MediaStore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 enum class MediaType { AUDIO, VIDEO }
 
@@ -36,14 +38,22 @@ object MediaRepository {
         }
     }
 
-    private var rawAudio: List<AppMediaItem>? = null
-    private var videoCache: List<AppMediaItem>? = null
+    @Volatile private var audioCache: List<AppMediaItem>? = null
+    @Volatile private var videoCache: List<AppMediaItem>? = null
 
-    fun refresh() { rawAudio = null; videoCache = null }
+    fun refresh() { audioCache = null; videoCache = null }
 
     // Raw audio with heuristic classification, no overrides applied.
-    private fun rawAudio(context: Context): List<AppMediaItem> {
-        rawAudio?.let { return it }
+    // SUSPEND + IO: a full MediaStore cursor scan is real disk work and must
+    // never run on the composition thread (it was an ANR on large libraries).
+    suspend fun loadAudio(context: Context): List<AppMediaItem> {
+        audioCache?.let { return it }
+        return withContext(Dispatchers.IO) {
+            audioCache ?: queryAudio(context).also { audioCache = it }
+        }
+    }
+
+    private fun queryAudio(context: Context): List<AppMediaItem> {
         val items = mutableListOf<AppMediaItem>()
         val projection = arrayOf(
             MediaStore.Audio.Media._ID,
@@ -82,7 +92,6 @@ object MediaRepository {
                 )
             }
         }
-        rawAudio = items
         return items
     }
 
@@ -103,11 +112,20 @@ object MediaRepository {
         )
     }
 
-    fun audioWithOverrides(context: Context, overrides: Map<Long, MediaOverride>): List<AppMediaItem> =
-        rawAudio(context).map { applyOverride(it, overrides[it.id]) }
+    // Pure and cheap — safe to call inside remember(). Keeping this separate
+    // from the cursor scan means an override edit re-maps the list without
+    // touching MediaStore again.
+    fun applyOverrides(raw: List<AppMediaItem>, overrides: Map<Long, MediaOverride>): List<AppMediaItem> =
+        raw.map { applyOverride(it, overrides[it.id]) }
 
-    fun loadVideo(context: Context): List<AppMediaItem> {
+    suspend fun loadVideo(context: Context): List<AppMediaItem> {
         videoCache?.let { return it }
+        return withContext(Dispatchers.IO) {
+            videoCache ?: queryVideo(context).also { videoCache = it }
+        }
+    }
+
+    private fun queryVideo(context: Context): List<AppMediaItem> {
         val items = mutableListOf<AppMediaItem>()
         val projection = arrayOf(
             MediaStore.Video.Media._ID,
@@ -136,7 +154,6 @@ object MediaRepository {
                 )
             }
         }
-        videoCache = items
         return items
     }
 }

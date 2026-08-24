@@ -43,7 +43,7 @@ fun PlaylistsScreen(
     onDeletePlaylist: (Playlist) -> Unit,
     onClose: () -> Unit
 ) {
-    var tab by remember { mutableStateOf(0) } // 0 My Playlists, 1 Smart, 2 Folders
+    var tab by remember { mutableStateOf(0) } // 0 My Playlists, 1 Smart
     var showCreate by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize().background(moodBackground())) {
@@ -76,7 +76,7 @@ fun PlaylistsScreen(
                     .border(1.dp, G_BORDER, RoundedCornerShape(14.dp))
                     .padding(4.dp)
             ) {
-                listOf("My Playlists", "Smart", "Folders").forEachIndexed { i, label ->
+                listOf("My Playlists", "Smart").forEachIndexed { i, label ->
                     val sel = tab == i
                     Box(
                         Modifier.weight(1f).clip(RoundedCornerShape(11.dp))
@@ -97,8 +97,7 @@ fun PlaylistsScreen(
 
             when (tab) {
                 0 -> MyPlaylistsTab(playlists, onOpenPlaylist, onDeletePlaylist) { showCreate = true }
-                1 -> SmartTab(moodCounts, onOpenMood)
-                else -> FoldersTab()
+                else -> SmartTab(moodCounts, onOpenMood)
             }
         }
 
@@ -202,20 +201,100 @@ private fun SmartTab(moodCounts: Map<String, Int>, onOpenMood: (Mood) -> Unit) {
     }
 }
 
-// ---------------- FOLDERS ----------------
+// ---------------- PLAYLIST DETAIL ----------------
+// The screen that never existed: onOpenPlaylist was a no-op, so a playlist you
+// had added songs to could never be opened, played, or inspected. Track rows
+// are the same TrackRow used on Home, so long-press -> AddToSheet is how you
+// remove a song (untick the playlist) — no bespoke remove affordance needed.
 @Composable
-private fun FoldersTab() {
-    EmptyBlock(
-        icon = Icons.Filled.FolderOpen,
-        title = "No folders yet",
-        subtitle = "Group tracks into folders",
-        cta = null, onCta = {}
-    )
+fun PlaylistDetailScreen(
+    playlist: Playlist,
+    tracks: List<AppMediaItem>,
+    state: PlayerState,
+    favorites: Set<Long>,
+    onPlay: (Int) -> Unit,
+    onShuffle: () -> Unit,
+    onLongPress: (AppMediaItem) -> Unit,
+    onToggleFav: (AppMediaItem) -> Unit,
+    onClose: () -> Unit
+) {
+    Column(Modifier.fillMaxSize().background(moodBackground()).statusBarsPadding()) {
+        Row(
+            Modifier.fillMaxWidth().padding(Space.sm, Space.sm, Space.lg, Space.sm),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClose) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MediaColors.Cream)
+            }
+            Column(Modifier.weight(1f)) {
+                Text(playlist.name, fontSize = 22.sp, fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.5).sp, color = MediaColors.Cream,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(if (tracks.size == 1) "1 song" else "${tracks.size} songs",
+                    fontSize = 12.sp, color = MediaColors.CreamFaint)
+            }
+        }
+
+        if (tracks.isNotEmpty()) {
+            Row(
+                Modifier.fillMaxWidth().padding(Space.xl, Space.sm, Space.xl, Space.md),
+                horizontalArrangement = Arrangement.spacedBy(Space.sm)
+            ) {
+                Row(
+                    Modifier.weight(1f).clip(RoundedCornerShape(20.dp))
+                        .background(MediaColors.Accent)
+                        .clickable { onPlay(0) }
+                        .padding(vertical = 11.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Play", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                }
+                Row(
+                    Modifier.weight(1f).clip(RoundedCornerShape(20.dp))
+                        .border(1.dp, MediaColors.Accent.copy(alpha = 0.55f), RoundedCornerShape(20.dp))
+                        .clickable(onClick = onShuffle)
+                        .padding(vertical = 11.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Filled.Shuffle, null, tint = MediaColors.Accent, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Shuffle", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MediaColors.Accent)
+                }
+            }
+        }
+
+        if (tracks.isEmpty()) {
+            EmptyBlock(
+                icon = Icons.Filled.QueueMusic,
+                title = "Nothing here yet",
+                subtitle = "Long-press any track to add it",
+                cta = null, onCta = {}
+            )
+        } else {
+            LazyColumn(contentPadding = PaddingValues(bottom = bottomSafePadding(gap = 100.dp))) {
+                items(tracks.size) { idx ->
+                    val track = tracks[idx]
+                    TrackRow(
+                        item = track,
+                        isPlaying = state.currentUri == track.uri.toString() && state.isPlaying,
+                        isFavorite = favorites.contains(track.id),
+                        onClick = { onPlay(idx) },
+                        onLongPress = { onLongPress(track) },
+                        onToggleFav = { onToggleFav(track) }
+                    )
+                }
+            }
+        }
+    }
 }
 
 // ---------------- shared empty state ----------------
 @Composable
-private fun EmptyBlock(icon: ImageVector, title: String, subtitle: String, cta: String?, onCta: () -> Unit) {
+fun EmptyBlock(icon: ImageVector, title: String, subtitle: String, cta: String?, onCta: () -> Unit) {
     Column(
         Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center

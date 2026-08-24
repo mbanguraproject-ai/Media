@@ -39,7 +39,6 @@ fun SettingsScreen(
     audioCount: Int,
     videoCount: Int,
     settings: MediaSettings,
-    onThemeChange: (ThemeMode) -> Unit,
     onFontScaleChange: (Float) -> Unit,
     onRescan: () -> Unit,
     onOpenTerms: () -> Unit,
@@ -47,7 +46,8 @@ fun SettingsScreen(
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
-    val privacyUrl = "https://bangscc10-dev.github.io/Media/privacy.html"
+    // Repo moved owners; the old bangscc10-dev Pages URL is stale.
+    val privacyUrl = "https://mbanguraproject-ai.github.io/Media/privacy.html"
     Column(
         Modifier.fillMaxSize().background(moodBackground()).statusBarsPadding()
             .verticalScroll(rememberScrollState())
@@ -74,11 +74,10 @@ fun SettingsScreen(
         }
 
         SectionLabel("Appearance")
-        ThemePicker(settings.themeMode, onThemeChange)
         FontSizePicker(settings.fontScale, onFontScaleChange)
 
         SectionLabel("Library")
-        SettingRow(Icons.Outlined.Storage, "Storage", "$audioCount + $videoCount items") {}
+        SettingRow(Icons.Outlined.Storage, "Storage", "$audioCount + $videoCount items", navigates = false) {}
         RescanRow(onRescan)
 
         SectionLabel("About")
@@ -87,7 +86,7 @@ fun SettingsScreen(
         SettingRow(Icons.Outlined.Shield, "Privacy Policy", null) {
             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(privacyUrl)))
         }
-        SettingRow(Icons.Outlined.Info, "Version", "1.0") {}
+        SettingRow(Icons.Outlined.Info, "Version", BuildConfig.VERSION_NAME, navigates = false) {}
 
         Spacer(Modifier.height(40.dp))
         Text("Media", style = MaterialTheme.typography.displaySmall,
@@ -95,7 +94,7 @@ fun SettingsScreen(
             modifier = Modifier.padding(Space.xl))
         Text("All your media. One home.",
             style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamFaint,
-            modifier = Modifier.padding(start = Space.xl).padding(bottom = bottomSafePadding()))
+            modifier = Modifier.padding(start = Space.xl).padding(bottom = bottomSafePadding(gap = 100.dp)))
     }
 }
 
@@ -141,33 +140,6 @@ private fun RescanRow(onRescan: () -> Unit) {
 }
 
 @Composable
-private fun ThemePicker(current: ThemeMode, onChange: (ThemeMode) -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(Space.xl, Space.md)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.DarkMode, null, tint = MediaColors.CreamDim, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(Space.md))
-            Text("Theme", style = MaterialTheme.typography.bodyLarge, color = MediaColors.Cream)
-        }
-        Spacer(Modifier.height(Space.sm))
-        Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
-            listOf(ThemeMode.DARK to "Dark", ThemeMode.LIGHT to "Light", ThemeMode.SYSTEM to "System").forEach { (mode, label) ->
-                val sel = mode == current
-                Box(
-                    Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
-                        .background(if (sel) MediaColors.Cream else MediaColors.InkRaised)
-                        .border(0.5.dp, if (sel) MediaColors.Cream else MediaColors.InkHairline, RoundedCornerShape(10.dp))
-                        .clickable { onChange(mode) }.padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(label, style = MaterialTheme.typography.titleMedium,
-                        color = if (sel) MediaColors.OnInverse else MediaColors.CreamDim)
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun FontSizePicker(current: Float, onChange: (Float) -> Unit) {
     Column(Modifier.fillMaxWidth().padding(Space.xl, Space.md)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -201,9 +173,16 @@ private fun SectionLabel(text: String) {
 }
 
 @Composable
-private fun SettingRow(icon: ImageVector, title: String, value: String?, onClick: () -> Unit) {
+private fun SettingRow(
+    icon: ImageVector,
+    title: String,
+    value: String?,
+    navigates: Boolean = true,
+    onClick: () -> Unit
+) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(Space.xl, Space.md),
+        Modifier.fillMaxWidth().clickable(enabled = navigates, onClick = onClick)
+            .padding(Space.xl, Space.md),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, null, tint = MediaColors.CreamDim, modifier = Modifier.size(20.dp))
@@ -214,6 +193,8 @@ private fun SettingRow(icon: ImageVector, title: String, value: String?, onClick
             Text(value, style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamDim)
             Spacer(Modifier.width(Space.sm))
         }
-        Icon(Icons.Filled.ChevronRight, null, tint = MediaColors.CreamFaint, modifier = Modifier.size(18.dp))
+        if (navigates) {
+            Icon(Icons.Filled.ChevronRight, null, tint = MediaColors.CreamFaint, modifier = Modifier.size(18.dp))
+        }
     }
 }

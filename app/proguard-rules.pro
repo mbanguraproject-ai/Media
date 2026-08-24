@@ -15,6 +15,21 @@
 -keep class com.media.app.PlaybackPosition { *; }
 -keep class com.media.app.PositionDao { *; }
 -keep class com.media.app.OverrideDatabase { *; }
+# DB v5/v6 entities + DAOs (favorites, moods, playlists, folders). The generic
+# @Entity/@Dao rules above were already proven insufficient in this project
+# (see commit aa1ab99), so every new type is kept explicitly.
+-keep class com.media.app.Favorite { *; }
+-keep class com.media.app.FavoriteDao { *; }
+-keep class com.media.app.MoodMember { *; }
+-keep class com.media.app.MoodDao { *; }
+-keep class com.media.app.Playlist { *; }
+-keep class com.media.app.PlaylistMember { *; }
+-keep class com.media.app.PlaylistDao { *; }
+-keep class com.media.app.MediaFolder { *; }
+-keep class com.media.app.FolderMember { *; }
+-keep class com.media.app.FolderDao { *; }
+# Room's generated implementations (OverrideDatabase_Impl, *Dao_Impl).
+-keep class com.media.app.**_Impl { *; }
 
 # ---- SplashScreen (uses reflection for animated icon) ----
 -keep class androidx.core.splashscreen.** { *; }

@@ -133,10 +133,13 @@ fun MoodBanner(mood: Mood) {
 data class Stat(val icon: ImageVector, val label: String, val count: Int, val tint: Color)
 
 @Composable
-fun StatCards(mostPlayed: Int, recentlyAdded: Int, favorites: Int) {
+fun StatCards(recentlyPlayed: Int, allTracks: Int, favorites: Int) {
+    // Labels match what the numbers actually are. "Most Played" was the row
+    // count of a LIMIT 10 history query (so it maxed out at 10) and "Recently
+    // Added" was simply the total track count.
     val stats = listOf(
-        Stat(Icons.Filled.Whatshot, "Most Played", mostPlayed, Color(0xFF2DD4BF)),
-        Stat(Icons.Filled.AccessTime, "Recently Added", recentlyAdded, Color(0xFF2DD4BF)),
+        Stat(Icons.Filled.AccessTime, "Recently Played", recentlyPlayed, Color(0xFF2DD4BF)),
+        Stat(Icons.Filled.LibraryMusic, "All Tracks", allTracks, Color(0xFF2DD4BF)),
         Stat(Icons.Filled.Favorite, "Favorites", favorites, Color(0xFFEC4899)),
     )
     LazyRow(
@@ -221,7 +224,7 @@ fun TrackRow(
                 color = if (isPlaying) MediaColors.Accent else MediaColors.Cream,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(2.dp))
-            Text("${item.artist} \u2022 download", fontSize = 12.sp,
+            Text(item.artist, fontSize = 12.sp,
                 color = MediaColors.CreamFaint, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Spacer(Modifier.width(Space.sm))

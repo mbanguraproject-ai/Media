@@ -60,6 +60,9 @@ android {
     }
     buildFeatures {
         compose = true
+        // BuildConfig.VERSION_NAME — Settings and About both hardcoded "1.0"
+        // while the build was on 1.3.
+        buildConfig = true
     }
 }
 
@@ -75,6 +78,9 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
+    // Provides androidx.lifecycle.compose.LocalLifecycleOwner (the Compose-UI
+    // one is deprecated) for the on-resume permission re-check.
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
 
     implementation("androidx.media3:media3-exoplayer:1.4.1")
     implementation("androidx.media3:media3-ui:1.4.1")
