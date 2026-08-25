@@ -141,7 +141,7 @@ fun TrackShelf(
                 pulse = if (playing) beat else null,
                 art = {
                     CoverArt(item, Modifier.fillMaxSize(), corner = 14,
-                        targetPx = 384, showBadge = false)
+                        targetPx = 384)
                 },
                 onClick = { onPlay(i) },
                 onLongClick = { onLongPress(item) }
@@ -165,7 +165,7 @@ fun AlbumShelf(items: List<Album>, onOpen: (Album) -> Unit) {
                 art = {
                     album.tracks.firstOrNull()?.let {
                         CoverArt(it, Modifier.fillMaxSize(), corner = 14,
-                            targetPx = 384, showBadge = false)
+                            targetPx = 384)
                     }
                 },
                 onClick = { onOpen(album) },

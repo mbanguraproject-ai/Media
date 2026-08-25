@@ -40,8 +40,7 @@ fun PlaylistsScreen(
     onOpenMood: (Mood) -> Unit,
     onCreatePlaylist: (String) -> Unit,
     onOpenPlaylist: (Playlist) -> Unit,
-    onDeletePlaylist: (Playlist) -> Unit,
-    onClose: () -> Unit
+    onDeletePlaylist: (Playlist) -> Unit
 ) {
     var tab by remember { mutableStateOf(0) } // 0 My Playlists, 1 Smart
     var showCreate by remember { mutableStateOf(false) }
@@ -98,11 +97,6 @@ fun PlaylistsScreen(
                 0 -> MyPlaylistsTab(playlists, onOpenPlaylist, onDeletePlaylist) { showCreate = true }
                 else -> SmartTab(moodCounts, onOpenMood)
             }
-        }
-
-        // Back button top-left (over the title's left padding)
-        IconButton(onClose, Modifier.statusBarsPadding().padding(Space.sm)) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MediaColors.Cream)
         }
     }
 

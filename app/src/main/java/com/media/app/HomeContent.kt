@@ -38,9 +38,7 @@ private fun greeting(): String {
 // ------------------------------------------------------------------ HEADER
 @Composable
 fun StashHeader(
-    onSearch: () -> Unit,
     onRescan: () -> Unit,
-    onPlaylists: () -> Unit,
     // §16: 0 = full, 1 = compact. Driven by scroll, not by a hide/show toggle —
     // the doc explicitly rejects "distracting scroll-hide experiments".
     collapse: Float = 0f
@@ -80,10 +78,9 @@ fun StashHeader(
             )
         }
         Spacer(Modifier.width(Space.md))
-        CircleButton(Icons.Filled.QueueMusic, "Playlists", onPlaylists)
-        Spacer(Modifier.width(Space.sm))
-        CircleButton(Icons.Filled.Search, "Search", onSearch)
-        Spacer(Modifier.width(Space.sm))
+        // Playlists and Search both exist as bottom-nav tabs; duplicating them
+        // here was three buttons competing with the title for the same row.
+        // Rescan has no other home, so it is the one that stays.
         CircleButton(Icons.Filled.Refresh, "Rescan", onRescan)
     }
 }
@@ -247,8 +244,7 @@ fun TrackRow(
             item = item,
             modifier = Modifier.size(50.dp),
             corner = 12,
-            targetPx = 144,
-            showBadge = false
+            targetPx = 144
         )
         Spacer(Modifier.width(Space.md))
         Column(Modifier.weight(1f)) {

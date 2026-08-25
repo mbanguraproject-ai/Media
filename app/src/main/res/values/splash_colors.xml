@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="splash_cream">#F4EFE6</color>
+    <!-- Was #F4EFE6 cream: every cold start flashed bright cream before a
+         near-black app. Now the gradient's own deep floor. -->
+    <color name="splash_ink">#150C33</color>
 </resources>

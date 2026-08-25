@@ -15,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -43,6 +42,9 @@ private val ROW_HEIGHT = 64.dp
 @Composable
 fun QueueSheet(
     queue: List<QueueEntry>,
+    // Resolves a queue entry back to a library item so real cover art can be
+    // shown; the Media3 timeline only carries title/artist/uri.
+    artFor: (QueueEntry) -> AppMediaItem?,
     currentIndex: Int,
     onPlayIndex: (Int) -> Unit,
     onMove: (Int, Int) -> Unit,
@@ -158,6 +160,7 @@ fun QueueSheet(
                     ) {
                 QueueRow(
                     entry = entry,
+                    art = artFor(entry),
                     isCurrent = i == currentIndex,
                     isPast = i < currentIndex,
                     modifier = Modifier,
@@ -187,6 +190,7 @@ fun QueueSheet(
 @Composable
 private fun QueueRow(
     entry: QueueEntry,
+    art: AppMediaItem?,
     isCurrent: Boolean,
     isPast: Boolean,
     modifier: Modifier,
@@ -198,13 +202,22 @@ private fun QueueRow(
         modifier
             .fillMaxWidth()
             .height(ROW_HEIGHT)
-            .background(if (isCurrent) MediaColors.Elevated else Color.Transparent)
+            // MUST be opaque. SwipeToDismissBox paints backgroundContent
+            // BEHIND this row, so a transparent row shows the red delete panel
+            // permanently instead of only while swiping.
+            .background(if (isCurrent) MediaColors.Elevated else MediaColors.Modal)
             .clickable(onClick = onPlay)
             .padding(horizontal = Space.xl),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(Modifier.size(40.dp).clip(RoundedCornerShape(Radius.sm))) {
-            GenerativeArtwork(entry.mediaId, entry.title, Modifier.fillMaxSize())
+            // Was generative-only, so queue rows never showed real covers.
+            if (art != null) {
+                CoverArt(art, Modifier.fillMaxSize(), corner = 0,
+                    targetPx = 144)
+            } else {
+                GenerativeArtwork(entry.mediaId, entry.title, Modifier.fillMaxSize())
+            }
         }
         Spacer(Modifier.width(Space.md))
         Column(Modifier.weight(1f)) {

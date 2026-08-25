@@ -63,7 +63,7 @@ fun AlbumGrid(albums: List<Album>, onOpen: (Album) -> Unit) {
                     CoverArt(
                         item = it,
                         modifier = Modifier.fillMaxWidth().aspectRatio(1f),
-                        corner = 14, targetPx = 384, showBadge = false
+                        corner = 14, targetPx = 384
                     )
                 }
                 Spacer(Modifier.height(Space.sm))
@@ -93,7 +93,7 @@ fun ArtistList(artists: List<Artist>, onOpen: (Artist) -> Unit) {
                 Box(Modifier.size(52.dp).clip(CircleShape)) {
                     a.tracks.firstOrNull()?.let {
                         CoverArt(it, Modifier.fillMaxSize(), corner = 0,
-                            targetPx = 144, showBadge = false)
+                            targetPx = 144)
                     }
                 }
                 Spacer(Modifier.width(Space.md))
@@ -200,7 +200,7 @@ fun ArtistDetailScreen(
                             Column(Modifier.width(124.dp).clickable { onOpenAlbum(a) }) {
                                 a.tracks.firstOrNull()?.let {
                                     CoverArt(it, Modifier.fillMaxWidth().aspectRatio(1f),
-                                        corner = 12, targetPx = 384, showBadge = false)
+                                        corner = 12, targetPx = 384)
                                 }
                                 Spacer(Modifier.height(Space.xs))
                                 Text(a.name, style = Typo.Secondary, color = MediaColors.CreamDim,
@@ -262,7 +262,7 @@ private fun DetailScaffold(
                         ) {
                             CoverArt(artItem, Modifier.fillMaxSize(),
                                 corner = if (circularArt) 0 else 18,
-                                targetPx = 768, showBadge = false)
+                                targetPx = 768)
                         }
                     }
                     Spacer(Modifier.height(Space.lg))

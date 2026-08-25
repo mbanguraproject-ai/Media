@@ -74,7 +74,7 @@ fun AddToSheet(
             // the track you long-pressed.
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CoverArt(item, Modifier.size(46.dp), corner = 10,
-                    targetPx = 144, showBadge = false)
+                    targetPx = 144)
                 Spacer(Modifier.width(Space.md))
                 Column(Modifier.weight(1f)) {
                     Text(item.title, style = Typo.Section, color = MediaColors.Cream,

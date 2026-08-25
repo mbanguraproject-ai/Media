@@ -208,7 +208,7 @@ private fun ResultRow(
     ) {
         Box(Modifier.size(48.dp).clip(if (circular) CircleShape else RoundedCornerShape(Radius.sm))) {
             if (art != null) {
-                CoverArt(art, Modifier.fillMaxSize(), corner = 0, targetPx = 144, showBadge = false)
+                CoverArt(art, Modifier.fillMaxSize(), corner = 0, targetPx = 144)
             }
         }
         Spacer(Modifier.width(Space.md))

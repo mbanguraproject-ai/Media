@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Media</string>
+    <!-- Display name only. applicationId (app.devbangs.media) is permanent
+         once published and is NOT this — users never see it. -->
+    <string name="app_name">Aura</string>
 </resources>

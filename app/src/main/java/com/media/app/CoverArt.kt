@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Podcasts
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,9 +32,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -43,12 +40,6 @@ import kotlinx.coroutines.withContext
 
 // A two-stop diagonal gradient derived from the base tint — a designed surface,
 // not a flat block. The second stop is a lightened shift of the same hue.
-private fun pillarLabel(pillar: Pillar): String = when (pillar) {
-    Pillar.MUSIC -> "Music"
-    Pillar.PODCAST -> "Podcast"
-    Pillar.AUDIOBOOK -> "Audiobook"
-    Pillar.VIDEO -> "Video"
-}
 
 // ============================================================================
 //  ART LOADING
@@ -160,8 +151,7 @@ fun CoverArt(
     item: AppMediaItem,
     modifier: Modifier = Modifier,
     corner: Int = 12,
-    targetPx: Int = 384,
-    showBadge: Boolean = true
+    targetPx: Int = 384
 ) {
     val context = LocalContext.current
     val key = "${item.uri}@$targetPx"
@@ -200,24 +190,5 @@ fun CoverArt(
             GenerativeArtwork(item, Modifier.fillMaxSize())
         }
 
-        // Type badge — quiet ink pill, top-left. Shown on EVERY cover (art and
-        // fallback alike) so the grid stays visually consistent. The translucent
-        // ink sits lightly on real artwork without fighting it.
-        if (showBadge) Box(
-            Modifier
-                .align(Alignment.TopStart)
-                .padding(6.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(MediaColors.Ink.copy(alpha = 0.45f))
-                .padding(horizontal = 7.dp, vertical = 3.dp)
-        ) {
-            Text(
-                text = pillarLabel(item.pillar),
-                fontFamily = Inter,
-                fontWeight = FontWeight.Medium,
-                fontSize = 10.sp,   // badge: intentionally fixed, not text-scaled
-                color = MediaColors.Cream.copy(alpha = 0.9f)
-            )
-        }
     }
 }

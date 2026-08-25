@@ -30,15 +30,17 @@ import androidx.compose.ui.unit.sp
 enum class Mood(
     val label: String,
     val accent: Color,
-    val glow: Color,        // mid gradient tint
-    val glowTop: Color,     // brighter top-of-screen tint (light source)
+    val glow: Color,        // deep body of the gradient
+    val glowCore: Color,    // rich colour where content actually sits
+    val glowTop: Color,     // narrow luminous edge at the very top
     val banner: String?,    // status message under the chips (null = no banner)
     val chipOn: Color       // selected-chip fill
 ) {
     ALL(
         label = "All",
         accent = Color(0xFF7C5CFF),
-        glow = Color(0xFF3D2F72),
+        glow = Color(0xFF140D2E),
+        glowCore = Color(0xFF201346),
         glowTop = Color(0xFF6B54B0),
         banner = null,
         chipOn = Color(0xFF7C5CFF)
@@ -46,7 +48,8 @@ enum class Mood(
     LATE_NIGHT(
         label = "Late Night",
         accent = Color(0xFF9B7CFF),
-        glow = Color(0xFF2C2358),
+        glow = Color(0xFF120C2E),
+        glowCore = Color(0xFF1A1247),
         glowTop = Color(0xFF453A82),
         banner = "Now playing Late Night mix",
         chipOn = Color(0xFF7C5CFF)
@@ -54,7 +57,8 @@ enum class Mood(
     WORKOUT(
         label = "Workout",
         accent = Color(0xFFF5A623),
-        glow = Color(0xFF3A2E14),
+        glow = Color(0xFF31240A),
+        glowCore = Color(0xFF4D370C),
         glowTop = Color(0xFF5C4820),
         banner = "Workout mode activated",
         chipOn = Color(0xFFF5A623)
@@ -62,7 +66,8 @@ enum class Mood(
     FOCUS(
         label = "Focus",
         accent = Color(0xFF2DD4BF),
-        glow = Color(0xFF123E38),
+        glow = Color(0xFF09322C),
+        glowCore = Color(0xFF0C4D43),
         glowTop = Color(0xFF1C5E54),
         banner = "Focus mode \u2014 stay in the zone",
         chipOn = Color(0xFF2DD4BF)
@@ -70,7 +75,8 @@ enum class Mood(
     FAVORITES(
         label = "Favorites",
         accent = Color(0xFFEC4899),
-        glow = Color(0xFF3E1B34),
+        glow = Color(0xFF2D0E24),
+        glowCore = Color(0xFF471237),
         glowTop = Color(0xFF5E2A4E),
         banner = null,
         chipOn = Color(0xFFEC4899)
@@ -181,12 +187,21 @@ object MediaColors {
 // holding richly through the upper half, meeting the deep black at CENTER, then
 // settling to near-black at the bottom. Extra stops keep it seamless (no banding).
 @Composable
+// §47/§48: the background is the FLOOR. It was not — glowTop sat at 51%
+// lightness while card surfaces sit at 15%, so every card at the top of Home
+// read as a dark hole punched into a light field and the 8%-white glass fills
+// went milky. Layer order was inverted.
+//
+// Fixed by keeping a NARROW luminous edge at the very top (the light source
+// that gave the screen its character) and dropping to deep, saturated colour
+// by 13% — before any content starts. Saturation went UP as lightness came
+// down, so it reads rich rather than muddy.
 fun moodBackground(): Brush = Brush.verticalGradient(
-    0.00f to LocalMood.current.glowTop,   // luminous light source
-    0.40f to LocalMood.current.glow,      // rich purple holds lower now
-    0.62f to Color(0xFF1B1628),           // meet point pushed past center
-    0.82f to Color(0xFF120D1B),
-    1.00f to Color(0xFF0B0810)            // deep floor (slightly lifted, crisper)
+    0.00f to LocalMood.current.glowTop,   // luminous edge, behind the status bar
+    0.13f to LocalMood.current.glowCore,  // deep + saturated, where content sits
+    0.46f to LocalMood.current.glow,      // deeper still
+    0.72f to Color(0xFF120E20),
+    1.00f to Color(0xFF07050C)            // near-black floor
 )
 
 // ============================================================================

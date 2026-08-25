@@ -294,7 +294,8 @@ private fun PermissionGate(onGrant: () -> Unit) {
 // Height of the bottom nav row (excludes the system nav-bar inset, which is
 // applied separately via navigationBarsPadding). The mini-player floats a
 // small gap above this — both derive from BottomBarHeight so they never drift.
-private val BottomBarHeight = 58.dp
+// 64dp: 58 left the icon+label pair touching both edges of the bar.
+private val BottomBarHeight = 64.dp
 private val MiniPlayerGap = 8.dp
 
 @UnstableApi
@@ -400,6 +401,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // ---- beat pulse: ONE driver, shared by the player and Home ----
     // Runs whenever something is playing, not just when the player is open,
     // because the playing card on Home consumes the same level.
+    val allById = remember(allAudio, video) { (allAudio + video).associateBy { it.id } }
     val playingItem = rememberArtItem(state)
     val envelope = rememberEnvelope(playingItem)
     val beat = rememberBeatPulse(state, envelope, active = state.hasItem)
@@ -476,9 +478,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
             }
 
             StashHeader(
-                onSearch = { showSearch = true },
                 onRescan = { MediaRepository.refresh(); reloadKey++ },
-                onPlaylists = { showPlaylists = true; currentTab = 2 },
                 collapse = collapse
             )
             // Mood chips stay put: they are the control surface, and §16 wants
@@ -591,7 +591,6 @@ fun HomeScaffold(vm: PlayerViewModel) {
                 if (openPlaylist?.id == pl.id) openPlaylist = null
                 scope.launch { db.playlistDao().clearMembers(pl.id); db.playlistDao().deletePlaylist(pl.id) }
             },
-            onClose = { showPlaylists = false; currentTab = 0 }
         )
     }
     openPlaylist?.let { pl ->
@@ -776,6 +775,9 @@ fun HomeScaffold(vm: PlayerViewModel) {
             vm = vm,
             expanded = showPlayer,
             artItem = playingItem,
+            // Media3's timeline only carries title/artist/uri, so map back to
+            // the library item to get real cover art in the queue.
+            artForQueue = { e -> allById[e.mediaId] },
             beat = beat,
             bottomInset = navBottom + BottomBarHeight + MiniPlayerGap,
             onExpandedChange = { showPlayer = it }
@@ -863,15 +865,20 @@ private fun BottomBar(
     current: Int,
     onSelect: (Int) -> Unit
 ) {
-    // Glass bar floating over the gradient: translucent fill + hairline top edge.
     Column(
         modifier.fillMaxWidth()
             .background(MediaColors.NavSurface)
-            .border(width = 0.5.dp, color = MediaColors.Fill)
             .navigationBarsPadding()
     ) {
+        // Hairline on the TOP EDGE only. .border() drew a 0.5dp box on all
+        // four sides, which is why the bar read as a slab with an outline
+        // rather than a surface the content scrolls under.
+        Box(Modifier.fillMaxWidth().height(0.5.dp).background(MediaColors.Fill))
         Row(
-            Modifier.fillMaxWidth().height(BottomBarHeight),
+            // Inset from the screen edges: the outer tabs were running flush
+            // into the bezel with nothing to breathe against.
+            Modifier.fillMaxWidth().height(BottomBarHeight)
+                .padding(horizontal = Space.sm),
             verticalAlignment = Alignment.CenterVertically
         ) {
             NavTab(Icons.Filled.Home, Icons.Outlined.Home, "Home", current == 0, Modifier.weight(1f)) { onSelect(0) }
@@ -911,8 +918,8 @@ private fun NavTab(
     )
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(3.dp),
-        modifier = modifier.fillMaxHeight()
+        verticalArrangement = Arrangement.spacedBy(Space.xs),
+        modifier = modifier.fillMaxHeight().padding(vertical = Space.sm)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,

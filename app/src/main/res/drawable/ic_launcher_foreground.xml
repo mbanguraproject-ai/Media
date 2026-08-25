@@ -3,14 +3,21 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Three signals — ink on cream (background set separately) -->
+    <!-- Concentric rings expanding from a core: the app's own beat visual.
+         Adaptive-icon safe zone is the central 72dp, so nothing exceeds r=33. -->
     <path
-        android:fillColor="#0B0B0F"
-        android:pathData="M40,40 L40,68 A4,4 0 0,0 48,68 L48,40 A4,4 0 0,0 40,40 Z" />
+        android:strokeColor="#9B7CFF" android:strokeWidth="3" android:strokeAlpha="0.38"
+        android:fillColor="#00000000"
+        android:pathData="M21,54 A33,33 0 1,0 87,54 A33,33 0 1,0 21,54 Z" />
     <path
-        android:fillColor="#0B0B0F"
-        android:pathData="M50,32 L50,76 A4,4 0 0,0 58,76 L58,32 A4,4 0 0,0 50,32 Z" />
+        android:strokeColor="#9B7CFF" android:strokeWidth="3.5" android:strokeAlpha="0.62"
+        android:fillColor="#00000000"
+        android:pathData="M31,54 A23,23 0 1,0 77,54 A23,23 0 1,0 31,54 Z" />
     <path
-        android:fillColor="#0B0B0F"
-        android:pathData="M60,46 L60,62 A4,4 0 0,0 68,62 L68,46 A4,4 0 0,0 60,46 Z" />
+        android:strokeColor="#C4B2FF" android:strokeWidth="4"
+        android:fillColor="#00000000"
+        android:pathData="M41,54 A13,13 0 1,0 67,54 A13,13 0 1,0 41,54 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M48,54 A6,6 0 1,0 60,54 A6,6 0 1,0 48,54 Z" />
 </vector>

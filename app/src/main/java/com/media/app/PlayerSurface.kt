@@ -73,6 +73,7 @@ fun PlayerSurface(
     vm: PlayerViewModel,
     expanded: Boolean,
     artItem: AppMediaItem?,
+    artForQueue: (QueueEntry) -> AppMediaItem?,
     beat: BeatState,
     bottomInset: androidx.compose.ui.unit.Dp,
     onExpandedChange: (Boolean) -> Unit,
@@ -282,7 +283,7 @@ fun PlayerSurface(
                         )
                         item != null -> CoverArt(
                             item, Modifier.fillMaxSize(), corner = 0,
-                            targetPx = if (e > 0.5f) 768 else 144, showBadge = false
+                            targetPx = if (e > 0.5f) 768 else 144
                         )
                         else -> Box(Modifier.fillMaxSize().background(MediaColors.Ink))
                     }
@@ -436,6 +437,7 @@ fun PlayerSurface(
     if (showQueue) {
         QueueSheet(
             queue = queue,
+            artFor = artForQueue,
             currentIndex = state.queueIndex,
             onPlayIndex = { vm.playQueueIndex(it) },
             onMove = { from, to -> vm.moveQueueItem(from, to) },

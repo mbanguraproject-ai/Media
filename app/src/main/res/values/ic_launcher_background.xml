@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#F4EFE6</color>
+    <!-- Matches the app's own glowCore so the icon and the first screen agree.
+         Was #F4EFE6 cream, left over from the pre-redesign palette. -->
+    <color name="ic_launcher_background">#201346</color>
 </resources>
