@@ -1,9 +1,10 @@
 <animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:drawable="@drawable/splash_rings">
-    <!-- Core lands first, then each ring pushes outward off it: the same
-         shockwave the artwork does on a beat. 800ms, inside the SplashScreen
-         API's 1000ms ceiling. -->
-    <target android:name="core">
+
+    <!-- Dot lands, then the rings push out from it. 700ms, inside the
+         SplashScreen API ceiling. -->
+
+    <target android:name="dot">
         <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:animation">
             <set>
                 <objectAnimator android:propertyName="scaleX"
@@ -15,74 +16,52 @@
             </set>
         </aapt:attr>
     </target>
-    <target android:name="pc">
+    <target android:name="pDot">
         <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:animation">
             <objectAnimator android:propertyName="fillAlpha"
-                android:valueFrom="0" android:valueTo="1" android:duration="200"
-                android:interpolator="@android:interpolator/decelerate_cubic" />
+                android:valueFrom="0" android:valueTo="1" android:duration="200" />
         </aapt:attr>
     </target>
-    <target android:name="ring1">
+    <target android:name="ringIn">
+        <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:animation">
+            <set>
+                <objectAnimator android:propertyName="scaleX"
+                    android:valueFrom="0.3" android:valueTo="1"
+                    android:startOffset="150" android:duration="420"
+                    android:interpolator="@android:interpolator/decelerate_quint" />
+                <objectAnimator android:propertyName="scaleY"
+                    android:valueFrom="0.3" android:valueTo="1"
+                    android:startOffset="150" android:duration="420"
+                    android:interpolator="@android:interpolator/decelerate_quint" />
+            </set>
+        </aapt:attr>
+    </target>
+    <target android:name="pIn">
+        <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:animation">
+            <objectAnimator android:propertyName="strokeAlpha"
+                android:valueFrom="0" android:valueTo="0.55"
+                android:startOffset="150" android:duration="300" />
+        </aapt:attr>
+    </target>
+    <target android:name="ringOut">
         <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:animation">
             <set>
                 <objectAnimator android:propertyName="scaleX"
                     android:valueFrom="0.45" android:valueTo="1"
-                    android:startOffset="160" android:duration="440"
+                    android:startOffset="280" android:duration="420"
                     android:interpolator="@android:interpolator/decelerate_quint" />
                 <objectAnimator android:propertyName="scaleY"
                     android:valueFrom="0.45" android:valueTo="1"
-                    android:startOffset="160" android:duration="440"
+                    android:startOffset="280" android:duration="420"
                     android:interpolator="@android:interpolator/decelerate_quint" />
             </set>
         </aapt:attr>
     </target>
-    <target android:name="p1">
+    <target android:name="pOut">
         <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:animation">
             <objectAnimator android:propertyName="strokeAlpha"
-                android:valueFrom="0" android:valueTo="1"
-                android:startOffset="160" android:duration="300" />
-        </aapt:attr>
-    </target>
-    <target android:name="ring2">
-        <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:animation">
-            <set>
-                <objectAnimator android:propertyName="scaleX"
-                    android:valueFrom="0.5" android:valueTo="1"
-                    android:startOffset="300" android:duration="480"
-                    android:interpolator="@android:interpolator/decelerate_quint" />
-                <objectAnimator android:propertyName="scaleY"
-                    android:valueFrom="0.5" android:valueTo="1"
-                    android:startOffset="300" android:duration="480"
-                    android:interpolator="@android:interpolator/decelerate_quint" />
-            </set>
-        </aapt:attr>
-    </target>
-    <target android:name="p2">
-        <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:animation">
-            <objectAnimator android:propertyName="strokeAlpha"
-                android:valueFrom="0" android:valueTo="0.62"
-                android:startOffset="300" android:duration="320" />
-        </aapt:attr>
-    </target>
-    <target android:name="ring3">
-        <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:animation">
-            <set>
-                <objectAnimator android:propertyName="scaleX"
-                    android:valueFrom="0.55" android:valueTo="1"
-                    android:startOffset="430" android:duration="500"
-                    android:interpolator="@android:interpolator/decelerate_quint" />
-                <objectAnimator android:propertyName="scaleY"
-                    android:valueFrom="0.55" android:valueTo="1"
-                    android:startOffset="430" android:duration="500"
-                    android:interpolator="@android:interpolator/decelerate_quint" />
-            </set>
-        </aapt:attr>
-    </target>
-    <target android:name="p3">
-        <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:animation">
-            <objectAnimator android:propertyName="strokeAlpha"
-                android:valueFrom="0" android:valueTo="0.38"
-                android:startOffset="430" android:duration="340" />
+                android:valueFrom="0" android:valueTo="0.32"
+                android:startOffset="280" android:duration="300" />
         </aapt:attr>
     </target>
 </animated-vector>

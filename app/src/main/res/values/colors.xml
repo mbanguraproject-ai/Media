@@ -2,4 +2,12 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- Mirrors MediaColors so the ad card matches the Compose surfaces.
+         Kept in sync by hand: XML can't read the Kotlin palette. -->
+    <color name="ad_surface">#221E31</color>
+    <color name="ad_accent">#7C5CFF</color>
+    <color name="ad_text">#F4EFE6</color>
+    <color name="ad_text_dim">#A79FB5</color>
+    <color name="ad_text_faint">#6F6880</color>
 </resources>

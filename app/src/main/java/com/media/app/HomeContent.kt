@@ -38,6 +38,7 @@ private fun greeting(): String {
 // ------------------------------------------------------------------ HEADER
 @Composable
 fun StashHeader(
+    onSearch: () -> Unit,
     onRescan: () -> Unit,
     // §16: 0 = full, 1 = compact. Driven by scroll, not by a hide/show toggle —
     // the doc explicitly rejects "distracting scroll-hide experiments".
@@ -68,7 +69,7 @@ fun StashHeader(
             // Title shrinks Display -> Section rather than cutting between two
             // styles, so the transition is continuous.
             Text(
-                "Your Media",
+                "Your Library",
                 style = Typo.Display.copy(
                     fontSize = lerp(Typo.Display.fontSize, Typo.Section.fontSize, c),
                     lineHeight = lerp(Typo.Display.lineHeight, Typo.Section.lineHeight, c)
@@ -78,9 +79,10 @@ fun StashHeader(
             )
         }
         Spacer(Modifier.width(Space.md))
-        // Playlists and Search both exist as bottom-nav tabs; duplicating them
-        // here was three buttons competing with the title for the same row.
-        // Rescan has no other home, so it is the one that stays.
+        // Search lives HERE and nowhere else — it left the bottom bar so four
+        // tabs can divide the width evenly instead of five crowding it.
+        CircleButton(Icons.Filled.Search, "Search", onSearch)
+        Spacer(Modifier.width(Space.sm))
         CircleButton(Icons.Filled.Refresh, "Rescan", onRescan)
     }
 }

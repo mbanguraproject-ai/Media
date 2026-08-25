@@ -5,6 +5,10 @@
         <item name="windowSplashScreenBackground">@color/splash_ink</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/splash_rings_animated</item>
         <item name="windowSplashScreenAnimationDuration">800</item>
+        <!-- Bottom wordmark. API 31+ only: core-splashscreen ignores this on
+             older versions, which show the icon alone. Regenerate the PNG with
+             tools/make_wordmark.py when the name or version changes. -->
+        <item name="android:windowSplashScreenBrandingImage" tools:targetApi="31">@drawable/splash_branding</item>
         <item name="postSplashScreenTheme">@style/Theme.Media</item>
     </style>
 

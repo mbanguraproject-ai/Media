@@ -63,7 +63,7 @@ internal fun playbackErrorFrom(e: PlaybackException, title: String, uri: String?
             )
         PlaybackException.ERROR_CODE_IO_NO_PERMISSION ->
             PlaybackError(
-                ErrorKind.PERMISSION, "Media couldn't open this file",
+                ErrorKind.PERMISSION, "Couldn't open this file",
                 "Access to this file was denied. Check the app's media permission.",
                 title, uri
             )

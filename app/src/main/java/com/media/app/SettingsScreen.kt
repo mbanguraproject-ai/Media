@@ -30,6 +30,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -81,7 +82,7 @@ fun SettingsScreen(
         RescanRow(onRescan)
 
         SectionLabel("About")
-        SettingRow(Icons.Outlined.Info, "About Media", null) { onOpenAbout() }
+        SettingRow(Icons.Outlined.Info, "About " + stringResource(R.string.app_name), null) { onOpenAbout() }
         SettingRow(Icons.Outlined.Description, "Terms of Use", null) { onOpenTerms() }
         SettingRow(Icons.Outlined.Shield, "Privacy Policy", null) {
             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(privacyUrl)))
@@ -89,10 +90,10 @@ fun SettingsScreen(
         SettingRow(Icons.Outlined.Info, "Version", BuildConfig.VERSION_NAME, navigates = false) {}
 
         Spacer(Modifier.height(40.dp))
-        Text("Media", style = MaterialTheme.typography.displaySmall,
+        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.displaySmall,
             color = MediaColors.CreamFaint,
             modifier = Modifier.padding(Space.xl))
-        Text("All your media. One home.",
+        Text("Your library, lit by what\'s playing.",
             style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamFaint,
             modifier = Modifier.padding(start = Space.xl).padding(bottom = bottomSafePadding(gap = 100.dp)))
     }

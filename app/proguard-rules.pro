@@ -50,6 +50,10 @@
 -keep class com.media.app.AudioEnvelope { *; }
 -keep class com.media.app.EnvelopeDao { *; }
 -keep class com.media.app.QueueEntry { *; }
+
+# Play Services Ads ships its own consumer rules, but the native ad layout is
+# only referenced by id from Kotlin, so keep the view class explicitly.
+-keep class com.google.android.gms.ads.nativead.NativeAdView { *; }
 -keep class com.media.app.MediaSettings { *; }
 -keep enum com.media.app.** { *; }
 

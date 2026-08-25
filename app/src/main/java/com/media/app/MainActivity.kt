@@ -49,6 +49,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
@@ -213,16 +214,17 @@ fun AppRoot(vm: PlayerViewModel = viewModel()) {
 private fun WelcomePage(onContinue: () -> Unit) {
     Box(Modifier.fillMaxSize().background(MediaColors.Ink).systemBarsPadding().padding(Space.xl)) {
         Column(Modifier.align(Alignment.CenterStart)) {
-            Text("Media", style = MaterialTheme.typography.displayLarge, color = MediaColors.Cream)
+            Text(stringResource(R.string.app_name),
+                style = MaterialTheme.typography.displayLarge, color = MediaColors.Cream)
             Spacer(Modifier.height(Space.md))
-            Text("All your media, one calm home.",
+            Text("Your library, lit by what's playing.",
                 style = MaterialTheme.typography.titleLarge, color = MediaColors.CreamDim)
             Spacer(Modifier.height(Space.xl))
-            WelcomeLine("Music, podcasts, audiobooks, and video — together.")
+            WelcomeLine("Music, podcasts, audiobooks and video — together.")
             Spacer(Modifier.height(Space.md))
-            WelcomeLine("Everything plays locally. No accounts, no tracking.")
+            WelcomeLine("Artwork moves with the beat. Moods retint the whole app.")
             Spacer(Modifier.height(Space.md))
-            WelcomeLine("Calm, editorial, and quietly out of your way.")
+            WelcomeLine("Everything plays locally. No accounts, nothing to sign in to.")
         }
         Box(
             Modifier.align(Alignment.BottomEnd)
@@ -247,7 +249,8 @@ private fun PermissionExplainerPage(onContinue: () -> Unit) {
             Text("One quick thing", style = MaterialTheme.typography.displaySmall, color = MediaColors.Cream)
             Spacer(Modifier.height(Space.lg))
             Text(
-                "Media plays the songs, podcasts, audiobooks, and videos already on your phone. " +
+                stringResource(R.string.app_name) +
+                " plays the songs, podcasts, audiobooks and videos already on your phone. " +
                 "To find them, it needs permission to read your media.",
                 style = MaterialTheme.typography.bodyLarge, color = MediaColors.CreamDim
             )
@@ -402,6 +405,16 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // Runs whenever something is playing, not just when the player is open,
     // because the playing card on Home consumes the same level.
     val allById = remember(allAudio, video) { (allAudio + video).associateBy { it.id } }
+    // Consent first, SDK second. Kicked off once, after the permission gate,
+    // so it never lands on top of onboarding.
+    var adsReady by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        (context as? android.app.Activity)?.let { act ->
+            Ads.startConsentThenInit(act) { adsReady = true }
+        }
+    }
+    val nativeAd = rememberNativeAd(enabled = adsReady)
+
     val playingItem = rememberArtItem(state)
     val envelope = rememberEnvelope(playingItem)
     val beat = rememberBeatPulse(state, envelope, active = state.hasItem)
@@ -478,6 +491,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
             }
 
             StashHeader(
+                onSearch = { showSearch = true },
                 onRescan = { MediaRepository.refresh(); reloadKey++ },
                 collapse = collapse
             )
@@ -516,6 +530,17 @@ fun HomeScaffold(vm: PlayerViewModel) {
                         )
                     }
                     items(sections.size) { s ->
+                        // ONE ad, after the first shelf. Placed inside the
+                        // feed so it scrolls out of the way; nothing on Now
+                        // Playing, no banner stacked under the mini-player.
+                        if (s == 2 && nativeAd != null) {
+                            NativeAdCard(
+                                ad = nativeAd,
+                                modifier = Modifier.padding(
+                                    start = Space.xl, end = Space.xl, top = Space.lg
+                                )
+                            )
+                        }
                         when (val sec = sections[s]) {
                             is HomeSection.Tracks -> {
                                 SectionHeader(sec.title)
@@ -534,6 +559,16 @@ fun HomeScaffold(vm: PlayerViewModel) {
                         }
                     }
                     item {
+                        // Fallback slot: with fewer than three sections index 2
+                        // never occurs, so the ad would simply never render.
+                        if (sections.size < 3 && nativeAd != null) {
+                            NativeAdCard(
+                                ad = nativeAd,
+                                modifier = Modifier.padding(
+                                    start = Space.xl, end = Space.xl, top = Space.lg
+                                )
+                            )
+                        }
                         if (sections.isNotEmpty()) SectionHeader("All tracks")
                         CountAndShuffle(count = shown.size, onShuffle = {
                             if (shown.isNotEmpty()) {
@@ -738,9 +773,9 @@ fun HomeScaffold(vm: PlayerViewModel) {
         when (tab) {
             1 -> showLibrary = true
             2 -> showPlaylists = true
-            3 -> showSearch = true
-            4 -> showSettings = true
-            // 0 Home -> the home surface itself, no overlay
+            3 -> showSettings = true
+            // 0 Home -> the home surface itself, no overlay.
+            // Search is no longer a tab — it lives in the header.
         }
     }
     // ---- Surfaces that must sit ABOVE the persistent chrome ----
@@ -885,8 +920,7 @@ private fun BottomBar(
             NavTab(Icons.AutoMirrored.Filled.LibraryBooks, Icons.AutoMirrored.Outlined.LibraryBooks,
                 "Library", current == 1, Modifier.weight(1f)) { onSelect(1) }
             NavTab(Icons.Filled.QueueMusic, Icons.Outlined.QueueMusic, "Playlists", current == 2, Modifier.weight(1f)) { onSelect(2) }
-            NavTab(Icons.Filled.Search, Icons.Outlined.Search, "Search", current == 3, Modifier.weight(1f)) { onSelect(3) }
-            NavTab(Icons.Filled.Menu, Icons.Outlined.Menu, "More", current == 4, Modifier.weight(1f)) { onSelect(4) }
+            NavTab(Icons.Filled.Menu, Icons.Outlined.Menu, "More", current == 3, Modifier.weight(1f)) { onSelect(3) }
         }
     }
 }

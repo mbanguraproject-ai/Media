@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -46,24 +47,24 @@ private fun Heading(text: String) {
 @Composable
 fun AboutScreen(version: String, onClose: () -> Unit) {
     InfoScaffold("About", onClose) {
-        Text("Media", style = MaterialTheme.typography.displaySmall, color = MediaColors.Cream,
-            modifier = Modifier.padding(bottom = Space.xs))
-        Text("All your media. One home.", style = MaterialTheme.typography.bodyLarge,
+        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.displaySmall,
+            color = MediaColors.Cream, modifier = Modifier.padding(bottom = Space.xs))
+        Text("Your library, lit by what\'s playing.", style = MaterialTheme.typography.bodyLarge,
             color = MediaColors.CreamDim, modifier = Modifier.padding(bottom = Space.xl))
 
-        Para("Your library shouldn\'t be scattered across a dozen apps. Media gathers everything that plays on your phone into one calm, editorial home — and gets out of your way so you can just listen and watch.")
+        Para("Your library shouldn\'t be scattered across a dozen apps. Aura gathers everything that plays on your phone into one place — and then gets out of the way so you can just listen and watch.")
 
         Heading("Four kinds of media, one place")
-        Para("Music for your songs. Podcasts for long-form talk. Audiobooks for the books you listen to. And video, in any format your phone understands. Media sorts them automatically, and you can always reorganize anything by hand.")
+        Para("Music for your songs. Podcasts for long-form talk. Audiobooks for the books you listen to. And video, in any format your phone understands. Aura sorts them automatically, and you can always reorganize anything by hand.")
 
         Heading("Yours, and only yours")
-        Para("Everything plays locally, straight from your device. There are no accounts to make, nothing to sign in to, and no ads. Media collects no data and tracks nothing — your library, your history, and your edits never leave your phone.")
+        Para("Everything plays locally, straight from your device. There are no accounts to make and nothing to sign in to. Your library, your listening history and your edits never leave your phone — the app itself sends nothing anywhere.")
 
-        Heading("Made to feel calm")
-        Para("Ink and warm cream. A serif that reads like a magazine. Color comes from your album art, not from the app shouting for attention. Every screen is built to be quiet, considered, and pleasant to live in day after day.")
+        Heading("It reacts to what you play")
+        Para("Artwork pulses with the bass, analysed from the file itself — no microphone, no network. The background takes its colour from the cover that\'s playing, and moods retint the whole app. Tracks without cover art get their own generated artwork instead of a letter in a box.")
 
         Heading("Little things that matter")
-        Para("A sleep timer that fades out gently. Audiobooks and podcasts that remember exactly where you stopped, and the speed you like them at. A now-playing screen you can pull down to dismiss. The details you\'d expect from a player that respects your time.")
+        Para("A sleep timer that fades out gently. Audiobooks and podcasts that remember exactly where you stopped, and the speed you like them at. A now-playing screen you can drag down to dismiss. The details you\'d expect from a player that respects your time.")
 
         Spacer(Modifier.height(Space.lg))
         Text("Version $version", style = MaterialTheme.typography.bodyMedium,
@@ -77,16 +78,16 @@ fun AboutScreen(version: String, onClose: () -> Unit) {
 @Composable
 fun TermsScreen(onClose: () -> Unit) {
     InfoScaffold("Terms of Use", onClose) {
-        Para("By using Media, you agree to these terms. They are intentionally simple.")
+        Para("By using Aura, you agree to these terms. They are intentionally simple.")
 
         Heading("The app")
-        Para("Media is a free media player that organizes and plays media files already on your device. It is provided as-is, without warranty of any kind.")
+        Para("Aura is a free media player that organizes and plays media files already on your device. It is provided as-is, without warranty of any kind.")
 
         Heading("Your content")
-        Para("Media does not upload, share, or take ownership of your files. Your media and your edits stay on your device and belong to you.")
+        Para("Aura does not upload, share, or take ownership of your files. Your media and your edits stay on your device and belong to you.")
 
         Heading("Acceptable use")
-        Para("Use Media only with content you have the right to play. You are responsible for the media you add to your device.")
+        Para("Use Aura only with content you have the right to play. You are responsible for the media you add to your device.")
 
         Heading("Liability")
         Para("The developer is not liable for any loss or damage arising from use of the app, to the extent permitted by law.")
