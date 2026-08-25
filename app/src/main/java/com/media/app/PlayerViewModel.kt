@@ -395,25 +395,30 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun play(items: List<AppMediaItem>, startIndex: Int) {
         val c = controller ?: return
         if (items.isEmpty() || startIndex !in items.indices) return
-        val exoItems = items.map { exoItemFor(it) }
-        pillarById = items.associate { it.id to it.pillar }
         val startItem = items[startIndex]
         val longForm = startItem.pillar == Pillar.AUDIOBOOK || startItem.pillar == Pillar.PODCAST
-        if (longForm) {
-            // Read saved position off the main thread, then start at that offset.
-            viewModelScope.launch {
+
+        viewModelScope.launch {
+            // §38: this is TWO full passes over the list. At 10,000 tracks that
+            // is 20k allocations, and it used to happen on the main thread
+            // between the tap and the first frame of playback.
+            val exoItems = withContext(Dispatchers.Default) { items.map { exoItemFor(it) } }
+            pillarById = withContext(Dispatchers.Default) {
+                items.associate { it.id to it.pillar }
+            }
+            // Everything below is back on Main — Media3 requires it.
+            if (longForm) {
                 val saved = withContext(Dispatchers.IO) { db.positionDao().getOne(startItem.id) }
-                val resumeMs = resumeOffsetFor(saved)
-                c.setMediaItems(exoItems, startIndex, resumeMs)
+                c.setMediaItems(exoItems, startIndex, resumeOffsetFor(saved))
                 c.prepare()
                 c.setPlaybackSpeed(saved?.speed ?: 1.0f)   // restore this item's speed
                 c.play()
+            } else {
+                c.setMediaItems(exoItems, startIndex, 0L)
+                c.prepare()
+                c.setPlaybackSpeed(1.0f)                   // music always starts at 1x
+                c.play()
             }
-        } else {
-            c.setMediaItems(exoItems, startIndex, 0L)
-            c.prepare()
-            c.setPlaybackSpeed(1.0f)   // music always starts at 1x
-            c.play()
         }
     }
 

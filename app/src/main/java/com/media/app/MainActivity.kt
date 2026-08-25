@@ -397,6 +397,12 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // Edit sheet state
     var editItem by remember { mutableStateOf<AppMediaItem?>(null) }
 
+    // Hoisted to scaffold scope: these were being called INSIDE tap handlers,
+    // so every "View album" / "View artist" regrouped the entire library on
+    // the main thread. Computed once per library instead (§38).
+    val albumsAll = remember(allAudio) { MediaRepository.albumsOf(allAudio) }
+    val artistsAll = remember(allAudio) { MediaRepository.artistsOf(allAudio) }
+
     // §42: the very first successful scan is a reveal, not a dump into a list.
     // Placed at the top of the scaffold so it fully replaces the UI for one
     // run; every launch after this takes the skeleton path instead.
@@ -657,7 +663,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
             onLongPress = { addToItem = it },
             // §26 "View artist" — jump straight across from the album header.
             onOpenArtist = {
-                MediaRepository.artistsOf(allAudio).firstOrNull { a ->
+                artistsAll.firstOrNull { a ->
                     a.id == album.tracks.firstOrNull()?.artistId
                 }?.let { openArtist = it; openAlbum = null }
             },
@@ -791,11 +797,11 @@ fun HomeScaffold(vm: PlayerViewModel) {
             // Null when the track has no real album/artist metadata — the row
             // is then absent rather than present and dead.
             onViewAlbum = if (item.album != UNKNOWN_ALBUM) ({
-                MediaRepository.albumsOf(allAudio).firstOrNull { it.id == item.albumId }
+                albumsAll.firstOrNull { it.id == item.albumId }
                     ?.let { openAlbum = it; openArtist = null }
             }) else null,
             onViewArtist = if (item.artist != UNKNOWN_ARTIST) ({
-                MediaRepository.artistsOf(allAudio).firstOrNull { it.id == item.artistId }
+                artistsAll.firstOrNull { it.id == item.artistId }
                     ?.let { openArtist = it; openAlbum = null }
             }) else null,
             onDismiss = { addToItem = null }

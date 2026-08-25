@@ -55,10 +55,14 @@ fun LibraryScreen(
     val shown = remember(pillarItems, sort, lastPlayed, playCounts) {
         pillarItems.sortedFor(sort, lastPlayed, playCounts)
     }
-    val albums = remember(pillarItems) {
+    // `tab` MUST be a key. remember() compares keys with equals(), and
+    // Songs/Albums/Artists all filter Pillar.MUSIC — so pillarItems is
+    // structurally equal across the three and the cached emptyList() was
+    // being returned no matter which tab you selected.
+    val albums = remember(tab, pillarItems) {
         if (tab == LibTab.ALBUMS) MediaRepository.albumsOf(pillarItems) else emptyList()
     }
-    val artists = remember(pillarItems) {
+    val artists = remember(tab, pillarItems) {
         if (tab == LibTab.ARTISTS) MediaRepository.artistsOf(pillarItems) else emptyList()
     }
 
