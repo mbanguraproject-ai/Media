@@ -397,6 +397,22 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // Edit sheet state
     var editItem by remember { mutableStateOf<AppMediaItem?>(null) }
 
+    // §42: the very first successful scan is a reveal, not a dump into a list.
+    // Placed at the top of the scaffold so it fully replaces the UI for one
+    // run; every launch after this takes the skeleton path instead.
+    val revealSeen by SettingsStore.revealSeenFlow(context).collectAsState(initial = true)
+    if (!revealSeen && !scanning && music.isNotEmpty()) {
+        val albumsNow = remember(music) { MediaRepository.albumsOf(music).size }
+        val artistsNow = remember(music) { MediaRepository.artistsOf(music).size }
+        FirstScanReveal(
+            trackCount = music.size,
+            albumCount = albumsNow,
+            artistCount = artistsNow,
+            onDone = { scope.launch { SettingsStore.setRevealSeen(context) } }
+        )
+        return
+    }
+
     // Android back: ONE handler with an explicit priority order, topmost first.
     // This was a chain of nine BackHandlers whose enabled-guards had to be kept
     // mutually exclusive by hand — and Terms/About had no handler at all, so
@@ -465,9 +481,13 @@ fun HomeScaffold(vm: PlayerViewModel) {
             // SCROLLING content — stats, shelves and tracks all move together
             // so the shelves aren't pinned above a scrolling list.
             if (scanning) {
-                ScanningState()
+                LibrarySkeleton()
             } else if (shown.isEmpty()) {
-                EmptyState()
+                EmptyState(
+                    mood = mood,
+                    onRescan = { MediaRepository.refresh(); reloadKey++ },
+                    onClearMood = { setMood(Mood.ALL) }
+                )
             } else {
                 LazyColumn(
                     state = homeListState,
@@ -538,6 +558,9 @@ fun HomeScaffold(vm: PlayerViewModel) {
                 showSearch = false
                 if (list[idx].type == MediaType.VIDEO) showPlayer = true
             },
+            onOpenAlbum = { openAlbum = it; showSearch = false },
+            onOpenArtist = { openArtist = it; showSearch = false },
+            onBrowseLibrary = { showSearch = false; showLibrary = true; currentTab = 1 },
             onClose = { showSearch = false }
         )
     }
@@ -782,30 +805,39 @@ fun HomeScaffold(vm: PlayerViewModel) {
 }
 
 @Composable
-private fun ScanningState() {
+private fun EmptyState(mood: Mood, onRescan: () -> Unit, onClearMood: () -> Unit) {
+    // §20: every empty state is designed, and each one names its OWN cause.
+    // An empty Favourites mood is a different situation from an empty library
+    // and deserves different words and a different way out.
+    val filtered = mood != Mood.ALL
     Column(
-        Modifier.fillMaxWidth().padding(Space.xl, 80.dp),
+        Modifier.fillMaxWidth().padding(Space.xl, 72.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        CircularProgressIndicator(
-            modifier = Modifier.size(22.dp), strokeWidth = 2.dp, color = MediaColors.Accent
+        Text(
+            if (filtered) "Nothing in ${mood.label} yet" else "Your library is waiting",
+            style = Typo.Section, color = MediaColors.Cream
         )
-        Spacer(Modifier.height(Space.lg))
-        Text("Reading your library\u2026",
-            style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamDim)
-    }
-}
-
-@Composable
-private fun EmptyState() {
-    Column(
-        Modifier.fillMaxWidth().padding(Space.xl, 80.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Nothing here yet", style = MaterialTheme.typography.titleLarge, color = MediaColors.Cream)
         Spacer(Modifier.height(Space.sm))
-        Text("Add music or video to your device to see it here.",
-            style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamDim)
+        Text(
+            when {
+                mood == Mood.FAVORITES -> "Save songs you love and they'll appear here."
+                filtered -> "Add tracks to this mood from any track's menu."
+                else -> "Add music to your device, then rescan to build your library."
+            },
+            style = Typo.Secondary, color = MediaColors.CreamDim
+        )
+        Spacer(Modifier.height(Space.xl))
+        Box(
+            Modifier.clip(CircleShape).background(MediaColors.Accent)
+                .pressScale(haptic = true, onClick = if (filtered) onClearMood else onRescan)
+                .padding(horizontal = Space.xl, vertical = Space.md)
+        ) {
+            Text(
+                if (filtered) "Show all tracks" else "Rescan library",
+                style = Typo.Label, color = Color.White
+            )
+        }
     }
 }
 

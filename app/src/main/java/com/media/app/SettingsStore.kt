@@ -22,6 +22,7 @@ object SettingsStore {
     private val THEME = stringPreferencesKey("theme_mode")
     private val FONT = floatPreferencesKey("font_scale")
     private val INTRO_SEEN = booleanPreferencesKey("intro_seen")
+    private val REVEAL_SEEN = booleanPreferencesKey("library_reveal_seen")
 
     fun flow(context: Context): Flow<MediaSettings> =
         context.dataStore.data.map { p ->
@@ -49,5 +50,13 @@ object SettingsStore {
 
     suspend fun setIntroSeen(context: Context) {
         context.dataStore.edit { it[INTRO_SEEN] = true }
+    }
+
+    // §42: the first successful scan is a reveal, shown once and never again.
+    fun revealSeenFlow(context: Context): Flow<Boolean> =
+        context.dataStore.data.map { it[REVEAL_SEEN] ?: false }
+
+    suspend fun setRevealSeen(context: Context) {
+        context.dataStore.edit { it[REVEAL_SEEN] = true }
     }
 }
