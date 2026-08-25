@@ -8,6 +8,9 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
@@ -116,6 +119,9 @@ fun SectionHeader(title: String) {
 fun TrackShelf(
     items: List<AppMediaItem>,
     currentUri: String?,
+    // Null = no pulse. Only the ONE playing card reacts; every other card in
+    // every shelf stays completely still.
+    beat: BeatState? = null,
     onPlay: (Int) -> Unit,
     onLongPress: (AppMediaItem) -> Unit
 ) {
@@ -125,10 +131,14 @@ fun TrackShelf(
     ) {
         items(items.size) { i ->
             val item = items[i]
+            val playing = currentUri == item.uri.toString()
             ShelfCard(
                 title = item.title,
                 subtitle = item.artist,
-                highlighted = currentUri == item.uri.toString(),
+                highlighted = playing,
+                // Half the player's swing: at 132dp a 10% scale would collide
+                // with its neighbours. The ring carries the impact instead.
+                pulse = if (playing) beat else null,
                 art = {
                     CoverArt(item, Modifier.fillMaxSize(), corner = 14,
                         targetPx = 384, showBadge = false)
@@ -171,10 +181,13 @@ private fun ShelfCard(
     title: String,
     subtitle: String,
     highlighted: Boolean,
+    pulse: BeatState? = null,
     art: @Composable () -> Unit,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?
 ) {
+    val level = pulse?.level ?: 0f
+    val accent = MediaColors.Accent
     Column(
         Modifier.width(132.dp).then(
             if (onLongClick != null)
@@ -182,7 +195,22 @@ private fun ShelfCard(
             else Modifier.clickable(onClick = onClick)
         )
     ) {
-        Box(Modifier.size(132.dp)) { art() }
+        Box(Modifier.size(132.dp), contentAlignment = Alignment.Center) {
+            if (pulse != null) {
+                // Rings sit inside the card's own bounds so a hit can't bleed
+                // over the neighbouring cards in the row.
+                BeatRings(
+                    beat = pulse, color = accent, strength = 0.75f,
+                    modifier = Modifier.fillMaxSize().clearAndSetSemantics { }
+                )
+            }
+            Box(
+                Modifier.fillMaxSize().graphicsLayer {
+                    val s = 1f + level * 0.05f
+                    scaleX = s; scaleY = s
+                }
+            ) { art() }
+        }
         Spacer(Modifier.height(Space.sm))
         Text(
             title, style = Typo.Primary,

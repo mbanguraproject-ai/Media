@@ -397,6 +397,13 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // Edit sheet state
     var editItem by remember { mutableStateOf<AppMediaItem?>(null) }
 
+    // ---- beat pulse: ONE driver, shared by the player and Home ----
+    // Runs whenever something is playing, not just when the player is open,
+    // because the playing card on Home consumes the same level.
+    val playingItem = rememberArtItem(state)
+    val envelope = rememberEnvelope(playingItem)
+    val beat = rememberBeatPulse(state, envelope, active = state.hasItem)
+
     // Hoisted to scaffold scope: these were being called INSIDE tap handlers,
     // so every "View album" / "View artist" regrouped the entire library on
     // the main thread. Computed once per library instead (§38).
@@ -515,6 +522,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
                                 TrackShelf(
                                     items = sec.items,
                                     currentUri = state.currentUri,
+                                    beat = beat,
                                     onPlay = { i -> vm.playOrToggle(sec.items, i) },
                                     onLongPress = { addToItem = it }
                                 )
@@ -767,6 +775,8 @@ fun HomeScaffold(vm: PlayerViewModel) {
             state = state,
             vm = vm,
             expanded = showPlayer,
+            artItem = playingItem,
+            beat = beat,
             bottomInset = navBottom + BottomBarHeight + MiniPlayerGap,
             onExpandedChange = { showPlayer = it }
         )

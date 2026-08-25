@@ -72,6 +72,8 @@ fun PlayerSurface(
     state: PlayerState,
     vm: PlayerViewModel,
     expanded: Boolean,
+    artItem: AppMediaItem?,
+    beat: BeatState,
     bottomInset: androidx.compose.ui.unit.Dp,
     onExpandedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
@@ -98,38 +100,9 @@ fun PlayerSurface(
 
     // Belt and braces: nothing downstream may ever see a value outside 0..1.
     val e = expansion.value.coerceIn(0f, 1f)
-    val artItem = rememberArtItem(state)
     // §12: the environment takes its tone from the current cover.
     val ambient = rememberAmbientColor(artItem)
-    val envelope = rememberEnvelope(artItem)
-
-    // Bass-reactive level, 0..1.
-    //
-    // state.positionMs only ticks at 2Hz, so it CANNOT drive a 60fps pulse on
-    // its own. Instead each frame extrapolates from the last known position
-    // using the frame clock, and the effect re-keys on positionMs so it
-    // resyncs to truth twice a second — drift never accumulates.
-    //
-    // Attack fast, release slow (0.55 / 0.10), the way a compressor envelope
-    // behaves. Symmetric smoothing reads as a wobble; asymmetric as a hit.
-    var level by remember { mutableStateOf(0f) }
-    LaunchedEffect(envelope, state.isPlaying, state.positionMs, state.speed, reduced, e > 0.5f) {
-        if (envelope == null || !state.isPlaying || reduced || e <= 0.5f) {
-            level = 0f
-            return@LaunchedEffect
-        }
-        val base = state.positionMs
-        val speed = state.speed
-        var t0 = 0L
-        while (true) {
-            withFrameNanos { now ->
-                if (t0 == 0L) t0 = now
-                val ms = base + ((now - t0) / 1_000_000f * speed).toLong()
-                val target = envelope.levelAt(ms)
-                level += (target - level) * (if (target > level) 0.55f else 0.10f)
-            }
-        }
-    }
+    val level = beat.level
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         val density = LocalDensity.current
@@ -229,8 +202,24 @@ fun PlayerSurface(
             // Bloom behind the artwork — grows and brightens on the beat.
             // Drawn before the art so it reads as light spilling out from
             // behind it rather than a ring stuck on top.
+            // Shockwave rings ride outside the bloom and are always mounted
+            // while expanded — they animate off their own birth timestamps.
+            if (e > 0.5f) {
+                val ringPad = artSize * 0.95f
+                BeatRings(
+                    beat = beat,
+                    color = ambient,
+                    strength = 1f,
+                    modifier = Modifier
+                        .clearAndSetSemantics { }
+                        .offset(x = artX - ringPad / 2f, y = artY - ringPad / 2f)
+                        .size(artSize + ringPad)
+                )
+            }
             if (level > 0.01f) {
-                val grow = artSize * (0.16f + 0.22f * level)
+                // Bloom pushed well past the old 0.16-0.38: it now clearly
+                // swells past the artwork edge on a hit instead of hinting.
+                val grow = artSize * (0.24f + 0.46f * level)
                 Box(
                     Modifier
                         .clearAndSetSemantics { }
@@ -239,8 +228,8 @@ fun PlayerSurface(
                         .background(
                             Brush.radialGradient(
                                 listOf(
-                                    ambient.copy(alpha = 0.55f * level),
-                                    ambient.copy(alpha = 0.18f * level),
+                                    ambient.copy(alpha = 0.85f * level),
+                                    ambient.copy(alpha = 0.34f * level),
                                     Color.Transparent
                                 )
                             )
@@ -251,9 +240,11 @@ fun PlayerSurface(
             // ---------------- shared artwork ----------------
             Box(
                 Modifier.offset(x = artX, y = artY).size(artSize)
-                    // §33: measured, not showy. 4.5% at full level.
+                    // 10% at full level. With the punch curve the value sits
+                    // near zero between hits, so this reads as a strike rather
+                    // than a constant wobble.
                     .graphicsLayer {
-                        val s = 1f + level * 0.045f
+                        val s = 1f + level * 0.10f
                         scaleX = s; scaleY = s
                     }
                     .clip(RoundedCornerShape(artCorner))
@@ -467,7 +458,7 @@ fun PlayerSurface(
 
 /** Lightweight item so CoverArt can drive off the session's current URI. */
 @Composable
-private fun rememberArtItem(state: PlayerState): AppMediaItem? =
+fun rememberArtItem(state: PlayerState): AppMediaItem? =
     remember(state.currentUri, state.currentTitle) {
         state.currentUri?.let { uri ->
             AppMediaItem(
