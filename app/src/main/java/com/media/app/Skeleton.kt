@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -98,7 +100,13 @@ fun TrackRowSkeleton(index: Int) {
  */
 @Composable
 fun LibrarySkeleton(rows: Int = 8) {
-    Column(Modifier.fillMaxWidth()) {
+    // One announcement for the whole block; the placeholder bars themselves
+    // carry no information and must not be read out row by row.
+    Column(
+        Modifier.fillMaxWidth().semantics(mergeDescendants = true) {
+            contentDescription = "Reading your library"
+        }
+    ) {
         Text(
             "Reading your library\u2026",
             style = Typo.Secondary, color = MediaColors.CreamFaint,

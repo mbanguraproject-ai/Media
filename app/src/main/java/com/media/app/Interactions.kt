@@ -29,6 +29,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
 // ============================================================================
@@ -200,7 +202,11 @@ fun PlayingEqualizer(
         }
     }
 
-    Canvas(modifier) {
+    Canvas(
+        modifier.semantics {
+            contentDescription = if (playing) "Now playing" else "Paused"
+        }
+    ) {
         val gap = size.width / 7f
         val w = gap
         for (i in 0 until 4) {

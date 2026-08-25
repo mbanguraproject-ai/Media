@@ -123,17 +123,44 @@ fun QueueSheet(
                     animationSpec = Motion.spatial(), label = "queueLift"
                 )
 
+                // §36: swipe to remove. Keyed on index+uri so the dismiss
+                // state can't survive onto whatever row shifts into this slot
+                // after a removal.
+                key(i, entry.uri) {
+                    val dismiss = rememberSwipeToDismissBoxState(
+                        confirmValueChange = { v ->
+                            if (v == SwipeToDismissBoxValue.EndToStart) { onRemove(i); true }
+                            else false
+                        }
+                    )
+                    SwipeToDismissBox(
+                        state = dismiss,
+                        enableDismissFromStartToEnd = false,
+                        backgroundContent = {
+                            Row(
+                                Modifier.fillMaxSize()
+                                    .background(Color(0xFFEF4444).copy(alpha = 0.22f))
+                                    .padding(horizontal = Space.xl),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Filled.Delete, null, tint = Color(0xFFEF4444),
+                                    modifier = Modifier.size(IconSize.lg))
+                            }
+                        },
+                        modifier = Modifier
+                            .zIndex(if (isDragged) 1f else 0f)
+                            .graphicsLayer {
+                                translationY = if (isDragged) dragOffset else animShift
+                                scaleX = lift; scaleY = lift
+                                shadowElevation = if (isDragged) 16f else 0f
+                            }
+                    ) {
                 QueueRow(
                     entry = entry,
                     isCurrent = i == currentIndex,
                     isPast = i < currentIndex,
-                    modifier = Modifier
-                        .zIndex(if (isDragged) 1f else 0f)
-                        .graphicsLayer {
-                            translationY = if (isDragged) dragOffset else animShift
-                            scaleX = lift; scaleY = lift
-                            shadowElevation = if (isDragged) 16f else 0f
-                        },
+                    modifier = Modifier,
                     onPlay = { onPlayIndex(i) },
                     onRemove = { onRemove(i) },
                     dragModifier = Modifier.pointerInput(queue.size) {
@@ -150,6 +177,8 @@ fun QueueSheet(
                         )
                     }
                 )
+                    }
+                }
             }
         }
     }

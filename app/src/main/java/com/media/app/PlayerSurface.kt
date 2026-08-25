@@ -40,6 +40,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp as lerpDp
@@ -209,7 +210,7 @@ fun PlayerSurface(
             // its flat surface. Sits UNDER everything else.
             if (e > 0.01f) {
                 Box(
-                    Modifier.matchParentSize().background(
+                    Modifier.matchParentSize().clearAndSetSemantics { }.background(
                         Brush.verticalGradient(
                             colors = listOf(
                                 ambient.copy(alpha = 0.95f * e),
@@ -232,6 +233,7 @@ fun PlayerSurface(
                 val grow = artSize * (0.16f + 0.22f * level)
                 Box(
                     Modifier
+                        .clearAndSetSemantics { }
                         .offset(x = artX - grow / 2f, y = artY - grow / 2f)
                         .size(artSize + grow)
                         .background(

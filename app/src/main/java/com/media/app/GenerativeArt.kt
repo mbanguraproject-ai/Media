@@ -12,6 +12,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import kotlin.math.PI
 import kotlin.math.sin
 import kotlin.random.Random
@@ -196,10 +198,11 @@ private fun DrawScope.bloom(rnd: Random, mid: Color, light: Color) {
 @Composable
 fun GenerativeArtwork(id: Long, title: String, modifier: Modifier = Modifier) {
     val seed = remember(id, title) { seedOf(id, title) }
+    val label = "Artwork for $title"
     // MediaColors.* are @Composable getters — read outside the DrawScope.
     val accent = MediaColors.Accent
     val baseHue = remember(accent) { hueOf(accent) }
-    Canvas(modifier) {
+    Canvas(modifier.semantics { contentDescription = label }) {
         val rnd = Random(seed)
         val (deep, mid, light) = paletteFor(seed, baseHue)
         drawRect(Brush.linearGradient(listOf(deep, mid)))
