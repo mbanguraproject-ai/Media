@@ -856,8 +856,8 @@ private fun BottomBar(
     // Glass bar floating over the gradient: translucent fill + hairline top edge.
     Column(
         modifier.fillMaxWidth()
-            .background(Color(0xFF120D1B))
-            .border(width = 0.5.dp, color = Color(0x14FFFFFF))
+            .background(MediaColors.NavSurface)
+            .border(width = 0.5.dp, color = MediaColors.Fill)
             .navigationBarsPadding()
     ) {
         Row(

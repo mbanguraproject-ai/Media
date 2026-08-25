@@ -152,7 +152,7 @@ fun FavoriteButton(
         label = "favScale"
     )
     val tint by animateColorAsState(
-        targetValue = if (favorite) Color(0xFFEC4899) else MediaColors.CreamFaint,
+        targetValue = if (favorite) MediaColors.Favorite else MediaColors.CreamFaint,
         animationSpec = tween(if (reduced) 0 else Motion.Fast),
         label = "favTint"
     )

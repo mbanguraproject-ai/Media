@@ -58,12 +58,12 @@ fun ErrorBanner(
                 .padding(horizontal = Space.md)
                 .clip(RoundedCornerShape(Radius.lg))
                 .background(MediaColors.Modal)
-                .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.35f), RoundedCornerShape(Radius.lg))
+                .border(1.dp, MediaColors.Danger.copy(alpha = 0.35f), RoundedCornerShape(Radius.lg))
                 .padding(Space.lg)
         ) {
             Row(verticalAlignment = Alignment.Top) {
                 Icon(
-                    Icons.Filled.ErrorOutline, null, tint = Color(0xFFEF4444),
+                    Icons.Filled.ErrorOutline, null, tint = MediaColors.Danger,
                     modifier = Modifier.size(IconSize.md)
                 )
                 Spacer(Modifier.width(Space.md))

@@ -92,8 +92,8 @@ fun StashHeader(
 private fun CircleButton(icon: ImageVector, cd: String, onClick: () -> Unit) {
     Box(
         Modifier.size(36.dp).clip(CircleShape)
-            .background(Color(0x14FFFFFF))
-            .border(1.dp, Color(0x1FFFFFFF), CircleShape)
+            .background(MediaColors.Fill)
+            .border(1.dp, MediaColors.FillStrong, CircleShape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -112,9 +112,9 @@ fun MoodChips(active: Mood, onPick: (Mood) -> Unit) {
             val selected = mood == active
             Box(
                 Modifier.clip(RoundedCornerShape(22.dp))
-                    .background(if (selected) mood.chipOn else Color(0x0DFFFFFF))
+                    .background(if (selected) mood.chipOn else MediaColors.FillSubtle)
                     .border(1.dp,
-                        if (selected) Color.Transparent else Color(0x1AFFFFFF),
+                        if (selected) Color.Transparent else MediaColors.Fill,
                         RoundedCornerShape(22.dp))
                     .clickable { onPick(mood) }
                     .padding(horizontal = 18.dp, vertical = 10.dp),
@@ -171,7 +171,7 @@ fun StatCards(recentlyPlayed: Int, allTracks: Int, favorites: Int) {
     val stats = listOf(
         Stat(Icons.Filled.AccessTime, "Recently Played", recentlyPlayed, Color(0xFF2DD4BF)),
         Stat(Icons.Filled.LibraryMusic, "All Tracks", allTracks, Color(0xFF2DD4BF)),
-        Stat(Icons.Filled.Favorite, "Favorites", favorites, Color(0xFFEC4899)),
+        Stat(Icons.Filled.Favorite, "Favorites", favorites, MediaColors.Favorite),
     )
     LazyRow(
         contentPadding = PaddingValues(horizontal = Space.xl),
@@ -180,8 +180,8 @@ fun StatCards(recentlyPlayed: Int, allTracks: Int, favorites: Int) {
         items(stats) { st ->
             Row(
                 Modifier.width(205.dp).clip(RoundedCornerShape(16.dp))
-                    .background(Color(0x0FFFFFFF))
-                    .border(1.dp, Color(0x17FFFFFF), RoundedCornerShape(16.dp))
+                    .background(MediaColors.FillSubtle)
+                    .border(1.dp, MediaColors.Fill, RoundedCornerShape(16.dp))
                     .padding(Space.lg, 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {

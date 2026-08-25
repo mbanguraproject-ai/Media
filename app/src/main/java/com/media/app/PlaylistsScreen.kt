@@ -30,8 +30,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 
-private val G_FILL = Color(0x0FFFFFFF)
-private val G_BORDER = Color(0x17FFFFFF)
+private val G_FILL = MediaColors.FillSubtle
+private val G_BORDER = MediaColors.Fill
 
 @Composable
 fun PlaylistsScreen(
@@ -321,12 +321,12 @@ fun EmptyBlock(icon: ImageVector, title: String, subtitle: String, cta: String?,
 private fun CreatePlaylistSheet(onCreate: (String) -> Unit, onDismiss: () -> Unit) {
     var name by remember { mutableStateOf("") }
     Box(
-        Modifier.fillMaxSize().background(Color(0xCC000000)).clickable(onClick = onDismiss),
+        Modifier.fillMaxSize().background(MediaColors.Scrim).clickable(onClick = onDismiss),
         contentAlignment = Alignment.Center
     ) {
         Column(
             Modifier.fillMaxWidth(0.86f).clip(RoundedCornerShape(20.dp))
-                .background(Color(0xFF1B1628)).border(1.dp, G_BORDER, RoundedCornerShape(20.dp))
+                .background(MediaColors.Modal).border(1.dp, G_BORDER, RoundedCornerShape(20.dp))
                 .clickable(enabled = false) {}.padding(Space.xl),
         ) {
             Text("New Playlist", style = Typo.Section, color = MediaColors.Cream)

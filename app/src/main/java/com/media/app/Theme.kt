@@ -150,6 +150,17 @@ val LocalPalette = androidx.compose.runtime.staticCompositionLocalOf { DarkPalet
 object MediaColors {
     val Ink @Composable get() = LocalPalette.current.bg
     val InkRaised @Composable get() = LocalPalette.current.elevated   // legacy alias
+
+    // §4/§52: these were repeated as raw hex across four files. Semantic
+    // names, one definition. 0x17FFFFFF was collapsed into Fill — it sat one
+    // step from 0x14FFFFFF for no reason anyone could state.
+    val Danger = Color(0xFFEF4444)          // destructive / error
+    val Favorite = Color(0xFFEC4899)        // the heart, and only the heart
+    val FillSubtle = Color(0x0FFFFFFF)      // barely-there glass
+    val Fill = Color(0x14FFFFFF)            // standard glass fill
+    val FillStrong = Color(0x1FFFFFFF)      // pressed / raised glass
+    val Scrim = Color(0xCC000000)           // behind modal sheets
+    val NavSurface = Color(0xFF120D1B)      // bottom bar, deliberately below bg
     val Surface @Composable get() = LocalPalette.current.surface
     val Elevated @Composable get() = LocalPalette.current.elevated
     val Floating @Composable get() = LocalPalette.current.floating

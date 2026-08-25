@@ -39,16 +39,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-// Deterministic warm-muted base tint from a title.
-private fun tintFor(seed: String): Color {
-    val palettes = listOf(
-        Color(0xFF2D3561), Color(0xFF1F4037), Color(0xFF4A2C3D),
-        Color(0xFF243B55), Color(0xFF3D3A24), Color(0xFF3A2A4D),
-        Color(0xFF4D2F2A), Color(0xFF2A3D3A)
-    )
-    val idx = (seed.sumOf { it.code } % palettes.size)
-    return palettes[if (idx < 0) idx + palettes.size else idx]
-}
+
 
 // A two-stop diagonal gradient derived from the base tint — a designed surface,
 // not a flat block. The second stop is a lightened shift of the same hue.

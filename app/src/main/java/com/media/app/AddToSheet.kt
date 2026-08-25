@@ -31,8 +31,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val G_FILL = Color(0x0FFFFFFF)
-private val G_BORDER = Color(0x17FFFFFF)
+private val G_FILL = MediaColors.FillSubtle
+private val G_BORDER = MediaColors.Fill
 
 // Glass "Add to..." sheet. Shows the song moods + user playlists with live
 // checkmarks. Toggling writes straight to the DB — Home updates instantly.
@@ -56,19 +56,19 @@ fun AddToSheet(
 ) {
     val context = LocalContext.current
     Box(
-        Modifier.fillMaxSize().background(Color(0xCC000000)).clickable(onClick = onDismiss),
+        Modifier.fillMaxSize().background(MediaColors.Scrim).clickable(onClick = onDismiss),
         contentAlignment = Alignment.BottomCenter
     ) {
         Column(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
-                .background(Color(0xFF1B1628)).border(1.dp, G_BORDER, RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
+                .background(MediaColors.Modal).border(1.dp, G_BORDER, RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
                 .clickable(enabled = false) {}
                 .navigationBarsPadding()
                 .padding(Space.xl, Space.lg, Space.xl, Space.xl)
         ) {
             // grabber
             Box(Modifier.align(Alignment.CenterHorizontally).width(38.dp).height(4.dp)
-                .clip(CircleShape).background(Color(0x33FFFFFF)))
+                .clip(CircleShape).background(MediaColors.FillStrong))
             Spacer(Modifier.height(Space.lg))
             // Header carries the artwork so the sheet is unmistakably about
             // the track you long-pressed.
@@ -166,7 +166,7 @@ fun AddToSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
-                    Modifier.size(38.dp).clip(RoundedCornerShape(10.dp)).background(Color(0x1FFFFFFF)),
+                    Modifier.size(38.dp).clip(RoundedCornerShape(10.dp)).background(MediaColors.FillStrong),
                     contentAlignment = Alignment.Center
                 ) { Icon(Icons.Filled.Edit, null, tint = MediaColors.Cream, modifier = Modifier.size(19.dp)) }
                 Spacer(Modifier.width(Space.md))
@@ -183,7 +183,7 @@ private fun QuickAction(
     icon: ImageVector, label: String, modifier: Modifier = Modifier, onClick: () -> Unit
 ) {
     Column(
-        modifier.clip(RoundedCornerShape(14.dp)).background(Color(0x14FFFFFF))
+        modifier.clip(RoundedCornerShape(14.dp)).background(MediaColors.Fill)
             .pressScale(haptic = true, onClick = onClick)
             .padding(vertical = Space.md),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -203,7 +203,7 @@ private fun ActionRow(icon: ImageVector, label: String, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            Modifier.size(38.dp).clip(RoundedCornerShape(10.dp)).background(Color(0x1FFFFFFF)),
+            Modifier.size(38.dp).clip(RoundedCornerShape(10.dp)).background(MediaColors.FillStrong),
             contentAlignment = Alignment.Center
         ) { Icon(icon, null, tint = MediaColors.Cream, modifier = Modifier.size(19.dp)) }
         Spacer(Modifier.width(Space.md))

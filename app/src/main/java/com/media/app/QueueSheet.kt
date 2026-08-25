@@ -139,12 +139,12 @@ fun QueueSheet(
                         backgroundContent = {
                             Row(
                                 Modifier.fillMaxSize()
-                                    .background(Color(0xFFEF4444).copy(alpha = 0.22f))
+                                    .background(MediaColors.Danger.copy(alpha = 0.22f))
                                     .padding(horizontal = Space.xl),
                                 horizontalArrangement = Arrangement.End,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Filled.Delete, null, tint = Color(0xFFEF4444),
+                                Icon(Icons.Filled.Delete, null, tint = MediaColors.Danger,
                                     modifier = Modifier.size(IconSize.lg))
                             }
                         },

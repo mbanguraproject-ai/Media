@@ -253,10 +253,8 @@ abstract class OverrideDatabase : RoomDatabase() {
     abstract fun historyDao(): HistoryDao
     abstract fun envelopeDao(): EnvelopeDao
     abstract fun positionDao(): PositionDao
-    abstract fun favoriteDao(): FavoriteDao
     abstract fun moodDao(): MoodDao
     abstract fun playlistDao(): PlaylistDao
-    abstract fun folderDao(): FolderDao
 
     companion object {
         @Volatile private var INSTANCE: OverrideDatabase? = null
