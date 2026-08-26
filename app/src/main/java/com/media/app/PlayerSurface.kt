@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.PictureInPictureAlt
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
@@ -73,6 +74,7 @@ fun PlayerSurface(
     state: PlayerState,
     vm: PlayerViewModel,
     expanded: Boolean,
+    onFullscreen: () -> Unit,
     artItem: AppMediaItem?,
     artForQueue: (QueueEntry) -> AppMediaItem?,
     beat: BeatState,
@@ -122,11 +124,39 @@ fun PlayerSurface(
         val ink = MediaColors.Ink
 
         // ---- shared artwork geometry ----
-        val artSize = lerpDp(MINI_ART.dp, maxWidth * 0.76f, e)
-        val artX = lerpDp(8.dp, (maxWidth - maxWidth * 0.76f) / 2f, e)
-        val artY = lerpDp(8.dp, WindowInsets.statusBars.asPaddingValues()
-            .calculateTopPadding() + 56.dp, e)
-        val artCorner = lerpDp(22.dp, 18.dp, e)
+        // Width AND height, not one square value. Video letterboxed inside a
+        // square box wasted roughly half the area a 16:9 clip could fill; the
+        // box now takes the video's real aspect as it expands, so RESIZE_MODE_FIT
+        // has nothing left to letterbox.
+        val videoAspect =
+            if (state.isVideo && state.videoWidth > 0 && state.videoHeight > 0)
+                state.videoWidth.toFloat() / state.videoHeight
+            else 1f
+        // Aspect itself is interpolated, so the pill stays square and only
+        // becomes cinematic as it opens - the morph is unaffected.
+        val aspectNow = 1f + (videoAspect - 1f) * e
+        val expandedW = if (state.isVideo) maxWidth else maxWidth * 0.76f
+
+        var artW = lerpDp(MINI_ART.dp, expandedW, e)
+        var artH = artW / aspectNow
+        // Portrait video would otherwise run past the controls and off-screen.
+        val artHCap = maxHeight * 0.62f
+        if (artH > artHCap) {
+            artH = artHCap
+            artW = artH * aspectNow
+        }
+
+        val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        // Video centres in the space above the controls; audio keeps its
+        // hero position under the top bar.
+        val expandedY =
+            if (state.isVideo) ((maxHeight - artH) / 2f - 40.dp).coerceAtLeast(statusTop + 56.dp)
+            else statusTop + 56.dp
+
+        val artX = lerpDp(8.dp, (maxWidth - artW) / 2f, e)
+        val artY = lerpDp(8.dp, expandedY, e)
+        // Video loses its rounding as it fills the frame.
+        val artCorner = lerpDp(22.dp, if (state.isVideo) 0.dp else 18.dp, e)
 
         val miniAlpha = (1f - e * 2.2f).coerceIn(0f, 1f)
         val fullAlpha = ((e - 0.45f) / 0.55f).coerceIn(0f, 1f)
@@ -211,9 +241,9 @@ fun PlayerSurface(
                 // from the Canvas. The old version sized its box to ~1.5x the
                 // screen and offset it negative, so Compose clamped it and the
                 // rings visibly originated from the right instead of the cover.
-                val cx = with(density) { (artX + artSize / 2f).toPx() }
-                val cy = with(density) { (artY + artSize / 2f).toPx() }
-                val r0 = with(density) { (artSize / 2f).toPx() }
+                val cx = with(density) { (artX + artW / 2f).toPx() }
+                val cy = with(density) { (artY + artH / 2f).toPx() }
+                val r0 = with(density) { (minOf(artW, artH) / 2f).toPx() }
                 BeatRings(
                     beat = beat,
                     color = ambient,
@@ -226,12 +256,12 @@ fun PlayerSurface(
             if (level > 0.01f) {
                 // Bloom pushed well past the old 0.16-0.38: it now clearly
                 // swells past the artwork edge on a hit instead of hinting.
-                val grow = artSize * (0.24f + 0.46f * level)
+                val grow = minOf(artW, artH) * (0.24f + 0.46f * level)
                 Box(
                     Modifier
                         .clearAndSetSemantics { }
                         .offset(x = artX - grow / 2f, y = artY - grow / 2f)
-                        .size(artSize + grow)
+                        .size(width = artW + grow, height = artH + grow)
                         .background(
                             Brush.radialGradient(
                                 listOf(
@@ -246,7 +276,7 @@ fun PlayerSurface(
 
             // ---------------- shared artwork ----------------
             Box(
-                Modifier.offset(x = artX, y = artY).size(artSize)
+                Modifier.offset(x = artX, y = artY).size(width = artW, height = artH)
                     // 10% at full level. With the punch curve the value sits
                     // near zero between hits, so this reads as a strike rather
                     // than a constant wobble.
@@ -352,6 +382,14 @@ fun PlayerSurface(
                     // PiP only exists for video, and only where the device
                     // supports it - no dead button on an audio track.
                     val ctx = androidx.compose.ui.platform.LocalContext.current
+                    if (state.isVideo) {
+                        Icon(
+                            Icons.Filled.Fullscreen, "Fullscreen", tint = MediaColors.Cream,
+                            modifier = Modifier.size(26.dp)
+                                .pressScale(haptic = true, onClick = onFullscreen)
+                        )
+                        Spacer(Modifier.width(Space.md))
+                    }
                     if (state.isVideo && Pip.isSupported(ctx)) {
                         Icon(
                             Icons.Filled.PictureInPictureAlt, "Picture in picture",
@@ -494,7 +532,7 @@ fun rememberArtItem(state: PlayerState): AppMediaItem? =
         }
     }
 
-private fun fmtClock(ms: Long): String {
+internal fun fmtClock(ms: Long): String {
     val total = (ms / 1000).coerceAtLeast(0)
     val h = total / 3600
     val m = (total % 3600) / 60

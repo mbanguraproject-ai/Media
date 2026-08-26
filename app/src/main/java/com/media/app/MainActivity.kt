@@ -333,6 +333,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
     var currentTab by remember { mutableStateOf(0) }
     var showPlaylists by remember { mutableStateOf(false) }
     var openPlaylist by remember { mutableStateOf<Playlist?>(null) }
+    var videoFullscreen by remember { mutableStateOf(false) }
     var addToItem by remember { mutableStateOf<AppMediaItem?>(null) }
     var showTerms by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
@@ -444,11 +445,18 @@ fun HomeScaffold(vm: PlayerViewModel) {
     val nativeAd = rememberNativeAd(enabled = adsReady && !adFree)
 
     val playingItem = rememberArtItem(state)
-    val envelope = rememberEnvelope(playingItem)
+    // Video never pulses: the artwork box holds a PlayerView, so scaling and
+    // blooming it distorts the picture. Passing null also skips the decode
+    // entirely rather than analysing a video's audio track for nothing.
+    val envelope = rememberEnvelope(if (state.isVideo) null else playingItem)
     // Volume is the power control: silent means completely still, and turning
     // it up brings both the movement and the hit count with it.
     val musicVolume = rememberMusicVolume()
-    val beat = rememberBeatPulse(state, envelope, active = state.hasItem, volume = musicVolume)
+    val beat = rememberBeatPulse(
+        state, envelope,
+        active = state.hasItem && !state.isVideo,
+        volume = musicVolume
+    )
 
     // Hoisted to scaffold scope: these were being called INSIDE tap handlers,
     // so every "View album" / "View artist" regrouped the entire library on
@@ -460,10 +468,16 @@ fun HomeScaffold(vm: PlayerViewModel) {
     KeepScreenOnWhileVideo(state.isVideo, state.isPlaying)
     val inPip = LocalInPip.current
     val pipActivity = context as? android.app.Activity
+    LaunchedEffect(state.isVideo) { if (!state.isVideo) videoFullscreen = false }
     LaunchedEffect(state.videoWidth, state.videoHeight, state.isVideo) {
         if (state.isVideo && pipActivity != null) {
             Pip.update(pipActivity, state.videoWidth, state.videoHeight)
         }
+    }
+    // Landscape fullscreen owns the screen outright: no scaffold, no chrome.
+    if (videoFullscreen && state.isVideo && !inPip) {
+        FullscreenVideo(state = state, vm = vm, onExit = { videoFullscreen = false })
+        return
     }
     if (inPip) {
         // PiP shrinks the ENTIRE activity, so everything except the video has
@@ -855,6 +869,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
             state = state,
             vm = vm,
             expanded = showPlayer,
+            onFullscreen = { videoFullscreen = true },
             artItem = playingItem,
             // Media3's timeline only carries title/artist/uri, so map back to
             // the library item to get real cover art in the queue.
