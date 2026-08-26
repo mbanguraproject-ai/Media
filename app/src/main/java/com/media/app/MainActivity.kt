@@ -971,17 +971,22 @@ private fun BottomBar(
         // rather than a surface the content scrolls under.
         Box(Modifier.fillMaxWidth().height(0.5.dp).background(MediaColors.Fill))
         Row(
-            // Inset from the screen edges: the outer tabs were running flush
-            // into the bezel with nothing to breathe against.
+            // weight(1f) centred each tab in its own quarter, so the outer two
+            // always sat an eighth of the screen in from the edges. Fixed-width
+            // tabs with SpaceBetween anchor the first and last to the margins
+            // and distribute the slack between them instead. 68dp x4 still
+            // fits a 320dp screen with room to spare.
             Modifier.fillMaxWidth().height(BottomBarHeight)
                 .padding(horizontal = Space.sm),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            NavTab(Icons.Filled.Home, Icons.Outlined.Home, "Home", current == 0, Modifier.weight(1f)) { onSelect(0) }
+            val tab = Modifier.width(68.dp)
+            NavTab(Icons.Filled.Home, Icons.Outlined.Home, "Home", current == 0, tab) { onSelect(0) }
             NavTab(Icons.AutoMirrored.Filled.LibraryBooks, Icons.AutoMirrored.Outlined.LibraryBooks,
-                "Library", current == 1, Modifier.weight(1f)) { onSelect(1) }
-            NavTab(Icons.Filled.QueueMusic, Icons.Outlined.QueueMusic, "Playlists", current == 2, Modifier.weight(1f)) { onSelect(2) }
-            NavTab(Icons.Filled.Menu, Icons.Outlined.Menu, "More", current == 3, Modifier.weight(1f)) { onSelect(3) }
+                "Library", current == 1, tab) { onSelect(1) }
+            NavTab(Icons.Filled.QueueMusic, Icons.Outlined.QueueMusic, "Playlists", current == 2, tab) { onSelect(2) }
+            NavTab(Icons.Filled.Menu, Icons.Outlined.Menu, "More", current == 3, tab) { onSelect(3) }
         }
     }
 }
