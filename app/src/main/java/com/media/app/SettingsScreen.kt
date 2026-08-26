@@ -89,10 +89,19 @@ fun SettingsScreen(
         val price = product?.oneTimePurchaseOfferDetails?.formattedPrice
         if (adFree) {
             SectionLabel("Supporter")
-            SettingRow(Icons.Outlined.Verified, "Ads removed", "Thank you", navigates = false) {}
+            SettingRow(
+                Icons.Outlined.Favorite, "Thank you", null,
+                subtitle = "Ads are off for good", navigates = false
+            ) {}
         } else if (price != null) {
             SectionLabel("Support")
-            SettingRow(Icons.Outlined.Block, "Remove ads", price) {
+            // Framed as backing the app rather than buying an annoyance away:
+            // one card in a feed is a weak thing to charge for, and the ask
+            // reads better as support with ad removal as the thank-you.
+            SettingRow(
+                Icons.Outlined.Favorite, "Support Aura", price,
+                subtitle = "One-time \u00b7 removes ads forever"
+            ) {
                 (context as? android.app.Activity)?.let { Billing.purchase(it) }
             }
         }
@@ -194,6 +203,9 @@ private fun SettingRow(
     icon: ImageVector,
     title: String,
     value: String?,
+    // Optional second line. The support row needs to state what you get;
+    // "Support Aura" alone doesn't say ads go away.
+    subtitle: String? = null,
     navigates: Boolean = true,
     onClick: () -> Unit
 ) {
@@ -204,8 +216,12 @@ private fun SettingRow(
     ) {
         Icon(icon, null, tint = MediaColors.CreamDim, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(Space.md))
-        Text(title, style = MaterialTheme.typography.bodyLarge, color = MediaColors.Cream,
-            modifier = Modifier.weight(1f))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = MediaColors.Cream)
+            if (subtitle != null) {
+                Text(subtitle, style = Typo.Tertiary, color = MediaColors.CreamFaint)
+            }
+        }
         if (value != null) {
             Text(value, style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamDim)
             Spacer(Modifier.width(Space.sm))
