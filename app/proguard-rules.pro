@@ -54,6 +54,9 @@
 # Play Services Ads ships its own consumer rules, but the native ad layout is
 # only referenced by id from Kotlin, so keep the view class explicitly.
 -keep class com.google.android.gms.ads.nativead.NativeAdView { *; }
+
+# Billing responses are parsed reflectively from JSON.
+-keep class com.android.billingclient.api.** { *; }
 -keep class com.media.app.MediaSettings { *; }
 -keep enum com.media.app.** { *; }
 

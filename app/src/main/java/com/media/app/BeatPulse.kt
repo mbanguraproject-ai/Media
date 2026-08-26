@@ -1,10 +1,15 @@
 package com.media.app
 
+import android.content.Context
+import android.media.AudioManager
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.delay
 
 // ============================================================================
 //  BEAT PULSE — shared driver (§13, §33)
@@ -69,20 +74,46 @@ class BeatState {
  * last known position via the frame clock; re-keying on positionMs resyncs to
  * truth twice a second so drift never accumulates.
  */
+/**
+ * Music-stream volume as 0..1, polled at ~3Hz.
+ *
+ * This is the power control: at zero the artwork is completely still, and
+ * turning it up brings both the movement and the number of ring hits with it.
+ * Polling rather than a receiver because VOLUME_CHANGED_ACTION is undocumented
+ * and unreliable across skins; three reads a second costs nothing.
+ */
+@Composable
+fun rememberMusicVolume(): Float {
+    val context = LocalContext.current
+    var vol by remember { mutableStateOf(0f) }
+    LaunchedEffect(Unit) {
+        val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        while (true) {
+            val max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+            vol = am.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() / max
+            delay(300)
+        }
+    }
+    return vol
+}
+
 @Composable
 fun rememberBeatPulse(
     state: PlayerState,
     envelope: FloatArray?,
-    active: Boolean
+    active: Boolean,
+    volume: Float
 ): BeatState {
     val reduced = LocalReducedMotion.current
     val beat = remember { BeatState() }
 
-    LaunchedEffect(envelope, state.isPlaying, state.positionMs, state.speed, reduced, active) {
-        if (envelope == null || !state.isPlaying || reduced || !active) {
+    LaunchedEffect(envelope, state.isPlaying, state.positionMs, state.speed, reduced, active, volume) {
+        // Silent means still. Not "quiet" - nothing at all.
+        if (envelope == null || !state.isPlaying || reduced || !active || volume <= 0.01f) {
             beat.reset()
             return@LaunchedEffect
         }
+        val power = volume.coerceIn(0f, 1f)
         val base = state.positionMs
         val speed = state.speed
         var t0 = 0L
@@ -92,7 +123,10 @@ fun rememberBeatPulse(
             withFrameNanos { now ->
                 if (t0 == 0L) t0 = now
                 val ms = base + ((now - t0) / 1_000_000f * speed).toLong()
-                val target = punch(envelope.levelAt(ms))
+                // Volume scales the SIGNAL, not just the drawing - so at low
+                // volume the rising edges rarely clear the ring threshold and
+                // you get fewer, softer hits. Turning up brings the power.
+                val target = punch(envelope.levelAt(ms)) * power
 
                 // Rising edge only — a sustained loud passage is not a hit.
                 if (target - prev > 0.20f && now - lastRing > RING_MIN_GAP_NS) {
@@ -114,27 +148,43 @@ fun rememberBeatPulse(
  * Expanding shockwave rings. Drawn behind artwork so they read as energy
  * leaving the source rather than an outline stuck on top.
  */
+/**
+ * Expanding shockwave rings.
+ *
+ * [centerPx] and [baseRadiusPx] are passed EXPLICITLY rather than derived from
+ * the Canvas. The previous version sized its own box to ~1.5x the screen width
+ * and offset it negative; Compose clamped that to the available width, so the
+ * Canvas centre no longer sat on the artwork and every ring appeared to come
+ * from the right. Draw into a full-size layer and place the centre by hand.
+ */
 @Composable
-fun BeatRings(beat: BeatState, color: Color, modifier: Modifier, strength: Float = 1f) {
+fun BeatRings(
+    beat: BeatState,
+    color: Color,
+    modifier: Modifier,
+    centerPx: Offset,
+    baseRadiusPx: Float,
+    strength: Float = 1f
+) {
     val now = beat.frameNanos
     Canvas(modifier) {
-        if (now == 0L) return@Canvas
-        val base = size.minDimension
+        if (now == 0L || baseRadiusPx <= 0f) return@Canvas
         for (i in 0 until RINGS) {
             val b = beat.born[i]
             if (b == 0L) continue
             val p = (now - b) / RING_LIFE_NS
             if (p < 0f || p >= 1f) continue
-            // Ease-out expansion: fast off the mark, decelerating.
+            // Ease-out: fast off the mark, decelerating. Reaches 2.1x the
+            // artwork radius so it genuinely leaves the cover behind.
             val e = 1f - (1f - p) * (1f - p)
-            val radius = base * (0.42f + 0.50f * e)
-            val alpha = (1f - p) * (1f - p) * beat.power[i] * 0.55f * strength
+            val radius = baseRadiusPx * (1f + 1.1f * e)
+            val alpha = (1f - p) * (1f - p) * beat.power[i] * 0.7f * strength
             drawCircle(
                 color = color,
                 radius = radius,
-                center = center,
+                center = centerPx,
                 alpha = alpha,
-                style = Stroke(width = base * 0.022f * (1f - p * 0.65f))
+                style = Stroke(width = baseRadiusPx * 0.055f * (1f - p * 0.6f))
             )
         }
     }

@@ -93,6 +93,8 @@ dependencies {
     // requires a consent flow for EEA/UK or the account can be restricted.
     implementation("com.google.android.gms:play-services-ads:23.6.0")
     implementation("com.google.android.ump:user-messaging-platform:3.1.0")
+    // One-time "remove ads" purchase.
+    implementation("com.android.billingclient:billing-ktx:7.1.1")
 
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")

@@ -93,7 +93,21 @@ import androidx.media3.session.SessionToken
 import androidx.media3.ui.PlayerView
 import com.google.common.util.concurrent.MoreExecutors
 
+/** True while the activity is running in a picture-in-picture window. */
+val LocalInPip = androidx.compose.runtime.staticCompositionLocalOf { false }
+
 class MainActivity : ComponentActivity() {
+
+    private val inPip = mutableStateOf(false)
+
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: android.content.res.Configuration
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        inPip.value = isInPictureInPictureMode
+    }
+
     @UnstableApi
     override fun onCreate(savedInstanceState: Bundle?) {
         val splash = installSplashScreen()
@@ -110,7 +124,10 @@ class MainActivity : ComponentActivity() {
             // from the home screen via LocalMoodSetter. Purely visual.
             var mood by remember { mutableStateOf(Mood.default) }
             MediaTheme(themeMode = settings.themeMode, fontScale = settings.fontScale, mood = mood) {
-                androidx.compose.runtime.CompositionLocalProvider(LocalMoodSetter provides { mood = it }) {
+                androidx.compose.runtime.CompositionLocalProvider(
+                    LocalMoodSetter provides { mood = it },
+                    LocalInPip provides inPip.value
+                ) {
                     Surface(Modifier.fillMaxSize(), color = MediaColors.Ink) {
                         AppRoot()
                     }
@@ -407,23 +424,53 @@ fun HomeScaffold(vm: PlayerViewModel) {
     val allById = remember(allAudio, video) { (allAudio + video).associateBy { it.id } }
     // Consent first, SDK second. Kicked off once, after the permission gate,
     // so it never lands on top of onboarding.
+    // Entitlement: cached value seeds the flow so no ad can flash before Play
+    // answers; Billing then confirms, restores or revokes it.
+    val cachedAdFree by SettingsStore.adFreeFlow(context).collectAsState(initial = true)
+    val adFree by Billing.adFree.collectAsState()
+    LaunchedEffect(cachedAdFree) { Billing.seed(cachedAdFree) }
+    LaunchedEffect(Unit) {
+        Billing.start(context) { owned ->
+            scope.launch { SettingsStore.setAdFree(context, owned) }
+        }
+    }
+
     var adsReady by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         (context as? android.app.Activity)?.let { act ->
             Ads.startConsentThenInit(act) { adsReady = true }
         }
     }
-    val nativeAd = rememberNativeAd(enabled = adsReady)
+    val nativeAd = rememberNativeAd(enabled = adsReady && !adFree)
 
     val playingItem = rememberArtItem(state)
     val envelope = rememberEnvelope(playingItem)
-    val beat = rememberBeatPulse(state, envelope, active = state.hasItem)
+    // Volume is the power control: silent means completely still, and turning
+    // it up brings both the movement and the hit count with it.
+    val musicVolume = rememberMusicVolume()
+    val beat = rememberBeatPulse(state, envelope, active = state.hasItem, volume = musicVolume)
 
     // Hoisted to scaffold scope: these were being called INSIDE tap handlers,
     // so every "View album" / "View artist" regrouped the entire library on
     // the main thread. Computed once per library instead (§38).
     val albumsAll = remember(allAudio) { MediaRepository.albumsOf(allAudio) }
     val artistsAll = remember(allAudio) { MediaRepository.artistsOf(allAudio) }
+
+    // ---- picture-in-picture ----
+    KeepScreenOnWhileVideo(state.isVideo, state.isPlaying)
+    val inPip = LocalInPip.current
+    val pipActivity = context as? android.app.Activity
+    LaunchedEffect(state.videoWidth, state.videoHeight, state.isVideo) {
+        if (state.isVideo && pipActivity != null) {
+            Pip.update(pipActivity, state.videoWidth, state.videoHeight)
+        }
+    }
+    if (inPip) {
+        // PiP shrinks the ENTIRE activity, so everything except the video has
+        // to go - otherwise the corner window is a postage stamp of Home.
+        PipVideoOnly(vm)
+        return
+    }
 
     // §42: the very first successful scan is a reveal, not a dump into a list.
     // Placed at the top of the scaffold so it fully replaces the UI for one
@@ -476,7 +523,12 @@ fun HomeScaffold(vm: PlayerViewModel) {
         val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
         // Favorites mood shows only favorited tracks; every other mood shows all music.
-        val shown = if (mood.holdsSongs) music.filter { moodMembers.contains(it.id) } else music
+        // Home now has a sort, driven by the three cards below the mood chips.
+        var homeSort by remember { mutableStateOf(SortKey.NAME) }
+        val shown = remember(music, mood, moodMembers, homeSort, lastPlayedMap, playCountMap) {
+            val base = if (mood.holdsSongs) music.filter { moodMembers.contains(it.id) } else music
+            base.sortedFor(homeSort, lastPlayedMap, playCountMap)
+        }
 
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             // FIXED top region — does not scroll. Songs scroll underneath it.
@@ -521,14 +573,6 @@ fun HomeScaffold(vm: PlayerViewModel) {
                     contentPadding = PaddingValues(bottom = 170.dp + navBottom),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    item {
-                        Spacer(Modifier.height(Space.md))
-                        StatCards(
-                            recentlyPlayed = recentHistory.size,
-                            allTracks = music.size,
-                            favorites = favorites.size
-                        )
-                    }
                     items(sections.size) { s ->
                         // ONE ad, after the first shelf. Placed inside the
                         // feed so it scrolls out of the way; nothing on Now
@@ -570,6 +614,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
                             )
                         }
                         if (sections.isNotEmpty()) SectionHeader("All tracks")
+                        SortSegments(selected = homeSort, onSelect = { homeSort = it })
                         CountAndShuffle(count = shown.size, onShuffle = {
                             if (shown.isNotEmpty()) {
                                 if (!state.shuffle) vm.toggleShuffle()
@@ -585,6 +630,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
                             isFavorite = favorites.contains(track.id),
                             onClick = { vm.playOrToggle(shown, idx) },
                             onLongPress = { addToItem = track },
+                            onMenu = { addToItem = track },
                             onToggleFav = {
                                 scope.launch {
                                     if (favorites.contains(track.id)) db.moodDao().remove(Mood.FAVORITES.key, track.id)

@@ -29,6 +29,7 @@ private enum class LibTab(val label: String, val pillar: Pillar?) {
     ARTISTS("Artists", Pillar.MUSIC),
     PODCASTS("Podcasts", Pillar.PODCAST),
     AUDIOBOOKS("Audiobooks", Pillar.AUDIOBOOK),
+    RECORDINGS("Recordings", Pillar.RECORDING),
     VIDEO("Video", Pillar.VIDEO)
 }
 

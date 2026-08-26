@@ -31,6 +31,10 @@ data class PlayerState(
     val repeatMode: Int = 0,   // Media3: 0=OFF, 1=ONE, 2=ALL
     val speed: Float = 1.0f,
     val isVideo: Boolean = false,
+    // Real pixel size of the current video, for the PiP aspect ratio and for
+    // sizing the surface instead of letterboxing it into a square.
+    val videoWidth: Int = 0,
+    val videoHeight: Int = 0,
     val sleepActive: Boolean = false,
     val sleepRemainingMs: Long = 0L,
     val sleepEndOfTrack: Boolean = false,
@@ -123,6 +127,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             refresh()
         }
         override fun onPlaybackStateChanged(playbackState: Int) = refresh()
+
+        override fun onVideoSizeChanged(size: androidx.media3.common.VideoSize) = refresh()
 
         // §22: nothing used to handle this — a deleted file failed silently.
         override fun onPlayerError(error: PlaybackException) {
@@ -265,6 +271,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             repeatMode = c.repeatMode,
             speed = c.playbackParameters.speed,
             isVideo = c.currentMediaItem?.localConfiguration?.uri?.toString()?.contains("/video/") == true,
+            videoWidth = c.videoSize.width,
+            videoHeight = c.videoSize.height,
             sleepActive = prev.sleepActive,
             sleepRemainingMs = prev.sleepRemainingMs,
             sleepEndOfTrack = prev.sleepEndOfTrack,

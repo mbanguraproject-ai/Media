@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -80,6 +81,21 @@ fun SettingsScreen(
         SectionLabel("Library")
         SettingRow(Icons.Outlined.Storage, "Storage", "$audioCount + $videoCount items", navigates = false) {}
         RescanRow(onRescan)
+
+        // Price comes from Play, never hardcoded - it is localised and can
+        // change without a release.
+        val adFree by Billing.adFree.collectAsState()
+        val product by Billing.product.collectAsState()
+        val price = product?.oneTimePurchaseOfferDetails?.formattedPrice
+        if (adFree) {
+            SectionLabel("Supporter")
+            SettingRow(Icons.Outlined.Verified, "Ads removed", "Thank you", navigates = false) {}
+        } else if (price != null) {
+            SectionLabel("Support")
+            SettingRow(Icons.Outlined.Block, "Remove ads", price) {
+                (context as? android.app.Activity)?.let { Billing.purchase(it) }
+            }
+        }
 
         SectionLabel("About")
         SettingRow(Icons.Outlined.Info, "About " + stringResource(R.string.app_name), null) { onOpenAbout() }

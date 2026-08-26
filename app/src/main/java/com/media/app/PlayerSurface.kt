@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.PictureInPictureAlt
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
@@ -206,15 +207,20 @@ fun PlayerSurface(
             // Shockwave rings ride outside the bloom and are always mounted
             // while expanded — they animate off their own birth timestamps.
             if (e > 0.5f) {
-                val ringPad = artSize * 0.95f
+                // Full-size layer, centre computed from the artwork rather than
+                // from the Canvas. The old version sized its box to ~1.5x the
+                // screen and offset it negative, so Compose clamped it and the
+                // rings visibly originated from the right instead of the cover.
+                val cx = with(density) { (artX + artSize / 2f).toPx() }
+                val cy = with(density) { (artY + artSize / 2f).toPx() }
+                val r0 = with(density) { (artSize / 2f).toPx() }
                 BeatRings(
                     beat = beat,
                     color = ambient,
+                    centerPx = Offset(cx, cy),
+                    baseRadiusPx = r0,
                     strength = 1f,
-                    modifier = Modifier
-                        .clearAndSetSemantics { }
-                        .offset(x = artX - ringPad / 2f, y = artY - ringPad / 2f)
-                        .size(artSize + ringPad)
+                    modifier = Modifier.matchParentSize().clearAndSetSemantics { }
                 )
             }
             if (level > 0.01f) {
@@ -343,6 +349,21 @@ fun PlayerSurface(
                     Spacer(Modifier.weight(1f))
                     Text("Now playing", style = Typo.Tertiary, color = MediaColors.CreamDim)
                     Spacer(Modifier.weight(1f))
+                    // PiP only exists for video, and only where the device
+                    // supports it - no dead button on an audio track.
+                    val ctx = androidx.compose.ui.platform.LocalContext.current
+                    if (state.isVideo && Pip.isSupported(ctx)) {
+                        Icon(
+                            Icons.Filled.PictureInPictureAlt, "Picture in picture",
+                            tint = MediaColors.Cream,
+                            modifier = Modifier.size(26.dp).pressScale(haptic = true) {
+                                (ctx as? android.app.Activity)?.let {
+                                    Pip.enter(it, state.videoWidth, state.videoHeight)
+                                }
+                            }
+                        )
+                        Spacer(Modifier.width(Space.md))
+                    }
                     Icon(
                         Icons.AutoMirrored.Filled.QueueMusic, "Queue", tint = MediaColors.Cream,
                         modifier = Modifier.size(28.dp).pressScale(haptic = true) { showQueue = true }
@@ -479,4 +500,28 @@ private fun fmtClock(ms: Long): String {
     val m = (total % 3600) / 60
     val s = total % 60
     return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
+}
+
+/**
+ * Bare video surface for picture-in-picture. No chrome at all - in PiP the
+ * window is a few hundred pixels wide and anything else is noise.
+ */
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+@Composable
+fun PipVideoOnly(vm: PlayerViewModel) {
+    androidx.compose.foundation.layout.Box(
+        Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black)
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    useController = false
+                    setBackgroundColor(android.graphics.Color.BLACK)
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                }
+            },
+            update = { it.player = vm.boundPlayer() },
+            modifier = Modifier.fillMaxSize()
+        )
+    }
 }

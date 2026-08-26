@@ -276,6 +276,7 @@ fun PlaylistDetailScreen(
                         isFavorite = favorites.contains(track.id),
                         onClick = { onPlay(idx) },
                         onLongPress = { onLongPress(track) },
+                        onMenu = { onLongPress(track) },
                         onToggleFav = { onToggleFav(track) }
                     )
                 }

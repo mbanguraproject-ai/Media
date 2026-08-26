@@ -55,17 +55,7 @@ fun StashHeader(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
-            // Greeting is the first thing to go: it is context, not identity.
-            if (c < 0.99f) {
-                Text(
-                    greeting(), style = Typo.Secondary, color = MediaColors.CreamDim,
-                    maxLines = 1,
-                    modifier = Modifier
-                        .height(lerp(18.dp, 0.dp, c))
-                        .alpha((1f - c * 2f).coerceIn(0f, 1f))
-                )
-                Spacer(Modifier.height(lerp(Space.xxs, 0.dp, c)))
-            }
+
             // Title shrinks Display -> Section rather than cutting between two
             // styles, so the transition is continuous.
             Text(
@@ -77,6 +67,18 @@ fun StashHeader(
                 color = MediaColors.Cream,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
+            // Identity FIRST. The greeting sat above the title, putting the
+            // less useful line where the eye lands. It reads better as context
+            // beneath the name - and it is still what goes on scroll.
+            if (c < 0.99f) {
+                Text(
+                    greeting(), style = Typo.Secondary, color = MediaColors.CreamDim,
+                    maxLines = 1,
+                    modifier = Modifier
+                        .height(lerp(18.dp, 0.dp, c))
+                        .alpha((1f - c * 2f).coerceIn(0f, 1f))
+                )
+            }
         }
         Spacer(Modifier.width(Space.md))
         // Search lives HERE and nowhere else — it left the bottom bar so four
@@ -163,44 +165,43 @@ fun MoodBanner(mood: Mood, collapse: Float = 0f) {
 data class Stat(val icon: ImageVector, val label: String, val count: Int, val tint: Color)
 
 @Composable
-fun StatCards(recentlyPlayed: Int, allTracks: Int, favorites: Int) {
-    // Labels match what the numbers actually are. "Most Played" was the row
-    // count of a LIMIT 10 history query (so it maxed out at 10) and "Recently
-    // Added" was simply the total track count.
-    val stats = listOf(
-        Stat(Icons.Filled.AccessTime, "Recently Played", recentlyPlayed, Color(0xFF2DD4BF)),
-        Stat(Icons.Filled.LibraryMusic, "All Tracks", allTracks, Color(0xFF2DD4BF)),
-        Stat(Icons.Filled.Favorite, "Favorites", favorites, MediaColors.Favorite),
+fun SortSegments(selected: SortKey, onSelect: (SortKey) -> Unit) {
+    // Was three stat CARDS carrying counts, sitting above two shelves and an
+    // ad. Card + number reads as a statistic, and the list it reordered was a
+    // screen and a half below - so tapping appeared to do nothing.
+    // A segmented control, placed directly above the list it sorts, says what
+    // it is without needing a label.
+    val opts = listOf(
+        SortKey.RECENTLY_PLAYED to "Recent",
+        SortKey.NAME to "A\u2013Z",
+        SortKey.MOST_PLAYED to "Most played"
     )
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = Space.xl),
-        horizontalArrangement = Arrangement.spacedBy(Space.md)
+    Row(
+        Modifier.fillMaxWidth().padding(Space.xl, Space.sm, Space.xl, Space.sm)
+            .clip(RoundedCornerShape(Radius.pill))
+            .background(MediaColors.FillSubtle)
+            .border(1.dp, MediaColors.Fill, RoundedCornerShape(Radius.pill))
+            .padding(3.dp)
     ) {
-        items(stats) { st ->
-            Row(
-                Modifier.width(205.dp).clip(RoundedCornerShape(16.dp))
-                    .background(MediaColors.FillSubtle)
-                    .border(1.dp, MediaColors.Fill, RoundedCornerShape(16.dp))
-                    .padding(Space.lg, 14.dp),
-                verticalAlignment = Alignment.CenterVertically
+        opts.forEach { (key, label) ->
+            val on = key == selected
+            Box(
+                Modifier.weight(1f)
+                    .clip(RoundedCornerShape(Radius.pill))
+                    .background(if (on) MediaColors.Accent else Color.Transparent)
+                    .pressScale(haptic = true) { onSelect(key) }
+                    .padding(vertical = 9.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    Modifier.size(38.dp).clip(RoundedCornerShape(11.dp))
-                        .background(st.tint.copy(alpha = 0.18f)),
-                    contentAlignment = Alignment.Center
-                ) { Icon(st.icon, null, tint = st.tint, modifier = Modifier.size(19.dp)) }
-                Spacer(Modifier.width(Space.md))
-                Column {
-                    Text(st.label, style = Typo.Primary, color = MediaColors.Cream,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("${st.count}", style = Typo.Section, color = st.tint)
-                }
+                Text(
+                    label, style = Typo.Label,
+                    color = if (on) Color.White else MediaColors.CreamDim,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }
 }
-
-// ------------------------------------------------------------------ COUNT + SHUFFLE
 @Composable
 fun CountAndShuffle(count: Int, onShuffle: () -> Unit) {
     Row(
@@ -232,7 +233,11 @@ fun TrackRow(
     isFavorite: Boolean,
     onClick: () -> Unit,
     onLongPress: () -> Unit,
-    onToggleFav: () -> Unit
+    onToggleFav: () -> Unit,
+    // Same destination as the long-press. Long-press alone is invisible -
+    // Play next, Add to queue, View album and Share were unreachable for
+    // anyone who didn't already know to hold a row down.
+    onMenu: (() -> Unit)? = null
 ) {
     Row(
         Modifier.fillMaxWidth()
@@ -254,21 +259,30 @@ fun TrackRow(
                 color = if (isPlaying) MediaColors.Accent else MediaColors.Cream,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(Space.xxs))
-            Text(item.artist, style = Typo.Secondary,
+            // Duration moved into the subtitle to free the trailing edge for a
+            // visible menu affordance without crowding the row.
+            Text("${item.artist}  \u00b7  ${fmtDur(item.durationMs)}", style = Typo.Secondary,
                 color = MediaColors.CreamFaint, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Spacer(Modifier.width(Space.sm))
-        // §10: an animated equalizer replaces the duration on the playing row.
         if (isPlaying) {
             PlayingEqualizer(
                 playing = true, color = MediaColors.Accent,
                 modifier = Modifier.size(16.dp, 14.dp)
             )
-        } else {
-            Text(fmtDur(item.durationMs), style = Typo.Tertiary, color = MediaColors.CreamFaint)
+            Spacer(Modifier.width(Space.sm))
         }
-        Spacer(Modifier.width(Space.md))
         FavoriteButton(isFavorite, Modifier.size(21.dp), onToggleFav)
+        if (onMenu != null) {
+            // Both carry a 48dp touch target from pressScale, so without a real
+            // gap the two hit areas sit shoulder to shoulder and the icons read
+            // as one control.
+            Spacer(Modifier.width(Space.md))
+            Icon(
+                Icons.Filled.MoreVert, "More options", tint = MediaColors.CreamFaint,
+                modifier = Modifier.size(21.dp).pressScale(haptic = true, onClick = onMenu)
+            )
+        }
     }
 }
 

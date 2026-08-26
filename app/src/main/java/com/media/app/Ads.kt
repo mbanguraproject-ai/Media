@@ -31,8 +31,14 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 object Ads {
 
-    /** TEST ID — replace with your own AdMob native unit before release. */
-    const val NATIVE_UNIT_ID = "ca-app-pub-3940256099942544/2247696110"
+    /**
+     * LIVE unit. In debug builds this falls back to Google's test unit - never
+     * request live ads from a development build, and never tap your own live
+     * ads. Both are the fastest routes to an AdMob suspension.
+     */
+    val NATIVE_UNIT_ID: String
+        get() = if (BuildConfig.DEBUG) "ca-app-pub-3940256099942544/2247696110"
+                else "ca-app-pub-9121922395304175/1883491481"
 
     private val initialised = AtomicBoolean(false)
 

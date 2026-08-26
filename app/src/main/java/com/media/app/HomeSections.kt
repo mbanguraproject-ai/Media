@@ -9,6 +9,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -199,8 +201,11 @@ private fun ShelfCard(
             if (pulse != null) {
                 // Rings sit inside the card's own bounds so a hit can't bleed
                 // over the neighbouring cards in the row.
+                val px = with(LocalDensity.current) { 132.dp.toPx() }
                 BeatRings(
                     beat = pulse, color = accent, strength = 0.75f,
+                    centerPx = Offset(px / 2f, px / 2f),
+                    baseRadiusPx = px / 2f,
                     modifier = Modifier.fillMaxSize().clearAndSetSemantics { }
                 )
             }

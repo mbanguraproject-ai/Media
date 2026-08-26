@@ -8,7 +8,9 @@ import kotlinx.coroutines.withContext
 
 enum class MediaType { AUDIO, VIDEO }
 
-enum class Pillar { MUSIC, PODCAST, AUDIOBOOK, VIDEO }
+// RECORDING keeps voice notes and WhatsApp audio out of MUSIC. Home shows the
+// music pillar only, so they leave Home entirely and live in Library instead.
+enum class Pillar { MUSIC, PODCAST, AUDIOBOOK, VIDEO, RECORDING }
 
 data class AppMediaItem(
     val id: Long,
@@ -135,13 +137,29 @@ object MediaRepository {
 
     private const val TEN_MIN_MS = 10 * 60 * 1000L
 
+    // Paths that mean "this is a voice note, not a song". WhatsApp keeps audio
+    // under its own media folders; most recorder apps write to Recordings/ or
+    // Sounds/. Checked BEFORE music/ so a recording filed under Music by a
+    // file manager still classifies correctly.
+    private val RECORDING_PATHS = listOf(
+        "whatsapp audio", "whatsapp voice notes", "whatsapp/media",
+        "recordings/", "recorder", "voice recorder", "sounds/", "call recordings",
+        "voice notes", "telegram audio"
+    )
+
     private fun classifyAudio(title: String, relPath: String, durationMs: Long): Pillar {
         val path = relPath.lowercase()
+        val name = title.lowercase()
         return when {
+            RECORDING_PATHS.any { path.contains(it) } -> Pillar.RECORDING
+            // normalizeTitle turns recorder filenames into "Recording ..." -
+            // catches files sitting outside any recognisable folder.
+            name.startsWith("recording") || name.startsWith("aud-") ||
+                name.startsWith("ptt-") || name.startsWith("voice ") -> Pillar.RECORDING
             path.contains("audiobooks/") -> Pillar.AUDIOBOOK
             path.contains("podcasts/") -> Pillar.PODCAST
             path.contains("music/") -> Pillar.MUSIC
-            title.lowercase().contains("podcast") -> Pillar.PODCAST
+            name.contains("podcast") -> Pillar.PODCAST
             durationMs > TEN_MIN_MS -> Pillar.PODCAST
             else -> Pillar.MUSIC
         }
