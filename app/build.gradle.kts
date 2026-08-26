@@ -21,7 +21,7 @@ android {
         applicationId = "app.devbangs.media"
         minSdk = 24
         targetSdk = 36
-        versionCode = 6
+        versionCode = 8
         versionName = "2.0"
     }
 
@@ -94,7 +94,10 @@ dependencies {
     implementation("com.google.android.gms:play-services-ads:23.6.0")
     implementation("com.google.android.ump:user-messaging-platform:3.1.0")
     // One-time "remove ads" purchase.
-    implementation("com.android.billingclient:billing-ktx:7.1.1")
+    // Plain artifact, NOT -ktx: the Kotlin extensions ship compiled with
+    // Kotlin 2.3 metadata and this project is on 2.0.20. We use only the
+    // callback API, so the extensions buy us nothing anyway.
+    implementation("com.android.billingclient:billing:9.1.0")
 
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")

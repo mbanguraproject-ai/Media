@@ -59,6 +59,10 @@ object Billing {
 
         val c = BillingClient.newBuilder(context)
             .setListener(listener)
+            // PBL 9 recommendation: the library re-establishes the connection
+            // itself when an API call is made while disconnected, so
+            // onBillingServiceDisconnected stays a no-op rather than retrying.
+            .enableAutoServiceReconnection()
             .enablePendingPurchases(
                 PendingPurchasesParams.newBuilder().enableOneTimeProducts().build()
             )
@@ -85,9 +89,11 @@ object Billing {
                         .build()
                 )
             ).build()
-        c.queryProductDetailsAsync(params) { result, details ->
+        // PBL 8+ changed this callback: the second argument is now a
+        // QueryProductDetailsResult rather than a bare List<ProductDetails>.
+        c.queryProductDetailsAsync(params) { result, queryResult ->
             if (result.responseCode == BillingClient.BillingResponseCode.OK) {
-                _product.value = details.firstOrNull()
+                _product.value = queryResult.productDetailsList.firstOrNull()
             }
         }
     }
