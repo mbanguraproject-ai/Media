@@ -243,6 +243,15 @@ interface OverrideDao {
     @Upsert
     suspend fun upsert(override: MediaOverride)
 
+    // Bulk rename writes one row per track. As a single @Upsert list this is
+    // one transaction rather than N, so a 40-track artist doesn't emit 40
+    // separate Flow updates and rebuild the library 40 times.
+    @Upsert
+    suspend fun upsertAll(overrides: List<MediaOverride>)
+
+    @Query("SELECT * FROM overrides WHERE mediaId IN (:ids)")
+    suspend fun getFor(ids: List<Long>): List<MediaOverride>
+
     @Query("DELETE FROM overrides WHERE mediaId = :id")
     suspend fun delete(id: Long)
 }

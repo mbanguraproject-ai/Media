@@ -75,7 +75,7 @@ fun PlaylistsScreen(
                     .border(1.dp, G_BORDER, RoundedCornerShape(14.dp))
                     .padding(4.dp)
             ) {
-                listOf("My Playlists", "Smart").forEachIndexed { i, label ->
+                listOf("My playlists", "Smart").forEachIndexed { i, label ->
                     val sel = tab == i
                     Box(
                         Modifier.weight(1f).clip(RoundedCornerShape(11.dp))
@@ -119,7 +119,7 @@ private fun MyPlaylistsTab(
             icon = Icons.Filled.QueueMusic,
             title = "No playlists yet",
             subtitle = "Create your first playlist",
-            cta = "Create Playlist",
+            cta = "Create playlist",
             onCta = onCreate
         )
     } else {
@@ -324,7 +324,7 @@ private fun CreatePlaylistSheet(onCreate: (String) -> Unit, onDismiss: () -> Uni
                 .background(MediaColors.Modal).border(1.dp, G_BORDER, RoundedCornerShape(20.dp))
                 .clickable(enabled = false) {}.padding(Space.xl),
         ) {
-            Text("New Playlist", style = Typo.Section, color = MediaColors.Cream)
+            Text("New playlist", style = Typo.Section, color = MediaColors.Cream)
             Spacer(Modifier.height(Space.lg))
             Box(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))

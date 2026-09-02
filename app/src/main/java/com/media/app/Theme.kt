@@ -126,7 +126,10 @@ val DarkPalette = Palette(
     hairline = Color(0xFF2E2A40),    // soft violet-grey rule
     text = Color(0xFFF3F1F7),
     textDim = Color(0xFF9C97AE),
-    textFaint = Color(0xFF6A6580),
+    // Was #6A6580 (L 45%), which measured 2.92:1 on elevated surfaces - below
+    // WCAG AA for body text (4.5) and below even the LARGE-text floor (3.0).
+    // Same hue and saturation, lightness 45% -> 57%. Now 4.51:1 worst case.
+    textFaint = Color(0xFF89849E),
     accent = Color(0xFF2DD4BF),      // teal primary (mood may override)
     onAccent = Color(0xFF06231F),
     onInverse = Color(0xFF17141F)

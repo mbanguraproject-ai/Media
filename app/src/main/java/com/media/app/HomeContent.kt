@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.sp
 
 private fun greeting(): String {
     val h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-    return when { h < 12 -> "Good Morning"; h < 17 -> "Good Afternoon"; else -> "Good Evening" }
+    return when { h < 12 -> "Good morning"; h < 17 -> "Good afternoon"; else -> "Good evening" }
 }
 
 // ------------------------------------------------------------------ HEADER
@@ -61,7 +61,7 @@ fun StashHeader(
             // Title shrinks Display -> Section rather than cutting between two
             // styles, so the transition is continuous.
             Text(
-                "Your Library",
+                "Your library",
                 style = Typo.Display.copy(
                     fontSize = lerp(Typo.Display.fontSize, Typo.Section.fontSize, c),
                     lineHeight = lerp(Typo.Display.lineHeight, Typo.Section.lineHeight, c)

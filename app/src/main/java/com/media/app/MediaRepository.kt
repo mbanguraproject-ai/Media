@@ -102,6 +102,35 @@ private val RECORDER = Regex(
 )
 private val MONTHS = arrayOf("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
 
+// Titles arriving from download sites carry the site's branding. These are all
+// taken from real files: "tomp3.cc - X", "mdundo.com - X",
+// "Darkside [MP3 Download", "Jogodo || Olagist".
+//
+// The hard part is what NOT to strip: "[NCS Release]" and "(feat. X)" are real
+// title content. So a bracketed tail is only removed when it actually contains
+// download cruft, never just for being bracketed.
+private val SITE_PREFIX = Regex(
+    """^\s*(?:www\.)?[a-z0-9-]+\.(?:com|net|org|cc|co|me|to|io|ng|xyz)\s*[-\u2013\u2014_:|]+\s*""",
+    RegexOption.IGNORE_CASE
+)
+private val SITE_SUFFIX = Regex(
+    """\s*[-\u2013\u2014_|(\[]+\s*(?:www\.)?[a-z0-9-]+\.(?:com|net|org|cc|co|me|to|io|ng|xyz)\s*[)\]]?\s*$""",
+    RegexOption.IGNORE_CASE
+)
+// A bare, often unterminated format tag: "[MP3", "(320kbps)"
+private val BARE_FORMAT = Regex(
+    """\s*[\[(]\s*(?:mp3|m4a|wav|flac|\d{3,4}\s*kbps)\s*[\])]?\s*$""",
+    RegexOption.IGNORE_CASE
+)
+private val TRAILING_BRACKET = Regex("""[\[(]([^\])]*)[\])]?\s*$""")
+private val CRUFT_WORDS = Regex(
+    """\b(download|free|official|lyrics?|hq|hd|kbps|mp3|m4a)\b""", RegexOption.IGNORE_CASE
+)
+// "||" is a site separator convention, not punctuation anyone puts in a song
+// title. Only a single trailing token is removed.
+private val PIPE_SITE = Regex("""\s*\|\|\s*\S+\s*$""")
+private val JUNK_TAIL = Regex("""[\s\-\u2013\u2014_|.,\[({]+$""")
+
 internal fun normalizeTitle(raw: String?): String {
     var t = (raw ?: "").trim()
     if (t.isEmpty() || t == MEDIASTORE_UNKNOWN) return "Untitled"
@@ -122,8 +151,19 @@ internal fun normalizeTitle(raw: String?): String {
 
     t = t.replace('_', ' ')
         .replace(TRACK_PREFIX, "")
-        .replace(Regex("""\s+"""), " ")
-        .trim()
+
+    // Download-site cleanup, in order: leading site, trailing site, bare
+    // format tag, then a bracketed tail ONLY if it holds download cruft.
+    t = SITE_PREFIX.replace(t, "")
+    t = SITE_SUFFIX.replace(t, "")
+    t = BARE_FORMAT.replace(t, "")
+    TRAILING_BRACKET.find(t)?.let { m ->
+        if (CRUFT_WORDS.containsMatchIn(m.groupValues[1])) t = t.substring(0, m.range.first)
+    }
+    t = PIPE_SITE.replace(t, "")
+
+    t = t.replace(Regex("""\s+"""), " ").trim()
+    t = JUNK_TAIL.replace(t, "").trim()
     return t.ifEmpty { "Untitled" }
 }
 

@@ -360,7 +360,7 @@ private fun PermissionGate(
                     .padding(horizontal = Space.xxl, vertical = Space.md)
             ) {
                 Text(
-                    if (blocked) "Open Settings" else "Allow access",
+                    if (blocked) "Open settings" else "Allow access",
                     style = Typo.Label, color = Color.White
                 )
             }
@@ -844,6 +844,22 @@ fun HomeScaffold(vm: PlayerViewModel) {
             },
             onOpenAlbum = { openAlbum = it; openArtist = null },
             onLongPress = { addToItem = it },
+            onRenameArtist = { newName ->
+                // One row per track, written as a single transaction. Existing
+                // overrides are preserved: a track whose TITLE was already
+                // corrected keeps that correction and only gains the artist.
+                scope.launch {
+                    val ids = artist.tracks.map { it.id }
+                    val existing = db.dao().getFor(ids).associateBy { it.mediaId }
+                    db.dao().upsertAll(
+                        ids.map { id ->
+                            existing[id]?.copy(customArtist = newName)
+                                ?: MediaOverride(mediaId = id, customArtist = newName)
+                        }
+                    )
+                    openArtist = null
+                }
+            },
             onClose = { openArtist = null }
         )
     }

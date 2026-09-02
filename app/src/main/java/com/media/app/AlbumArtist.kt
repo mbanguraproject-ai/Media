@@ -3,6 +3,7 @@ package com.media.app
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -14,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.*
@@ -23,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
@@ -167,6 +170,74 @@ fun AlbumDetailScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RenameArtistSheet(
+    current: String,
+    trackCount: Int,
+    onRename: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var name by remember { mutableStateOf(current) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MediaColors.Modal,
+        dragHandle = { BottomSheetDefaults.DragHandle(color = MediaColors.FillStrong) }
+    ) {
+        Column(Modifier.fillMaxWidth().imePadding().padding(Space.xl, 0.dp, Space.xl, Space.xxl)) {
+            Text("Rename artist", style = Typo.Section, color = MediaColors.Cream)
+            Spacer(Modifier.height(Space.xs))
+            Text(
+                "Applies to all " + trackCount +
+                    " tracks currently filed under this artist. Download sites often " +
+                    "tag a whole batch with one name, so this fixes them together.",
+                style = Typo.Secondary, color = MediaColors.CreamDim
+            )
+            Spacer(Modifier.height(Space.xl))
+            Box(
+                Modifier.fillMaxWidth()
+                    .background(MediaColors.Ink, RoundedCornerShape(10.dp))
+                    .border(0.5.dp, MediaColors.Fill, RoundedCornerShape(10.dp))
+                    .padding(Space.md, 12.dp)
+            ) {
+                if (name.isEmpty()) {
+                    Text("Artist name", style = Typo.Body, color = MediaColors.CreamFaint)
+                }
+                BasicTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    singleLine = true,
+                    textStyle = Typo.Body.copy(color = MediaColors.Cream),
+                    cursorBrush = SolidColor(MediaColors.Accent),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            Spacer(Modifier.height(Space.xl))
+            Box(
+                Modifier.fillMaxWidth()
+                    .background(
+                        if (name.isBlank()) MediaColors.Fill else MediaColors.Accent,
+                        RoundedCornerShape(12.dp)
+                    )
+                    .pressScale(haptic = true) {
+                        if (name.isNotBlank()) { onRename(name.trim()); onDismiss() }
+                    }
+                    .padding(vertical = 14.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "Rename",
+                    style = Typo.Label,
+                    color = if (name.isBlank()) MediaColors.CreamFaint else Color.White
+                )
+            }
+        }
+    }
+}
+
 @Composable
 fun ArtistDetailScreen(
     artist: Artist,
@@ -176,8 +247,11 @@ fun ArtistDetailScreen(
     onShuffle: () -> Unit,
     onOpenAlbum: (Album) -> Unit,
     onLongPress: (AppMediaItem) -> Unit,
+    onRenameArtist: (String) -> Unit,
     onClose: () -> Unit
 ) {
+    var renaming by remember { mutableStateOf(false) }
+
     DetailScaffold(
         title = artist.name,
         subtitle = null,
@@ -192,7 +266,17 @@ fun ArtistDetailScreen(
         onSubtitleClick = null,
         onPlay = { onPlay(0) },
         onShuffle = onShuffle,
-        onClose = onClose
+        onClose = onClose,
+        action = {
+            // Download sites stamp one artist across a whole batch, so the
+            // wrong tracks are already grouped here under the wrong name.
+            // Fixing them together is the only humane way to do it.
+            Icon(
+                Icons.Filled.Edit, "Rename artist",
+                tint = MediaColors.Cream,
+                modifier = Modifier.size(22.dp).pressScale(haptic = true) { renaming = true }
+            )
+        }
     ) {
         if (albums.size > 1) {
             item {
@@ -234,6 +318,15 @@ fun ArtistDetailScreen(
             )
         }
     }
+
+    if (renaming) {
+        RenameArtistSheet(
+            current = artist.name,
+            trackCount = artist.trackCount,
+            onRename = onRenameArtist,
+            onDismiss = { renaming = false }
+        )
+    }
 }
 
 // --------------------------------------------------------------- shared -----
@@ -249,12 +342,20 @@ private fun DetailScaffold(
     onPlay: () -> Unit,
     onShuffle: () -> Unit,
     onClose: () -> Unit,
+    // Optional trailing action in the top bar. Artist detail uses it to fix a
+    // whole batch of mis-tagged files at once.
+    action: (@Composable () -> Unit)? = null,
     body: androidx.compose.foundation.lazy.LazyListScope.() -> Unit
 ) {
     Column(Modifier.fillMaxSize().background(moodBackground()).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(Space.sm, Space.sm), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClose) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MediaColors.Cream)
+            }
+            if (action != null) {
+                Spacer(Modifier.weight(1f))
+                action()
+                Spacer(Modifier.width(Space.sm))
             }
         }
         LazyColumn(contentPadding = PaddingValues(bottom = bottomSafePadding(gap = 100.dp))) {
