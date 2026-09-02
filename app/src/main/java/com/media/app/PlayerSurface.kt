@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.lerp as lerpColor
@@ -284,6 +285,15 @@ fun PlayerSurface(
                         val s = 1f + level * 0.10f
                         scaleX = s; scaleY = s
                     }
+                    // Depth grows as it expands: a pill needs almost none, the
+                    // hero cover is the strongest thing on the screen.
+                    .shadow(
+                        elevation = lerpDp(Elevation.low, Elevation.high, e),
+                        shape = RoundedCornerShape(artCorner),
+                        clip = false,
+                        ambientColor = Color.Black,
+                        spotColor = Color.Black
+                    )
                     .clip(RoundedCornerShape(artCorner))
             ) {
                 // §12: track changes cross-dissolve with a scale drift. Artwork

@@ -7,6 +7,8 @@ import android.Manifest
 import android.content.ComponentName
 import android.content.pm.PackageManager
 import android.os.Build
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -188,9 +190,16 @@ fun AppRoot(vm: PlayerViewModel = viewModel()) {
     }
 
     val introSeen by SettingsStore.introSeenFlow(context).collectAsState(initial = null)
+    // shouldShowRequestPermissionRationale is false BOTH before the first ask
+    // and after a permanent denial, so it only means "blocked" once we know we
+    // have asked. Without this the gate's button silently does nothing.
+    var askedOnce by remember { mutableStateOf(false) }
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { result -> granted = result.values.all { it } }
+    ) { result ->
+        granted = result.values.all { it }
+        askedOnce = true
+    }
 
     // POST_NOTIFICATIONS is OPTIONAL and deliberately NOT part of
     // requiredPermissions(): it gates the media notification + lock-screen
@@ -217,8 +226,24 @@ fun AppRoot(vm: PlayerViewModel = viewModel()) {
     when {
         introSeen == null -> Box(Modifier.fillMaxSize().background(MediaColors.Ink))
         introSeen == true && granted -> HomeScaffold(vm)
-        introSeen == true && !granted ->
-            PermissionGate { launcher.launch(requiredPermissions()) }
+        introSeen == true && !granted -> {
+            val act = context as? android.app.Activity
+            val blocked = askedOnce && act != null && requiredPermissions().none {
+                androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(act, it)
+            }
+            PermissionGate(
+                blocked = blocked,
+                onGrant = { launcher.launch(requiredPermissions()) },
+                onOpenSettings = {
+                    context.startActivity(
+                        Intent(
+                            android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.fromParts("package", context.packageName, null)
+                        )
+                    )
+                }
+            )
+        }
         onboardStep == 0 -> WelcomePage(onContinue = { onboardStep = 1 })
         else -> PermissionExplainerPage(onContinue = {
             scope.launch { SettingsStore.setIntroSeen(context) }
@@ -289,24 +314,56 @@ private fun PermissionExplainerPage(onContinue: () -> Unit) {
 }
 
 @Composable
-private fun PermissionGate(onGrant: () -> Unit) {
-    Box(Modifier.fillMaxSize().background(MediaColors.Ink), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(Space.xl)) {
-            Text("Media", style = MaterialTheme.typography.displaySmall, color = MediaColors.Cream)
-            Spacer(Modifier.height(Space.md))
-            Text(
-                "All your music, podcasts, video, and audiobooks in one home.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MediaColors.CreamDim,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+private fun PermissionGate(
+    blocked: Boolean,
+    onGrant: () -> Unit,
+    onOpenSettings: () -> Unit
+) {
+    // This used to offer one button that called launch() unconditionally.
+    // After two denials Android returns instantly without showing a dialog, so
+    // the button did nothing at all and the user was stuck on this screen with
+    // no explanation and no way forward. When that happens we say so, and send
+    // them to the one place that can actually fix it.
+    Box(
+        Modifier.fillMaxSize().background(moodBackground()),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(Space.xxl)
+        ) {
+            Icon(
+                Icons.Outlined.LibraryMusic, null,
+                tint = MediaColors.Accent, modifier = Modifier.size(48.dp)
             )
             Spacer(Modifier.height(Space.xl))
-            Button(
-                onClick = onGrant,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MediaColors.Cream, contentColor = MediaColors.Ink
+            Text(
+                if (blocked) "Access is turned off" else "Aura needs your library",
+                style = Typo.Section, color = MediaColors.Cream,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            Spacer(Modifier.height(Space.sm))
+            Text(
+                if (blocked)
+                    "Android is no longer showing the permission prompt. " +
+                        "Open Settings, allow access to music and audio, then come back."
+                else
+                    "Aura only plays files already on this phone. " +
+                        "It needs permission to read them - nothing is uploaded anywhere.",
+                style = Typo.Secondary, color = MediaColors.CreamDim,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            Spacer(Modifier.height(Space.xxl))
+            Box(
+                Modifier.clip(CircleShape).background(MediaColors.Accent)
+                    .pressScale(haptic = true, onClick = if (blocked) onOpenSettings else onGrant)
+                    .padding(horizontal = Space.xxl, vertical = Space.md)
+            ) {
+                Text(
+                    if (blocked) "Open Settings" else "Allow access",
+                    style = Typo.Label, color = Color.White
                 )
-            ) { Text("Grant access") }
+            }
         }
     }
 }
@@ -969,6 +1026,17 @@ private fun BottomBar(
         // Hairline on the TOP EDGE only. .border() drew a 0.5dp box on all
         // four sides, which is why the bar read as a slab with an outline
         // rather than a surface the content scrolls under.
+        // A 0.5dp hairline is not separation - content still appears to slide
+        // under a flat slab. A soft upward shadow reads as the bar sitting
+        // ABOVE the list, which is what the layering actually is.
+        Box(
+            Modifier.fillMaxWidth().height(12.dp)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.28f))
+                    )
+                )
+        )
         Box(Modifier.fillMaxWidth().height(0.5.dp).background(MediaColors.Fill))
         Row(
             // weight(1f) centred each tab in its own quarter, so the outer two

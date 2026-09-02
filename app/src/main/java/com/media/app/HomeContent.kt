@@ -22,6 +22,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
@@ -111,18 +113,32 @@ fun MoodChips(active: Mood, onPick: (Mood) -> Unit) {
     ) {
         items(Mood.values().toList()) { mood ->
             val selected = mood == active
+            // Unselected chips carried a full border AND a fill, so five of
+            // them competed with the one that mattered. Off state is now a
+            // hairline with no fill; only the selected chip is solid.
+            val bg by animateColorAsState(
+                if (selected) mood.chipOn else Color.Transparent,
+                tween(Motion.Standard, easing = Motion.Smooth), label = "chipBg"
+            )
+            val border by animateColorAsState(
+                if (selected) Color.Transparent else MediaColors.Fill,
+                tween(Motion.Standard, easing = Motion.Smooth), label = "chipBorder"
+            )
+            val fg by animateColorAsState(
+                if (selected) Color.White else MediaColors.CreamDim,
+                tween(Motion.Standard, easing = Motion.Smooth), label = "chipFg"
+            )
             Box(
-                Modifier.clip(RoundedCornerShape(22.dp))
-                    .background(if (selected) mood.chipOn else MediaColors.FillSubtle)
-                    .border(1.dp,
-                        if (selected) Color.Transparent else MediaColors.Fill,
-                        RoundedCornerShape(22.dp))
-                    .clickable { onPick(mood) }
-                    .padding(horizontal = 18.dp, vertical = 10.dp),
+                Modifier.clip(RoundedCornerShape(Radius.pill))
+                    .background(bg)
+                    .border(1.dp, border, RoundedCornerShape(Radius.pill))
+                    .pressScale(haptic = true) { onPick(mood) }
+                    // Same padding for every chip, so "All" is no longer
+                    // visually heavier than the rest just for being first.
+                    .padding(horizontal = 16.dp, vertical = 9.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(mood.label, style = Typo.Label,
-                    color = if (selected) Color.White else MediaColors.CreamDim)
+                Text(mood.label, style = Typo.Label, color = fg, maxLines = 1)
             }
         }
     }

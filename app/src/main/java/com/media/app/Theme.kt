@@ -160,7 +160,14 @@ object MediaColors {
     // §4/§52: these were repeated as raw hex across four files. Semantic
     // names, one definition. 0x17FFFFFF was collapsed into Fill — it sat one
     // step from 0x14FFFFFF for no reason anyone could state.
+    // A formal status set. Only Danger existed, so anything non-error had no
+    // token at all and would have been reached for as a hex literal - which is
+    // exactly the drift the QC pass cleaned up.
+    val Success = Color(0xFF34D399)         // completed, saved, granted
+    val Warning = Color(0xFFF5A623)         // degraded but usable
     val Danger = Color(0xFFEF4444)          // destructive / error
+    val Error = Danger                      // alias: same colour, clearer intent
+    val Divider = Color(0x1AFFFFFF)         // hairlines between rows/sections
     val Favorite = Color(0xFFEC4899)        // the heart, and only the heart
     val FillSubtle = Color(0x0FFFFFFF)      // barely-there glass
     val Fill = Color(0x14FFFFFF)            // standard glass fill

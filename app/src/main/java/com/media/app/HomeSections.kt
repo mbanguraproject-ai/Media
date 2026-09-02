@@ -5,14 +5,18 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
@@ -111,9 +115,13 @@ fun buildHomeSections(
 
 @Composable
 fun SectionHeader(title: String) {
+    // Was Typo.Section at full Cream, which competed with the artwork it was
+    // labelling. A section heading is a signpost, not a headline.
     Text(
-        title, style = Typo.Section, color = MediaColors.Cream,
-        modifier = Modifier.padding(Space.xl, Space.lg, Space.xl, Space.sm)
+        title,
+        style = Typo.Section.copy(fontWeight = FontWeight.Medium),
+        color = MediaColors.CreamDim,
+        modifier = Modifier.padding(Space.xl, Space.xl, Space.xl, Space.sm)
     )
 }
 
@@ -210,13 +218,24 @@ private fun ShelfCard(
                 )
             }
             Box(
-                Modifier.fillMaxSize().graphicsLayer {
-                    val s = 1f + level * 0.05f
-                    scaleX = s; scaleY = s
-                }
+                Modifier.fillMaxSize()
+                    .graphicsLayer {
+                        val s = 1f + level * 0.05f
+                        scaleX = s; scaleY = s
+                    }
+                    // Artwork sat flat on the background. A shadow lifts the
+                    // cover off the surface without adding any chrome.
+                    // clip=false so the shadow renders OUTSIDE the bounds.
+                    .shadow(
+                        elevation = Elevation.mid,
+                        shape = RoundedCornerShape(14.dp),
+                        clip = false,
+                        ambientColor = Color.Black,
+                        spotColor = Color.Black
+                    )
             ) { art() }
         }
-        Spacer(Modifier.height(Space.sm))
+        Spacer(Modifier.height(Space.md))
         Text(
             title, style = Typo.Primary,
             color = if (highlighted) MediaColors.Accent else MediaColors.Cream,

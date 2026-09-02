@@ -21,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -62,11 +63,18 @@ fun AlbumGrid(albums: List<Album>, onOpen: (Album) -> Unit) {
                 a.tracks.firstOrNull()?.let {
                     CoverArt(
                         item = it,
-                        modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+                        modifier = Modifier.fillMaxWidth().aspectRatio(1f)
+                            .shadow(
+                                elevation = Elevation.mid,
+                                shape = RoundedCornerShape(14.dp),
+                                clip = false,
+                                ambientColor = Color.Black,
+                                spotColor = Color.Black
+                            ),
                         corner = 14, targetPx = 384
                     )
                 }
-                Spacer(Modifier.height(Space.sm))
+                Spacer(Modifier.height(Space.md))
                 Text(a.name, style = Typo.Primary, color = MediaColors.Cream,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(a.artist, style = Typo.Secondary, color = MediaColors.CreamFaint,
