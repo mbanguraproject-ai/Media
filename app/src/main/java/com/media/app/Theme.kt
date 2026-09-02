@@ -39,45 +39,45 @@ enum class Mood(
     ALL(
         label = "All",
         accent = Color(0xFF7C5CFF),
-        glow = Color(0xFF140D2E),
-        glowCore = Color(0xFF201346),
-        glowTop = Color(0xFF6B54B0),
+        glow = Color(0xFF0E0920),
+        glowCore = Color(0xFF130B2A),
+        glowTop = Color(0xFF3A2D62),
         banner = null,
         chipOn = Color(0xFF7C5CFF)
     ),
     LATE_NIGHT(
         label = "Late Night",
-        accent = Color(0xFF9B7CFF),
-        glow = Color(0xFF120C2E),
-        glowCore = Color(0xFF1A1247),
-        glowTop = Color(0xFF453A82),
+        accent = Color(0xFF6C8BFF),
+        glow = Color(0xFF0C111D),
+        glowCore = Color(0xFF101626),
+        glowTop = Color(0xFF293B65),
         banner = "Now playing Late Night mix",
-        chipOn = Color(0xFF7C5CFF)
+        chipOn = Color(0xFF6C8BFF)
     ),
     WORKOUT(
         label = "Workout",
         accent = Color(0xFFF5A623),
-        glow = Color(0xFF31240A),
-        glowCore = Color(0xFF4D370C),
-        glowTop = Color(0xFF5C4820),
+        glow = Color(0xFF221907),
+        glowCore = Color(0xFF2E2107),
+        glowTop = Color(0xFF6A5325),
         banner = "Workout mode activated",
         chipOn = Color(0xFFF5A623)
     ),
     FOCUS(
         label = "Focus",
         accent = Color(0xFF2DD4BF),
-        glow = Color(0xFF09322C),
-        glowCore = Color(0xFF0C4D43),
-        glowTop = Color(0xFF1C5E54),
+        glow = Color(0xFF06231E),
+        glowCore = Color(0xFF072E28),
+        glowTop = Color(0xFF216E62),
         banner = "Focus mode \u2014 stay in the zone",
         chipOn = Color(0xFF2DD4BF)
     ),
     FAVORITES(
         label = "Favorites",
         accent = Color(0xFFEC4899),
-        glow = Color(0xFF2D0E24),
-        glowCore = Color(0xFF471237),
-        glowTop = Color(0xFF5E2A4E),
+        glow = Color(0xFF1F0A19),
+        glowCore = Color(0xFF2B0B21),
+        glowTop = Color(0xFF632C52),
         banner = null,
         chipOn = Color(0xFFEC4899)
     );
@@ -193,26 +193,35 @@ object MediaColors {
     val Glow @Composable get() = LocalMood.current.glow
 }
 
-// Full-height gradient with real depth: a luminous mood light at the very top,
-// holding richly through the upper half, meeting the deep black at CENTER, then
-// settling to near-black at the bottom. Extra stops keep it seamless (no banding).
-@Composable
-// §47/§48: the background is the FLOOR. It was not — glowTop sat at 51%
-// lightness while card surfaces sit at 15%, so every card at the top of Home
-// read as a dark hole punched into a light field and the 8%-white glass fills
-// went milky. Layer order was inverted.
+// The top edge was L51% dropping to L17.5% within 13% of the height - a cliff
+// that read as a light source rather than a surface. Worse, glowCore at 17.5%
+// sat ABOVE the elevated card surface at 15.5%, so cards were darker than the
+// background they were meant to float on. That is what "cards blend into the
+// background" actually was.
 //
-// Fixed by keeping a NARROW luminous edge at the very top (the light source
-// that gave the screen its character) and dropping to deep, saturated colour
-// by 13% — before any content starts. Saturation went UP as lightness came
-// down, so it reads rich rather than muddy.
-fun moodBackground(): Brush = Brush.verticalGradient(
-    0.00f to LocalMood.current.glowTop,   // luminous edge, behind the status bar
-    0.13f to LocalMood.current.glowCore,  // deep + saturated, where content sits
-    0.46f to LocalMood.current.glow,      // deeper still
-    0.72f to Color(0xFF120E20),
-    1.00f to Color(0xFF07050C)            // near-black floor
-)
+// Now: a restrained top edge, a longer falloff, and every content-bearing stop
+// held below the card surfaces. [flat] compresses the illumination further for
+// screens that are mostly text and empty space, where a gradient has no
+// artwork to justify it.
+@Composable
+fun moodBackground(flat: Boolean = false): Brush {
+    val m = LocalMood.current
+    return if (flat) {
+        Brush.verticalGradient(
+            0.00f to m.glowCore,
+            0.55f to m.glow,
+            1.00f to Color(0xFF0A0813)
+        )
+    } else {
+        Brush.verticalGradient(
+            0.00f to m.glowTop,    // restrained edge, behind the status bar
+            0.30f to m.glowCore,   // longer falloff: no cliff
+            0.62f to m.glow,
+            0.84f to Color(0xFF0C0915),
+            1.00f to Color(0xFF090710)
+        )
+    }
+}
 
 // ============================================================================
 //  TYPOGRAPHY (§3)

@@ -51,7 +51,9 @@ fun SettingsScreen(
     // Repo moved owners; the old bangscc10-dev Pages URL is stale.
     val privacyUrl = "https://mbanguraproject-ai.github.io/Media/privacy.html"
     Column(
-        Modifier.fillMaxSize().background(moodBackground()).statusBarsPadding()
+        // Settings is text and empty space with no artwork to justify a
+        // gradient, so the illumination is compressed to a near-flat field.
+        Modifier.fillMaxSize().background(moodBackground(flat = true)).statusBarsPadding()
             .verticalScroll(rememberScrollState())
     ) {
         Row(
