@@ -23,8 +23,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
@@ -42,6 +47,7 @@ private fun greeting(): String {
 fun StashHeader(
     onSearch: () -> Unit,
     onRescan: () -> Unit,
+    scanning: Boolean = false,
     // §16: 0 = full, 1 = compact. Driven by scroll, not by a hide/show toggle —
     // the doc explicitly rejects "distracting scroll-hide experiments".
     collapse: Float = 0f
@@ -85,22 +91,42 @@ fun StashHeader(
         Spacer(Modifier.width(Space.md))
         // Search lives HERE and nowhere else — it left the bottom bar so four
         // tabs can divide the width evenly instead of five crowding it.
-        CircleButton(Icons.Filled.Search, "Search", onSearch)
+        CircleButton(Icons.Filled.Search, "Search", onClick = onSearch)
         Spacer(Modifier.width(Space.sm))
-        CircleButton(Icons.Filled.Refresh, "Rescan", onRescan)
+        CircleButton(Icons.Filled.Refresh, "Rescan", spinning = scanning, onClick = onRescan)
     }
 }
 
 @Composable
-private fun CircleButton(icon: ImageVector, cd: String, onClick: () -> Unit) {
+private fun CircleButton(
+    icon: ImageVector,
+    cd: String,
+    // Rescan gave no feedback at all - you tapped it and nothing visibly
+    // happened, so people tap it again. The icon turns while work is running.
+    spinning: Boolean = false,
+    onClick: () -> Unit
+) {
+    val reduced = LocalReducedMotion.current
+    val angle = if (spinning && !reduced) {
+        val t = rememberInfiniteTransition(label = "spin")
+        t.animateFloat(
+            0f, 360f,
+            infiniteRepeatable(tween(900, easing = LinearEasing)),
+            label = "spinAngle"
+        ).value
+    } else 0f
+
     Box(
         Modifier.size(36.dp).clip(CircleShape)
             .background(MediaColors.Fill)
             .border(1.dp, MediaColors.FillStrong, CircleShape)
-            .clickable(onClick = onClick),
+            .pressScale(haptic = true, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, cd, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(16.dp))
+        Icon(
+            icon, cd, tint = Color.White.copy(alpha = 0.85f),
+            modifier = Modifier.size(16.dp).graphicsLayer { rotationZ = angle }
+        )
     }
 }
 

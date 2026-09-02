@@ -616,6 +616,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
             StashHeader(
                 onSearch = { showSearch = true },
                 onRescan = { MediaRepository.refresh(); reloadKey++ },
+                scanning = scanning,
                 collapse = collapse
             )
             // Mood chips stay put: they are the control surface, and §16 wants
@@ -936,7 +937,22 @@ fun HomeScaffold(vm: PlayerViewModel) {
 
     // §11/§15: ONE surface. Sits above the bottom bar so the expanded state
     // is never painted over, and collapses to a pill docked above it.
-    if (state.hasItem && !playerHidden) {
+    // The pill appeared and disappeared instantly - the one piece of chrome
+    // that arrives unannounced while you are looking elsewhere. It now slides
+    // up from behind the nav bar and leaves the same way.
+    androidx.compose.animation.AnimatedVisibility(
+        visible = state.hasItem && !playerHidden,
+        // Fixed ~55dp of travel, NOT { it }: the lambda receives the container
+        // height, and this container is the full screen because PlayerSurface
+        // fills it when expanded. Aligning it BottomCenter instead would stop
+        // the expanded player filling the screen at all.
+        enter = androidx.compose.animation.slideInVertically(
+            animationSpec = Motion.spatial(), initialOffsetY = { 160 }
+        ) + androidx.compose.animation.fadeIn(tween(Motion.Standard)),
+        exit = androidx.compose.animation.slideOutVertically(
+            animationSpec = Motion.spatial(), targetOffsetY = { 160 }
+        ) + androidx.compose.animation.fadeOut(tween(Motion.Fast))
+    ) {
         val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
         PlayerSurface(
             state = state,
