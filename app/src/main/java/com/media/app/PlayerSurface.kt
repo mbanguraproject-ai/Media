@@ -569,20 +569,28 @@ internal fun fmtClock(ms: Long): String {
  */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
-fun PipVideoOnly(vm: PlayerViewModel) {
+fun PipVideoOnly(vm: PlayerViewModel, state: PlayerState, artItem: AppMediaItem?) {
     androidx.compose.foundation.layout.Box(
-        Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black)
+        Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black),
+        contentAlignment = Alignment.Center
     ) {
-        AndroidView(
-            factory = { ctx ->
-                PlayerView(ctx).apply {
-                    useController = false
-                    setBackgroundColor(android.graphics.Color.BLACK)
-                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                }
-            },
-            update = { it.player = vm.boundPlayer() },
-            modifier = Modifier.fillMaxSize()
-        )
+        if (state.isVideo) {
+            AndroidView(
+                factory = { ctx ->
+                    PlayerView(ctx).apply {
+                        useController = false
+                        setBackgroundColor(android.graphics.Color.BLACK)
+                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    }
+                },
+                update = { it.player = vm.boundPlayer() },
+                modifier = Modifier.fillMaxSize()
+            )
+        } else if (artItem != null) {
+            // A PlayerView with no video track is a black rectangle. If we end
+            // up in PiP on audio anyway - a system trigger, a race as the track
+            // changes - show the cover rather than an empty window.
+            CoverArt(artItem, Modifier.fillMaxSize(), corner = 0, targetPx = 384)
+        }
     }
 }

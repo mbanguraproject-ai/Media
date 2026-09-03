@@ -532,9 +532,10 @@ fun HomeScaffold(vm: PlayerViewModel) {
     val inPip = LocalInPip.current
     val pipActivity = context as? android.app.Activity
     LaunchedEffect(state.isVideo) { if (!state.isVideo) videoFullscreen = false }
+    // Runs for audio TOO, so auto-enter is switched back off when video ends.
     LaunchedEffect(state.videoWidth, state.videoHeight, state.isVideo) {
-        if (state.isVideo && pipActivity != null) {
-            Pip.update(pipActivity, state.videoWidth, state.videoHeight)
+        pipActivity?.let {
+            Pip.update(it, state.videoWidth, state.videoHeight, autoEnter = state.isVideo)
         }
     }
     // Landscape fullscreen owns the screen outright: no scaffold, no chrome.
@@ -545,7 +546,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
     if (inPip) {
         // PiP shrinks the ENTIRE activity, so everything except the video has
         // to go - otherwise the corner window is a postage stamp of Home.
-        PipVideoOnly(vm)
+        PipVideoOnly(vm, state, playingItem)
         return
     }
 

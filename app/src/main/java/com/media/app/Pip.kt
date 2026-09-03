@@ -38,29 +38,34 @@ object Pip {
         }
     }
 
-    fun params(width: Int, height: Int): PictureInPictureParams =
+    fun params(width: Int, height: Int, autoEnter: Boolean): PictureInPictureParams =
         PictureInPictureParams.Builder()
             .setAspectRatio(ratioFor(width, height))
             .apply {
-                // Android 12+: the system enters PiP on its own when the user
-                // swipes home, which is the behaviour people actually expect.
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) setAutoEnterEnabled(true)
+                // Android 12+ enters PiP on its own when the user swipes home,
+                // which is what people expect FOR VIDEO. It must be turned off
+                // again for audio: the flag persists on the activity, so once
+                // any video had played, swiping home during a song opened a
+                // black PiP window with nothing in it.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    setAutoEnterEnabled(autoEnter)
+                }
             }
             .build()
 
     fun enter(activity: Activity, width: Int, height: Int) {
         if (!isSupported(activity)) return
-        runCatching { activity.enterPictureInPictureMode(params(width, height)) }
+        runCatching { activity.enterPictureInPictureMode(params(width, height, true)) }
     }
 
     /**
      * Keeps the auto-enter parameters current as the video changes, so a swipe
      * home always uses the right aspect ratio.
      */
-    fun update(activity: Activity, width: Int, height: Int) {
+    fun update(activity: Activity, width: Int, height: Int, autoEnter: Boolean) {
         if (!isSupported(activity)) return
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
-        runCatching { activity.setPictureInPictureParams(params(width, height)) }
+        runCatching { activity.setPictureInPictureParams(params(width, height, autoEnter)) }
     }
 }
 
