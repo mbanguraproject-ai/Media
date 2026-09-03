@@ -259,7 +259,7 @@ fun PlayerSurface(
                     modifier = Modifier.matchParentSize().clearAndSetSemantics { }
                 )
             }
-            if (level > 0.01f) {
+            if (level > 0.01f && e > 0.35f) {
                 // Bloom pushed well past the old 0.16-0.38: it now clearly
                 // swells past the artwork edge on a hit instead of hinting.
                 val grow = minOf(artW, artH) * (0.24f + 0.46f * level)

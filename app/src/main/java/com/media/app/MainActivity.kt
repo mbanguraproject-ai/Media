@@ -44,8 +44,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
-import androidx.compose.material.icons.automirrored.outlined.LibraryBooks
-import androidx.compose.material.icons.automirrored.filled.LibraryBooks
+import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.LibraryMusic
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -1075,17 +1077,10 @@ private fun BottomBar(
         // Hairline on the TOP EDGE only. .border() drew a 0.5dp box on all
         // four sides, which is why the bar read as a slab with an outline
         // rather than a surface the content scrolls under.
-        // A 0.5dp hairline is not separation - content still appears to slide
-        // under a flat slab. A soft upward shadow reads as the bar sitting
-        // ABOVE the list, which is what the layering actually is.
-        Box(
-            Modifier.fillMaxWidth().height(12.dp)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.28f))
-                    )
-                )
-        )
+        // A black shadow gradient over a near-black floor reads as a visible
+        // STRIPE, not depth. Now that the background floor is darker than
+        // NavSurface, the bar separates on its own tonally - the hairline is
+        // all the definition it needs.
         Box(Modifier.fillMaxWidth().height(0.5.dp).background(MediaColors.Fill))
         Row(
             // weight(1f) centred each tab in its own quarter, so the outer two
@@ -1100,10 +1095,15 @@ private fun BottomBar(
         ) {
             val tab = Modifier.width(68.dp)
             NavTab(Icons.Filled.Home, Icons.Outlined.Home, "Home", current == 0, tab) { onSelect(0) }
-            NavTab(Icons.AutoMirrored.Filled.LibraryBooks, Icons.AutoMirrored.Outlined.LibraryBooks,
+            // Was LibraryBooks - a stack of BOOKS, in a music app. The core
+            // set has a music-library icon; nothing exotic was needed.
+            NavTab(Icons.Filled.LibraryMusic, Icons.Outlined.LibraryMusic,
                 "Library", current == 1, tab) { onSelect(1) }
             NavTab(Icons.Filled.QueueMusic, Icons.Outlined.QueueMusic, "Playlists", current == 2, tab) { onSelect(2) }
-            NavTab(Icons.Filled.Menu, Icons.Outlined.Menu, "More", current == 3, tab) { onSelect(3) }
+            // Tune is the EQUALISER glyph (sliders) - in a music app that
+            // reads as an EQ feature, not "more". Menu (hamburger) signals a
+            // drawer that doesn't exist. The tab is settings; show a gear.
+            NavTab(Icons.Filled.Settings, Icons.Outlined.Settings, "More", current == 3, tab) { onSelect(3) }
         }
     }
 }

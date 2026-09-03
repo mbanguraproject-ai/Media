@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -30,54 +31,47 @@ import androidx.compose.ui.unit.sp
 enum class Mood(
     val label: String,
     val accent: Color,
-    val glow: Color,        // deep body of the gradient
-    val glowCore: Color,    // rich colour where content actually sits
-    val glowTop: Color,     // narrow luminous edge at the very top
+    // ONE value. A background that changes down the screen means no text or
+    // card colour is correct everywhere - which is why contrast, card
+    // separation and muddy warm hues kept coming back as separate bugs. They
+    // were one bug. Mood is a room temperature now: low enough saturation that
+    // you notice it when it changes, never enough to compete with artwork.
+    val surface: Color,
     val banner: String?,    // status message under the chips (null = no banner)
     val chipOn: Color       // selected-chip fill
 ) {
     ALL(
         label = "All",
         accent = Color(0xFF7C5CFF),
-        glow = Color(0xFF0E0920),
-        glowCore = Color(0xFF130B2A),
-        glowTop = Color(0xFF3A2D62),
+        surface = Color(0xFF15131C),
         banner = null,
         chipOn = Color(0xFF7C5CFF)
     ),
     LATE_NIGHT(
         label = "Late Night",
         accent = Color(0xFF6C8BFF),
-        glow = Color(0xFF0C111D),
-        glowCore = Color(0xFF101626),
-        glowTop = Color(0xFF293B65),
+        surface = Color(0xFF13161C),
         banner = "Now playing Late Night mix",
         chipOn = Color(0xFF6C8BFF)
     ),
     WORKOUT(
         label = "Workout",
         accent = Color(0xFFF5A623),
-        glow = Color(0xFF221907),
-        glowCore = Color(0xFF2E2107),
-        glowTop = Color(0xFF6A5325),
+        surface = Color(0xFF1A1815),
         banner = "Workout mode activated",
         chipOn = Color(0xFFF5A623)
     ),
     FOCUS(
         label = "Focus",
         accent = Color(0xFF2DD4BF),
-        glow = Color(0xFF06231E),
-        glowCore = Color(0xFF072E28),
-        glowTop = Color(0xFF216E62),
+        surface = Color(0xFF131C1B),
         banner = "Focus mode \u2014 stay in the zone",
         chipOn = Color(0xFF2DD4BF)
     ),
     FAVORITES(
         label = "Favorites",
         accent = Color(0xFFEC4899),
-        glow = Color(0xFF1F0A19),
-        glowCore = Color(0xFF2B0B21),
-        glowTop = Color(0xFF632C52),
+        surface = Color(0xFF1C1319),
         banner = null,
         chipOn = Color(0xFFEC4899)
     );
@@ -190,38 +184,23 @@ object MediaColors {
     val OnAccent @Composable get() = LocalPalette.current.onAccent
     val OnInverse @Composable get() = LocalPalette.current.onInverse
     // New tokens for the redesign:
-    val Glow @Composable get() = LocalMood.current.glow
 }
 
-// The top edge was L51% dropping to L17.5% within 13% of the height - a cliff
-// that read as a light source rather than a surface. Worse, glowCore at 17.5%
-// sat ABOVE the elevated card surface at 15.5%, so cards were darker than the
-// background they were meant to float on. That is what "cards blend into the
-// background" actually was.
+// ONE flat surface. Not a gradient.
 //
-// Now: a restrained top edge, a longer falloff, and every content-bearing stop
-// held below the card surfaces. [flat] compresses the illumination further for
-// screens that are mostly text and empty space, where a gradient has no
-// artwork to justify it.
+// Spotify has been #121212 for a decade; Apple Music and YouTube Music are
+// flat too. That is not timidity - a background that varies down the screen
+// means every row sits on a different value, so no text or card colour is
+// right everywhere. Contrast failures, cards blending in, and warm moods going
+// muddy were not three bugs, they were one bug three times.
+//
+// Colour now comes from the only thing that should vary: the artwork. The
+// mood tints the room by a few percent, and the accent carries its identity.
+// The one place a gradient is earned is behind Now Playing artwork, driven by
+// that cover - and that already exists.
 @Composable
-fun moodBackground(flat: Boolean = false): Brush {
-    val m = LocalMood.current
-    return if (flat) {
-        Brush.verticalGradient(
-            0.00f to m.glowCore,
-            0.55f to m.glow,
-            1.00f to Color(0xFF0A0813)
-        )
-    } else {
-        Brush.verticalGradient(
-            0.00f to m.glowTop,    // restrained edge, behind the status bar
-            0.30f to m.glowCore,   // longer falloff: no cliff
-            0.62f to m.glow,
-            0.84f to Color(0xFF0C0915),
-            1.00f to Color(0xFF090710)
-        )
-    }
-}
+fun moodBackground(flat: Boolean = true): Brush =
+    SolidColor(LocalMood.current.surface)
 
 // ============================================================================
 //  TYPOGRAPHY (§3)

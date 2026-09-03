@@ -118,8 +118,10 @@ private fun CircleButton(
 
     Box(
         Modifier.size(36.dp).clip(CircleShape)
-            .background(MediaColors.Fill)
-            .border(1.dp, MediaColors.FillStrong, CircleShape)
+            // Same treatment as an unselected chip: no fill, one hairline.
+            // These carried a fill AND a stronger border, so once the chips
+            // were quietened the two stopped reading as one family.
+            .border(1.dp, MediaColors.Fill, CircleShape)
             .pressScale(haptic = true, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {

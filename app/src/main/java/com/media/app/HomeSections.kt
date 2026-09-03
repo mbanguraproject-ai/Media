@@ -206,17 +206,6 @@ private fun ShelfCard(
         )
     ) {
         Box(Modifier.size(132.dp), contentAlignment = Alignment.Center) {
-            if (pulse != null) {
-                // Rings sit inside the card's own bounds so a hit can't bleed
-                // over the neighbouring cards in the row.
-                val px = with(LocalDensity.current) { 132.dp.toPx() }
-                BeatRings(
-                    beat = pulse, color = accent, strength = 0.75f,
-                    centerPx = Offset(px / 2f, px / 2f),
-                    baseRadiusPx = px / 2f,
-                    modifier = Modifier.fillMaxSize().clearAndSetSemantics { }
-                )
-            }
             Box(
                 Modifier.fillMaxSize()
                     .graphicsLayer {
