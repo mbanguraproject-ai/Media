@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -125,6 +127,47 @@ fun LibraryScreen(
         when (tab) {
             LibTab.ALBUMS -> AlbumGrid(albums, onOpenAlbum)
             LibTab.ARTISTS -> ArtistList(artists, onOpenArtist)
+            // Video is two different things wearing one name. A 9:16 clip
+            // shown in a 16:9 row is mostly letterbox, and a landscape film in
+            // a tall card is a stamp. They get separate treatments, the way
+            // every video app that handles both does it.
+            LibTab.VIDEO -> if (shown.isEmpty()) {
+                CenterNote("No video yet")
+            } else {
+                val vertical = remember(shown) { shown.filter { it.isVertical } }
+                val landscape = remember(shown) { shown.filterNot { it.isVertical } }
+                LazyColumn(contentPadding = PaddingValues(bottom = bottomSafePadding(gap = 100.dp))) {
+                    if (vertical.isNotEmpty()) {
+                        item { SectionHeader("Shorts") }
+                        item {
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = Space.xl),
+                                horizontalArrangement = Arrangement.spacedBy(Space.md)
+                            ) {
+                                items(vertical.size) { i ->
+                                    ShortCard(
+                                        item = vertical[i],
+                                        playing = state.currentUri == vertical[i].uri.toString(),
+                                        onClick = { onPlay(vertical, i) },
+                                        onLongPress = { onEdit(vertical[i]) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    if (landscape.isNotEmpty()) {
+                        if (vertical.isNotEmpty()) item { SectionHeader("Videos") }
+                        items(landscape.size) { i ->
+                            VideoRow(
+                                item = landscape[i],
+                                playing = state.currentUri == landscape[i].uri.toString(),
+                                onClick = { onPlay(landscape, i) },
+                                onLongPress = { onEdit(landscape[i]) }
+                            )
+                        }
+                    }
+                }
+            }
             else -> if (shown.isEmpty()) {
                 CenterNote("Nothing in ${tab.label.lowercase()} yet")
             } else {
@@ -171,3 +214,98 @@ private fun LibraryRow(
     }
 }
 
+
+// ---------------------------------------------------------------- video -----
+
+/**
+ * Portrait clip. 9:16, browsed sideways - the shape and the gesture people
+ * already expect from shorts. Title sits over the frame because a tall card
+ * has nowhere else to put it without wasting height.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ShortCard(
+    item: AppMediaItem,
+    playing: Boolean,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit
+) {
+    Box(
+        Modifier.width(124.dp).height(220.dp)
+            .clip(RoundedCornerShape(Radius.md))
+            .combinedClickable(onClick = onClick, onLongClick = onLongPress)
+    ) {
+        CoverArt(item, Modifier.fillMaxSize(), corner = 0, targetPx = 512)
+        // Scrim only at the foot, so the frame stays legible.
+        Box(
+            Modifier.fillMaxWidth().height(88.dp).align(Alignment.BottomCenter)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f))
+                    )
+                )
+        )
+        Column(Modifier.align(Alignment.BottomStart).padding(Space.sm)) {
+            Text(
+                item.title, style = Typo.Tertiary,
+                color = if (playing) MediaColors.Accent else Color.White,
+                maxLines = 2, overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                fmtTrack(item.durationMs), style = Typo.Micro,
+                color = Color.White.copy(alpha = 0.7f)
+            )
+        }
+    }
+}
+
+/**
+ * Landscape clip. 16:9 thumbnail with the duration burned into the corner and
+ * the title beside it - the row shape every video app converged on because it
+ * shows the frame at the ratio it was shot in.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun VideoRow(
+    item: AppMediaItem,
+    playing: Boolean,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit
+) {
+    Row(
+        Modifier.fillMaxWidth()
+            .combinedClickable(onClick = onClick, onLongClick = onLongPress)
+            .padding(Space.xl, Space.sm),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier.width(132.dp).aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(Radius.sm))
+        ) {
+            CoverArt(item, Modifier.fillMaxSize(), corner = 0, targetPx = 384)
+            Box(
+                Modifier.align(Alignment.BottomEnd).padding(4.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color.Black.copy(alpha = 0.75f))
+                    .padding(horizontal = 5.dp, vertical = 2.dp)
+            ) {
+                Text(fmtTrack(item.durationMs), style = Typo.Micro, color = Color.White)
+            }
+        }
+        Spacer(Modifier.width(Space.md))
+        Column(Modifier.weight(1f)) {
+            Text(
+                item.title, style = Typo.Primary,
+                color = if (playing) MediaColors.Accent else MediaColors.Cream,
+                maxLines = 2, overflow = TextOverflow.Ellipsis
+            )
+            if (item.width > 0) {
+                Spacer(Modifier.height(Space.xxs))
+                Text(
+                    "${item.width} \u00d7 ${item.height}",
+                    style = Typo.Tertiary, color = MediaColors.CreamFaint
+                )
+            }
+        }
+    }
+}

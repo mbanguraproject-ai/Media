@@ -41,7 +41,7 @@ private fun fmtTotal(ms: Long): String {
     return if (min >= 60) "${min / 60} hr ${min % 60} min" else "$min min"
 }
 
-private fun fmtTrack(ms: Long): String {
+internal fun fmtTrack(ms: Long): String {
     val s = ms / 1000
     return "%d:%02d".format(s / 60, s % 60)
 }

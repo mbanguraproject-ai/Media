@@ -31,8 +31,15 @@ data class AppMediaItem(
     val dateAdded: Long = 0L,     // epoch seconds, from MediaStore
     val dateModified: Long = 0L,  // invalidates cached analysis when a file changes
     val mimeType: String = "",
-    val relPath: String = ""
-)
+    val relPath: String = "",
+    // Video pixel dimensions. MediaStore reports 0 for files it hasn't fully
+    // indexed, so "unknown" is a real state rather than an assumed landscape.
+    val width: Int = 0,
+    val height: Int = 0
+) {
+    /** Portrait video: shorts, phone recordings, reels. */
+    val isVertical: Boolean get() = height > 0 && width > 0 && height > width
+}
 
 // An album is a real thing users navigate to, not a string on a row (§9, §15).
 data class Album(
@@ -364,7 +371,9 @@ object MediaRepository {
             MediaStore.Video.Media._ID,
             MediaStore.Video.Media.TITLE,
             MediaStore.Video.Media.ARTIST,
-            MediaStore.Video.Media.DURATION
+            MediaStore.Video.Media.DURATION,
+            MediaStore.Video.Media.WIDTH,
+            MediaStore.Video.Media.HEIGHT
         )
         context.contentResolver.query(
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI, projection, null, null,
@@ -374,6 +383,10 @@ object MediaRepository {
             val titleCol = c.getColumnIndexOrThrow(MediaStore.Video.Media.TITLE)
             val artistCol = c.getColumnIndexOrThrow(MediaStore.Video.Media.ARTIST)
             val durCol = c.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
+            // getColumnIndex, not OrThrow: these are absent on some OEM
+            // MediaStore builds and a missing column must not kill the scan.
+            val wCol = c.getColumnIndex(MediaStore.Video.Media.WIDTH)
+            val hCol = c.getColumnIndex(MediaStore.Video.Media.HEIGHT)
             while (c.moveToNext()) {
                 val id = c.getLong(idCol)
                 items += AppMediaItem(
@@ -383,7 +396,9 @@ object MediaRepository {
                     durationMs = c.getLong(durCol),
                     uri = Uri.withAppendedPath(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id.toString()),
                     type = MediaType.VIDEO,
-                    pillar = Pillar.VIDEO
+                    pillar = Pillar.VIDEO,
+                    width = if (wCol >= 0) c.getInt(wCol) else 0,
+                    height = if (hCol >= 0) c.getInt(hCol) else 0
                 )
             }
         }
