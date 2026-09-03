@@ -24,6 +24,8 @@ object SettingsStore {
     private val INTRO_SEEN = booleanPreferencesKey("intro_seen")
     private val REVEAL_SEEN = booleanPreferencesKey("library_reveal_seen")
     private val AD_FREE = booleanPreferencesKey("ad_free")
+    private val PLAYER_HINT = booleanPreferencesKey("player_hint_seen")
+    private val REACTIVE_ART = booleanPreferencesKey("reactive_artwork")
 
     fun flow(context: Context): Flow<MediaSettings> =
         context.dataStore.data.map { p ->
@@ -68,5 +70,24 @@ object SettingsStore {
 
     suspend fun setAdFree(context: Context, value: Boolean) {
         context.dataStore.edit { it[AD_FREE] = value }
+    }
+
+    // Shown once, the first time the full player is opened. A feature that is
+    // off by default and buried in settings is a feature nobody finds.
+    fun playerHintSeenFlow(context: Context): Flow<Boolean> =
+        context.dataStore.data.map { it[PLAYER_HINT] ?: false }
+
+    suspend fun setPlayerHintSeen(context: Context) {
+        context.dataStore.edit { it[PLAYER_HINT] = true }
+    }
+
+    // Artwork that moves with the music. OFF by default: it is the most
+    // opinionated thing the app does, and an effect someone dislikes is worse
+    // than an effect they never found.
+    fun reactiveArtFlow(context: Context): Flow<Boolean> =
+        context.dataStore.data.map { it[REACTIVE_ART] ?: false }
+
+    suspend fun setReactiveArt(context: Context, value: Boolean) {
+        context.dataStore.edit { it[REACTIVE_ART] = value }
     }
 }

@@ -1,6 +1,7 @@
 package com.media.app
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -208,8 +209,14 @@ private fun ShelfCard(
         Box(Modifier.size(132.dp), contentAlignment = Alignment.Center) {
             Box(
                 Modifier.fillMaxSize()
+                    // Scale alone is the cheap-visualiser look: artwork that
+                    // bounces. A Phantom is not impressive because the box
+                    // changes size, it is impressive because light moves. So
+                    // this barely scales - 1.5% keeps the card feeling alive
+                    // without the bounce - and the beat is carried by a rim of
+                    // the accent brightening around the cover instead.
                     .graphicsLayer {
-                        val s = 1f + level * 0.05f
+                        val s = 1f + level * 0.015f
                         scaleX = s; scaleY = s
                     }
                     // Artwork sat flat on the background. A shadow lifts the
@@ -223,6 +230,17 @@ private fun ShelfCard(
                         spotColor = Color.Black
                     )
             ) { art() }
+            if (level > 0.01f) {
+                Box(
+                    Modifier.fillMaxSize()
+                        .clearAndSetSemantics { }
+                        .border(
+                            width = (1.5f + 2.5f * level).dp,
+                            color = accent.copy(alpha = 0.55f * level),
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                )
+            }
         }
         Spacer(Modifier.height(Space.md))
         Text(

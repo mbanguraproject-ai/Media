@@ -8,7 +8,10 @@
     <!-- Window background. Was @android:color/transparent, so anything the
          Compose content didn't cover fell through to the system default -
          the warm dark strip under the navigation bar. Matches NavSurface. -->
-    <color name="window_ink">#120D1B</color>
+    <!-- Only visible before Compose draws (cold start, rotation). Matches the
+         default mood's flat surface so the handover is invisible. XML can't
+         read the Kotlin palette, so this is kept in sync by hand. -->
+    <color name="window_ink">#15131C</color>
 
     <color name="ad_surface">#221E31</color>
     <color name="ad_accent">#7C5CFF</color>

@@ -510,7 +510,8 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // The pulse is a MUSIC feature. Video has a picture that must not be
     // scaled, and spoken word has no beat - an audiobook throbbing on the
     // reader's syllables looks broken rather than alive.
-    val reactive = playingItem?.pillar == Pillar.MUSIC && !state.isVideo
+    val reactiveArtOn by SettingsStore.reactiveArtFlow(context).collectAsState(initial = false)
+    val reactive = reactiveArtOn && playingItem?.pillar == Pillar.MUSIC && !state.isVideo
     val envelope = rememberEnvelope(if (reactive) playingItem else null)
     // Volume is the power control: silent means completely still, and turning
     // it up brings both the movement and the hit count with it.
@@ -947,6 +948,53 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // The pill appeared and disappeared instantly - the one piece of chrome
     // that arrives unannounced while you are looking elsewhere. It now slides
     // up from behind the nav bar and leaves the same way.
+    // One-time nudge for reactive artwork. Only when the player is actually
+    // open, only when the feature is off, and only once - a hint that keeps
+    // reappearing is an advert.
+    val hintSeen by SettingsStore.playerHintSeenFlow(context).collectAsState(initial = true)
+    if (showPlayer && !hintSeen && !reactiveArtOn) {
+        Box(
+            Modifier.fillMaxSize().statusBarsPadding().padding(Space.xl, 64.dp, Space.xl, 0.dp),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            Column(
+                Modifier.clip(RoundedCornerShape(Radius.lg))
+                    .background(MediaColors.Floating)
+                    .border(1.dp, MediaColors.Fill, RoundedCornerShape(Radius.lg))
+                    .padding(Space.lg)
+            ) {
+                Text("Reactive artwork is off", style = Typo.Primary, color = MediaColors.Cream)
+                Spacer(Modifier.height(Space.xxs))
+                Text(
+                    "Cover art can move with the music. It's off by default - " +
+                        "you can turn it on any time in Settings.",
+                    style = Typo.Secondary, color = MediaColors.CreamDim
+                )
+                Spacer(Modifier.height(Space.md))
+                Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
+                    Box(
+                        Modifier.clip(CircleShape).background(MediaColors.Accent)
+                            .pressScale(haptic = true) {
+                                scope.launch {
+                                    SettingsStore.setReactiveArt(context, true)
+                                    SettingsStore.setPlayerHintSeen(context)
+                                }
+                            }
+                            .padding(horizontal = Space.lg, vertical = Space.sm)
+                    ) { Text("Turn it on", style = Typo.Label, color = Color.White) }
+                    Box(
+                        Modifier.clip(CircleShape)
+                            .border(1.dp, MediaColors.Fill, CircleShape)
+                            .pressScale(haptic = true) {
+                                scope.launch { SettingsStore.setPlayerHintSeen(context) }
+                            }
+                            .padding(horizontal = Space.lg, vertical = Space.sm)
+                    ) { Text("Not now", style = Typo.Label, color = MediaColors.CreamDim) }
+                }
+            }
+        }
+    }
+
     androidx.compose.animation.AnimatedVisibility(
         visible = state.hasItem && !playerHidden,
         // Fixed ~55dp of travel, NOT { it }: the lambda receives the container

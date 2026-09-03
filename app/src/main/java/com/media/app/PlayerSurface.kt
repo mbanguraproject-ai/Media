@@ -262,7 +262,8 @@ fun PlayerSurface(
             if (level > 0.01f && e > 0.35f) {
                 // Bloom pushed well past the old 0.16-0.38: it now clearly
                 // swells past the artwork edge on a hit instead of hinting.
-                val grow = minOf(artW, artH) * (0.24f + 0.46f * level)
+                // Bloom does more now that scale does less.
+                val grow = minOf(artW, artH) * (0.20f + 0.62f * level)
                 Box(
                     Modifier
                         .clearAndSetSemantics { }
@@ -271,8 +272,8 @@ fun PlayerSurface(
                         .background(
                             Brush.radialGradient(
                                 listOf(
-                                    ambient.copy(alpha = 0.85f * level),
-                                    ambient.copy(alpha = 0.34f * level),
+                                    ambient.copy(alpha = 1.0f * level),
+                                    ambient.copy(alpha = 0.42f * level),
                                     Color.Transparent
                                 )
                             )
@@ -287,7 +288,9 @@ fun PlayerSurface(
                     // near zero between hits, so this reads as a strike rather
                     // than a constant wobble.
                     .graphicsLayer {
-                        val s = 1f + level * 0.10f
+                        // 3%, not 10%. The bloom and rings carry the beat;
+                        // artwork that visibly grows reads as a bounce.
+                        val s = 1f + level * 0.03f
                         scaleX = s; scaleY = s
                     }
                     // Depth grows as it expands: a pill needs almost none, the

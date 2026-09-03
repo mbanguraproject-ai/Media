@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -170,7 +171,13 @@ object MediaColors {
     val Fill = Color(0x14FFFFFF)            // standard glass fill
     val FillStrong = Color(0x1FFFFFFF)      // pressed / raised glass
     val Scrim = Color(0xCC000000)           // behind modal sheets
-    val NavSurface = Color(0xFF120D1B)      // bottom bar, deliberately below bg
+    // DERIVED, not fixed. A hardcoded value was chosen against the old
+    // gradient floor; once the background went flat it became DARKER than
+    // every page, so the bar read as a hole instead of a raised surface - and
+    // its purple hue sat under a warm Workout page. Lifting the mood's own
+    // surface keeps it one consistent step above, in the right hue, forever.
+    val NavSurface @Composable get() =
+        lerp(LocalMood.current.surface, Color.White, 0.055f)
     val Surface @Composable get() = LocalPalette.current.surface
     val Elevated @Composable get() = LocalPalette.current.elevated
     val Floating @Composable get() = LocalPalette.current.floating

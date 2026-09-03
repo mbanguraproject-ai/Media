@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
@@ -48,6 +49,7 @@ fun SettingsScreen(
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
+    val settingsScope = rememberCoroutineScope()
     // Repo moved owners; the old bangscc10-dev Pages URL is stale.
     val privacyUrl = "https://mbanguraproject-ai.github.io/Media/privacy.html"
     Column(
@@ -79,6 +81,18 @@ fun SettingsScreen(
 
         SectionLabel("Appearance")
         FontSizePicker(settings.fontScale, onFontScaleChange)
+
+        SectionLabel("Playback")
+        // OFF by default. It is the most opinionated thing the app does, and
+        // an effect someone dislikes is worse than one they never found.
+        val reactiveArt by SettingsStore.reactiveArtFlow(context).collectAsState(initial = false)
+        ToggleRow(
+            icon = Icons.Outlined.GraphicEq,
+            title = "Reactive artwork",
+            subtitle = "Cover art responds to the music as it plays",
+            checked = reactiveArt,
+            onChange = { on -> settingsScope.launch { SettingsStore.setReactiveArt(context, on) } }
+        )
 
         SectionLabel("Library")
         SettingRow(Icons.Outlined.Storage, "Storage", "$audioCount + $videoCount items", navigates = false) {}
@@ -164,6 +178,41 @@ private fun RescanRow(onRescan: () -> Unit) {
         } else {
             Icon(Icons.Filled.ChevronRight, null, tint = MediaColors.CreamFaint, modifier = Modifier.size(18.dp))
         }
+    }
+}
+
+@Composable
+private fun ToggleRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit
+) {
+    Row(
+        Modifier.fillMaxWidth()
+            .clickable { onChange(!checked) }
+            .padding(Space.xl, Space.md),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, null, tint = MediaColors.CreamDim, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(Space.md))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = MediaColors.Cream)
+            Text(subtitle, style = Typo.Tertiary, color = MediaColors.CreamFaint)
+        }
+        Spacer(Modifier.width(Space.md))
+        Switch(
+            checked = checked,
+            onCheckedChange = onChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = MediaColors.Accent,
+                uncheckedThumbColor = MediaColors.CreamFaint,
+                uncheckedTrackColor = MediaColors.Fill,
+                uncheckedBorderColor = MediaColors.FillStrong
+            )
+        )
     }
 }
 
