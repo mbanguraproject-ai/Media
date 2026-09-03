@@ -78,6 +78,11 @@ fun PlayerSurface(
     onFullscreen: () -> Unit,
     artItem: AppMediaItem?,
     artForQueue: (QueueEntry) -> AppMediaItem?,
+    // Not redundant with the row hearts: Now Playing is where you are actually
+    // listening when you decide you love a track. Making someone navigate back
+    // to a list to favourite it is the worse design.
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
     beat: BeatState,
     bottomInset: androidx.compose.ui.unit.Dp,
     onExpandedChange: (Boolean) -> Unit,
@@ -409,6 +414,14 @@ fun PlayerSurface(
                                     Pip.enter(it, state.videoWidth, state.videoHeight)
                                 }
                             }
+                        )
+                        Spacer(Modifier.width(Space.md))
+                    }
+                    // Video has no favourites concept here and the row is
+                    // already carrying fullscreen + PiP.
+                    if (!state.isVideo) {
+                        FavoriteButton(
+                            isFavorite, Modifier.size(24.dp), onToggleFavorite
                         )
                         Spacer(Modifier.width(Space.md))
                     }

@@ -505,13 +505,17 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // Video never pulses: the artwork box holds a PlayerView, so scaling and
     // blooming it distorts the picture. Passing null also skips the decode
     // entirely rather than analysing a video's audio track for nothing.
-    val envelope = rememberEnvelope(if (state.isVideo) null else playingItem)
+    // The pulse is a MUSIC feature. Video has a picture that must not be
+    // scaled, and spoken word has no beat - an audiobook throbbing on the
+    // reader's syllables looks broken rather than alive.
+    val reactive = playingItem?.pillar == Pillar.MUSIC && !state.isVideo
+    val envelope = rememberEnvelope(if (reactive) playingItem else null)
     // Volume is the power control: silent means completely still, and turning
     // it up brings both the movement and the hit count with it.
     val musicVolume = rememberMusicVolume()
     val beat = rememberBeatPulse(
         state, envelope,
-        active = state.hasItem && !state.isVideo,
+        active = state.hasItem && reactive,
         volume = musicVolume
     )
 
@@ -963,6 +967,19 @@ fun HomeScaffold(vm: PlayerViewModel) {
             // Media3's timeline only carries title/artist/uri, so map back to
             // the library item to get real cover art in the queue.
             artForQueue = { e -> allById[e.mediaId] },
+            isFavorite = playingItem?.let { favorites.contains(it.id) } == true,
+            onToggleFavorite = {
+                playingItem?.let { item ->
+                    scope.launch {
+                        if (favorites.contains(item.id))
+                            db.moodDao().remove(Mood.FAVORITES.key, item.id)
+                        else
+                            db.moodDao().add(
+                                MoodMember(Mood.FAVORITES.key, item.id, System.currentTimeMillis())
+                            )
+                    }
+                }
+            },
             beat = beat,
             bottomInset = navBottom + BottomBarHeight + MiniPlayerGap,
             onExpandedChange = { showPlayer = it }
