@@ -1,6 +1,7 @@
 package com.media.app
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -11,7 +12,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -197,7 +201,9 @@ private fun ShelfCard(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?
 ) {
-    val level = pulse?.level ?: 0f
+    // pulse.level is NOT read here: it changes 60x/second, and reading it in
+    // composition scope would recompose every card in the row every frame.
+    // The reads below all happen inside draw or layer lambdas.
     val accent = MediaColors.Accent
     Column(
         Modifier.width(132.dp).then(
@@ -216,7 +222,8 @@ private fun ShelfCard(
                     // without the bounce - and the beat is carried by a rim of
                     // the accent brightening around the cover instead.
                     .graphicsLayer {
-                        val s = 1f + level * 0.015f
+                        // Read inside the lambda: draw pass, not composition.
+                        val s = 1f + (pulse?.level ?: 0f) * 0.015f
                         scaleX = s; scaleY = s
                     }
                     // Artwork sat flat on the background. A shadow lifts the
@@ -230,16 +237,22 @@ private fun ShelfCard(
                         spotColor = Color.Black
                     )
             ) { art() }
-            if (level > 0.01f) {
-                Box(
-                    Modifier.fillMaxSize()
-                        .clearAndSetSemantics { }
-                        .border(
-                            width = (1.5f + 2.5f * level).dp,
-                            color = accent.copy(alpha = 0.55f * level),
-                            shape = RoundedCornerShape(14.dp)
-                        )
-                )
+            if (pulse != null) {
+                // Drawn, not composed. A `border` whose width comes from a
+                // 60fps value would re-layout every frame; a stroked round-rect
+                // in a Canvas stays entirely in the draw phase.
+                Canvas(Modifier.fillMaxSize().clearAndSetSemantics { }) {
+                    val lv = pulse.level
+                    if (lv <= 0.01f) return@Canvas
+                    val w = (1.5f + 2.5f * lv).dp.toPx()
+                    drawRoundRect(
+                        color = accent.copy(alpha = 0.55f * lv),
+                        topLeft = Offset(w / 2f, w / 2f),
+                        size = Size(size.width - w, size.height - w),
+                        cornerRadius = CornerRadius(14.dp.toPx()),
+                        style = Stroke(width = w)
+                    )
+                }
             }
         }
         Spacer(Modifier.height(Space.md))

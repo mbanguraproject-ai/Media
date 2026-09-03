@@ -112,7 +112,11 @@ fun PlayerSurface(
     val e = expansion.value.coerceIn(0f, 1f)
     // §12: the environment takes its tone from the current cover.
     val ambient = rememberAmbientColor(artItem)
-    val level = beat.level
+    // NOT read here. beat.level updates 60x/second, so reading it in
+    // composition scope recomposed this entire surface every frame - which
+    // starved the drag gesture and made the player feel stuck. Every consumer
+    // below reads it inside a draw or layer lambda instead, so the pulse costs
+    // a redraw, never a recomposition.
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         val density = LocalDensity.current
@@ -259,26 +263,33 @@ fun PlayerSurface(
                     modifier = Modifier.matchParentSize().clearAndSetSemantics { }
                 )
             }
-            if (level > 0.01f && e > 0.35f) {
-                // Bloom pushed well past the old 0.16-0.38: it now clearly
-                // swells past the artwork edge on a hit instead of hinting.
-                // Bloom does more now that scale does less.
-                val grow = minOf(artW, artH) * (0.20f + 0.62f * level)
-                Box(
-                    Modifier
-                        .clearAndSetSemantics { }
-                        .offset(x = artX - grow / 2f, y = artY - grow / 2f)
-                        .size(width = artW + grow, height = artH + grow)
-                        .background(
-                            Brush.radialGradient(
-                                listOf(
-                                    ambient.copy(alpha = 1.0f * level),
-                                    ambient.copy(alpha = 0.42f * level),
-                                    Color.Transparent
-                                )
-                            )
-                        )
-                )
+            if (e > 0.35f) {
+                // A Canvas, not a Box with a conditional background: `if
+                // (level > 0.01f)` was a COMPOSITION-level branch on a value
+                // that changes 60x/second, so this mounted and unmounted every
+                // frame. Reading beat.level inside the draw scope keeps the
+                // whole effect in the draw phase.
+                val cxB = with(density) { (artX + artW / 2f).toPx() }
+                val cyB = with(density) { (artY + artH / 2f).toPx() }
+                val baseB = with(density) { minOf(artW, artH).toPx() }
+                Canvas(Modifier.matchParentSize().clearAndSetSemantics { }) {
+                    val lv = beat.level
+                    if (lv <= 0.01f) return@Canvas
+                    val r = baseB * (0.5f + 0.31f * lv)
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                ambient.copy(alpha = 1.0f * lv),
+                                ambient.copy(alpha = 0.42f * lv),
+                                Color.Transparent
+                            ),
+                            center = Offset(cxB, cyB),
+                            radius = r
+                        ),
+                        radius = r,
+                        center = Offset(cxB, cyB)
+                    )
+                }
             }
 
             // ---------------- shared artwork ----------------
@@ -288,9 +299,11 @@ fun PlayerSurface(
                     // near zero between hits, so this reads as a strike rather
                     // than a constant wobble.
                     .graphicsLayer {
-                        // 3%, not 10%. The bloom and rings carry the beat;
-                        // artwork that visibly grows reads as a bounce.
-                        val s = 1f + level * 0.03f
+                        // beat.level read HERE, inside the layer lambda: this
+                        // re-runs on the draw pass only, never recomposing.
+                        // 3%, not 10% - artwork that visibly grows reads as a
+                        // bounce; the bloom and rings carry the beat.
+                        val s = 1f + beat.level * 0.03f
                         scaleX = s; scaleY = s
                     }
                     // Depth grows as it expands: a pill needs almost none, the

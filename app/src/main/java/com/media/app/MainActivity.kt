@@ -948,6 +948,47 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // The pill appeared and disappeared instantly - the one piece of chrome
     // that arrives unannounced while you are looking elsewhere. It now slides
     // up from behind the nav bar and leaves the same way.
+    androidx.compose.animation.AnimatedVisibility(
+        visible = state.hasItem && !playerHidden,
+        // Fixed ~55dp of travel, NOT { it }: the lambda receives the container
+        // height, and this container is the full screen because PlayerSurface
+        // fills it when expanded. Aligning it BottomCenter instead would stop
+        // the expanded player filling the screen at all.
+        enter = androidx.compose.animation.slideInVertically(
+            animationSpec = Motion.spatial(), initialOffsetY = { 160 }
+        ) + androidx.compose.animation.fadeIn(tween(Motion.Standard)),
+        exit = androidx.compose.animation.slideOutVertically(
+            animationSpec = Motion.spatial(), targetOffsetY = { 160 }
+        ) + androidx.compose.animation.fadeOut(tween(Motion.Fast))
+    ) {
+        val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        PlayerSurface(
+            state = state,
+            vm = vm,
+            expanded = showPlayer,
+            onFullscreen = { videoFullscreen = true },
+            artItem = playingItem,
+            // Media3's timeline only carries title/artist/uri, so map back to
+            // the library item to get real cover art in the queue.
+            artForQueue = { e -> allById[e.mediaId] },
+            isFavorite = playingItem?.let { favorites.contains(it.id) } == true,
+            onToggleFavorite = {
+                playingItem?.let { item ->
+                    scope.launch {
+                        if (favorites.contains(item.id))
+                            db.moodDao().remove(Mood.FAVORITES.key, item.id)
+                        else
+                            db.moodDao().add(
+                                MoodMember(Mood.FAVORITES.key, item.id, System.currentTimeMillis())
+                            )
+                    }
+                }
+            },
+            beat = beat,
+            bottomInset = navBottom + BottomBarHeight + MiniPlayerGap,
+            onExpandedChange = { showPlayer = it }
+        )
+    }
     // One-time nudge for reactive artwork. Only when the player is actually
     // open, only when the feature is off, and only once - a hint that keeps
     // reappearing is an advert.
@@ -995,47 +1036,6 @@ fun HomeScaffold(vm: PlayerViewModel) {
         }
     }
 
-    androidx.compose.animation.AnimatedVisibility(
-        visible = state.hasItem && !playerHidden,
-        // Fixed ~55dp of travel, NOT { it }: the lambda receives the container
-        // height, and this container is the full screen because PlayerSurface
-        // fills it when expanded. Aligning it BottomCenter instead would stop
-        // the expanded player filling the screen at all.
-        enter = androidx.compose.animation.slideInVertically(
-            animationSpec = Motion.spatial(), initialOffsetY = { 160 }
-        ) + androidx.compose.animation.fadeIn(tween(Motion.Standard)),
-        exit = androidx.compose.animation.slideOutVertically(
-            animationSpec = Motion.spatial(), targetOffsetY = { 160 }
-        ) + androidx.compose.animation.fadeOut(tween(Motion.Fast))
-    ) {
-        val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-        PlayerSurface(
-            state = state,
-            vm = vm,
-            expanded = showPlayer,
-            onFullscreen = { videoFullscreen = true },
-            artItem = playingItem,
-            // Media3's timeline only carries title/artist/uri, so map back to
-            // the library item to get real cover art in the queue.
-            artForQueue = { e -> allById[e.mediaId] },
-            isFavorite = playingItem?.let { favorites.contains(it.id) } == true,
-            onToggleFavorite = {
-                playingItem?.let { item ->
-                    scope.launch {
-                        if (favorites.contains(item.id))
-                            db.moodDao().remove(Mood.FAVORITES.key, item.id)
-                        else
-                            db.moodDao().add(
-                                MoodMember(Mood.FAVORITES.key, item.id, System.currentTimeMillis())
-                            )
-                    }
-                }
-            },
-            beat = beat,
-            bottomInset = navBottom + BottomBarHeight + MiniPlayerGap,
-            onExpandedChange = { showPlayer = it }
-        )
-    }
     addToItem?.let { item ->
         val itemMoods = allMoodMembers.filter { it.mediaId == item.id }.map { it.moodKey }.toSet()
         val itemPlaylists = allPlaylistMembers.filter { it.mediaId == item.id }.map { it.playlistId }.toSet()
