@@ -9,7 +9,10 @@ Re-run this whenever the name or version changes:
 import sys
 from PIL import Image, ImageDraw, ImageFont
 
-TEXT = sys.argv[1] if len(sys.argv) > 1 else "AURA 2.0"
+# No version number. The splash is a wordmark, not a changelog - a baked-in
+# version silently goes stale the moment versionName changes, which is exactly
+# what happened between 2.0 and 2.1.
+TEXT = sys.argv[1] if len(sys.argv) > 1 else "AURA"
 FONT = "app/src/main/res/font/inter_variable.ttf"
 OUT  = "app/src/main/res/drawable-xxhdpi/splash_branding.png"
 
