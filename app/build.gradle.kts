@@ -72,7 +72,13 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
-    implementation("androidx.activity:activity-compose:1.9.2")
+    // 1.9.2's enableEdgeToEdge() calls setStatusBarColor and
+    // setNavigationBarColor, deprecated in Android 15. The deprecation is the
+    // library's, not ours - we call one function - so a version bump clears it.
+    implementation("androidx.activity:activity-compose:1.10.1")
+    // Pulled in transitively at 1.1.0, which Play flags as outdated. We use no
+    // Fragments; this just pins it forward.
+    implementation("androidx.fragment:fragment:1.8.6")
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
