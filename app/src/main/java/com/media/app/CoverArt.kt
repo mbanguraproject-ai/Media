@@ -154,7 +154,12 @@ fun CoverArt(
     targetPx: Int = 384
 ) {
     val context = LocalContext.current
-    val key = "${item.uri}@$targetPx"
+    // The blueprint asks for artwork cached and downsampled to the device, not
+    // to one hardcoded number. Essential decodes at 60% of the requested size,
+    // Ultra at 150%. The cache key carries the resolved value, so changing tier
+    // re-decodes instead of serving a stale size.
+    val scaled = (targetPx * LocalQuality.current.artScale).toInt().coerceAtLeast(64)
+    val key = "${item.uri}@$scaled"
     // Seed straight from cache so a re-scroll shows art with no loading flash.
     var art by remember(key) { mutableStateOf(ArtCache.get(key)) }
     var loading by remember(key) { mutableStateOf(art == null && !ArtCache.isKnownMiss(key)) }
@@ -162,7 +167,7 @@ fun CoverArt(
     LaunchedEffect(key) {
         if (art != null || ArtCache.isKnownMiss(key)) { loading = false; return@LaunchedEffect }
         loading = true
-        val loaded = withContext(Dispatchers.IO) { loadArt(context, item, targetPx) }
+        val loaded = withContext(Dispatchers.IO) { loadArt(context, item, scaled) }
         if (loaded != null) ArtCache.put(key, loaded) else ArtCache.markMiss(key)
         art = loaded
         loading = false

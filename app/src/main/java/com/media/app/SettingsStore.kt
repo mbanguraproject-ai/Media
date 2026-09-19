@@ -15,7 +15,10 @@ enum class ThemeMode { DARK, LIGHT, SYSTEM }
 
 data class MediaSettings(
     val themeMode: ThemeMode = ThemeMode.DARK,
-    val fontScale: Float = 1.0f   // 0.9 = compact, 1.0 = default, 1.15 = large
+    val fontScale: Float = 1.0f,  // 0.9 = compact, 1.0 = default, 1.15 = large
+    // Auto follows the detected device ceiling. A manual pick is honoured
+    // even above it - the blueprint allows the override explicitly.
+    val qualityMode: QualityMode = QualityMode.AUTO
 )
 
 object SettingsStore {
@@ -26,6 +29,7 @@ object SettingsStore {
     private val AD_FREE = booleanPreferencesKey("ad_free")
     private val PLAYER_HINT = booleanPreferencesKey("player_hint_seen")
     private val REACTIVE_ART = booleanPreferencesKey("reactive_artwork")
+    private val QUALITY = stringPreferencesKey("display_quality")
 
     fun flow(context: Context): Flow<MediaSettings> =
         context.dataStore.data.map { p ->
@@ -36,7 +40,8 @@ object SettingsStore {
                     "DARK" -> ThemeMode.DARK
                     else -> ThemeMode.DARK
                 },
-                fontScale = p[FONT] ?: 1.0f
+                fontScale = p[FONT] ?: 1.0f,
+                qualityMode = QualityMode.fromName(p[QUALITY])
             )
         }
 
@@ -46,6 +51,10 @@ object SettingsStore {
 
     suspend fun setFontScale(context: Context, scale: Float) {
         context.dataStore.edit { it[FONT] = scale }
+    }
+
+    suspend fun setQualityMode(context: Context, mode: QualityMode) {
+        context.dataStore.edit { it[QUALITY] = mode.name }
     }
 
     fun introSeenFlow(context: Context): Flow<Boolean> =

@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.sp
 // ============================================================================
 object Aura {
     val Accent = Color(0xFF2DD4BF)   // active state, progress, selection
-    val Ground = Color(0xFF08090B)   // near black — the one flat floor
+    val Ground = Color(0xFF000000)   // near black — the one flat floor
 }
 
 enum class Mood(
@@ -105,12 +105,12 @@ val DarkPalette = Palette(
     // Was a purple-navy cast (#17141F and friends). A tinted ground under
     // full-colour album art muddies every warm cover on the screen, so the
     // floor is neutral now and the artwork supplies the colour.
-    bg = Aura.Ground,                // #08090B, near black
-    surface = Color(0xFF0D0E11),     // +1 step
-    elevated = Color(0xFF121418),    // +2 - cards, panels
-    floating = Color(0xFF171A1F),    // +3 - reads above scrolling content
-    modal = Color(0xFF1C1F25),       // +4 - sheets sit highest
-    hairline = Color(0xFF23262D),    // neutral rule
+    bg = Aura.Ground,                // #000000 — pixels off on OLED
+    surface = Color(0xFF0B0B0D),     // +1 step
+    elevated = Color(0xFF15151A),    // +2 - cards, panels
+    floating = Color(0xFF1F1F26),    // +3 - reads above scrolling content
+    modal = Color(0xFF292930),       // +4 - sheets sit highest
+    hairline = Color(0xFF33333B),    // neutral rule
     text = Color(0xFFF2F3F5),
     textDim = Color(0xFFA8AEBA),
     // 5.8:1 on `elevated`, the worst surface it lands on. The deeper floor
@@ -340,6 +340,7 @@ fun MediaTheme(
     themeMode: ThemeMode = ThemeMode.DARK,
     fontScale: Float = 1.0f,
     mood: Mood = Mood.default,
+    quality: QualityProfile = profileFor(QualityLevel.STANDARD),
     content: @Composable () -> Unit
 ) {
     // Dark-only by design. Any saved LIGHT/SYSTEM value is ignored so the app
@@ -353,6 +354,7 @@ fun MediaTheme(
         LocalPalette provides palette,
         LocalMood provides mood,
         LocalTypeScale provides typeScale(fontScale),
+        LocalQuality provides quality,
         LocalReducedMotion provides rememberReducedMotion()
     ) {
         MaterialTheme(colorScheme = scheme, typography = typography(fontScale), content = content)

@@ -129,7 +129,20 @@ class MainActivity : ComponentActivity() {
             // Active mood: re-themes the whole app (accent + glow) and is settable
             // from the home screen via LocalMoodSetter. Purely visual.
             var mood by remember { mutableStateOf(Mood.default) }
-            MediaTheme(themeMode = settings.themeMode, fontScale = settings.fontScale, mood = mood) {
+            // Detected once per launch: RAM, cores, refresh rate, HDR, API
+            // level. Never re-read on recomposition - none of it changes while
+            // the app is open.
+            val capability = remember { detectCapability(this) }
+            val ceiling = remember(capability) { ceilingFor(capability) }
+            val quality = remember(settings.qualityMode, ceiling) {
+                profileFor(resolveLevel(settings.qualityMode, ceiling))
+            }
+            MediaTheme(
+                themeMode = settings.themeMode,
+                fontScale = settings.fontScale,
+                mood = mood,
+                quality = quality
+            ) {
                 androidx.compose.runtime.CompositionLocalProvider(
                     LocalMoodSetter provides { mood = it },
                     LocalInPip provides inPip.value
