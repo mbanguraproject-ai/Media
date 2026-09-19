@@ -32,8 +32,16 @@ private val ambientCache = LruCache<String, Int>(64)
 private fun tame(argb: Int): Color {
     val hsl = FloatArray(3)
     androidx.core.graphics.ColorUtils.colorToHSL(argb, hsl)
-    hsl[1] = hsl[1].coerceIn(0.15f, 0.42f)   // never fully grey, never neon
-    hsl[2] = hsl[2].coerceIn(0.16f, 0.30f)   // always a deep tone
+    // Retuned for the true-black floor. The old band (S 0.15-0.42, L
+    // 0.16-0.30) was set against a #17141F ground; on #000000 it renders as a
+    // pale grey slab across the top of Now Playing and undoes the deep black.
+    //
+    // Counter-intuitively the fix RAISES saturation while dropping lightness:
+    // at these lightnesses a desaturated hue reads as plain grey, so colour
+    // has to be pushed up for the wash to look like light from the artwork
+    // rather than a smudge.
+    hsl[1] = hsl[1].coerceIn(0.28f, 0.60f)   // colour must survive at low L
+    hsl[2] = hsl[2].coerceIn(0.07f, 0.17f)   // deep: it sits on true black now
     return Color(androidx.core.graphics.ColorUtils.HSLToColor(hsl))
 }
 

@@ -169,7 +169,12 @@ private fun DisplayQualitySection(current: QualityMode, onPick: (QualityMode) ->
 
     QualityOption(
         title = "Auto",
-        subtitle = "Matches this device \u2014 currently ${active.label}",
+        // The CEILING, not the active level. Reading `active` here meant that
+        // picking Essential manually made the Auto row claim "currently
+        // Essential" - describing the manual choice instead of what Auto
+        // would actually resolve to, which is the one thing this row exists
+        // to answer.
+        subtitle = "Matches this device \u2014 ${ceiling.label}",
         selected = current == QualityMode.AUTO,
         onClick = { onPick(QualityMode.AUTO) }
     )
@@ -363,13 +368,17 @@ private fun FontSizePicker(current: Float, onChange: (Float) -> Unit) {
                 val sel = kotlin.math.abs(scale - current) < 0.01f
                 Box(
                     Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
-                        .background(if (sel) MediaColors.Cream else MediaColors.InkRaised)
-                        .border(0.5.dp, if (sel) MediaColors.Cream else MediaColors.InkHairline, RoundedCornerShape(10.dp))
+                        // Was a white pill, sitting directly above teal radio
+                        // buttons: two different selection languages on one
+                        // screen. Teal marks state everywhere; white is kept
+                        // for exactly one thing, the play button.
+                        .background(if (sel) MediaColors.Accent else MediaColors.InkRaised)
+                        .border(0.5.dp, if (sel) MediaColors.Accent else MediaColors.InkHairline, RoundedCornerShape(10.dp))
                         .clickable { onChange(scale) }.padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(label, style = MaterialTheme.typography.titleMedium,
-                        color = if (sel) MediaColors.OnInverse else MediaColors.CreamDim)
+                        color = if (sel) MediaColors.OnAccent else MediaColors.CreamDim)
                 }
             }
         }
@@ -378,8 +387,17 @@ private fun FontSizePicker(current: Float, onChange: (Float) -> Unit) {
 
 @Composable
 private fun SectionLabel(text: String) {
-    Text(text, style = MaterialTheme.typography.titleLarge, color = MediaColors.Cream,
-        modifier = Modifier.padding(Space.xl, Space.lg, Space.xl, Space.xs))
+    // Was titleLarge at full Cream: a 19sp bright heading repeated seven times
+    // down one screen - the same giant-heading problem the home header had.
+    // Home already treats a section heading as a signpost rather than a
+    // headline; Settings never got that pass. Uppercase micro at a dimmed
+    // colour groups the list without competing with the rows inside it.
+    Text(
+        text.uppercase(),
+        style = Typo.Micro,
+        color = MediaColors.CreamDim,
+        modifier = Modifier.padding(Space.xl, Space.xl, Space.xl, Space.sm)
+    )
 }
 
 @Composable

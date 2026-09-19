@@ -228,14 +228,14 @@ fun PlayerSurface(
                     Modifier.matchParentSize().clearAndSetSemantics { }.background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                ambient.copy(alpha = 0.95f * e),
-                                ambient.copy(alpha = 0.45f * e),
+                                ambient.copy(alpha = 0.85f * e),
+                                ambient.copy(alpha = 0.30f * e),
                                 ink.copy(alpha = 0f)
                             ),
                             // heightPx, not maxHeight: BoxWithConstraintsScope
                             // isn't reachable as an implicit receiver from
                             // inside the inner Box's BoxScope.
-                            endY = heightPx * 0.72f
+                            endY = heightPx * 0.62f
                         )
                     )
                 )

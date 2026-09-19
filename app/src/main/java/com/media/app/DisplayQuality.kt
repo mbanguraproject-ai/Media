@@ -69,13 +69,20 @@ data class DeviceCapability(
     val score: Int
         get() {
             if (isLowRamDevice) return 0
+            // Thresholds sit BELOW the nominal sizes on purpose. totalMem is
+            // what the kernel leaves for userspace, always well under the RAM
+            // printed on the box: a 4 GB phone reports ~3.6 GB, 6 GB reports
+            // ~5.6 GB. Round numbers (< 4096) therefore filed every nominal
+            // 4 GB device into the 3 GB bucket - an off-by-one against every
+            // device, found on a real 3.6 GB handset that scored Standard when
+            // it should have scored Enhanced.
             var s = when {
-                totalRamMb < 2048 -> 0
-                totalRamMb < 3072 -> 1
-                totalRamMb < 4096 -> 2
-                totalRamMb < 6144 -> 3
-                totalRamMb < 8192 -> 4
-                else -> 5
+                totalRamMb < 1900 -> 0      // under 2 GB
+                totalRamMb < 2700 -> 1      // 2 GB class
+                totalRamMb < 3500 -> 2      // 3 GB class
+                totalRamMb < 5500 -> 3      // 4 GB class
+                totalRamMb < 7400 -> 4      // 6 GB class
+                else -> 5                   // 8 GB and up
             }
             if (cpuCores <= 4) s -= 1
             if (refreshRateHz >= 89f) s += 1        // 90Hz panels
