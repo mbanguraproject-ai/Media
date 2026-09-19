@@ -163,7 +163,11 @@ private fun DisplayQualitySection(current: QualityMode, onPick: (QualityMode) ->
     val cap = remember { detectCapability(context) }
     val ceiling = remember(cap) { ceilingFor(cap) }
     val active = resolveLevel(current, ceiling)
-    val overReach = current != QualityMode.AUTO && active.ordinal > ceiling.ordinal
+    val adaptive = LocalAdaptiveQuality.current
+    // A prediction and a measurement. Once the measurement has spoken,
+    // the prediction is noise.
+    val overReach = current != QualityMode.AUTO &&
+        active.ordinal > ceiling.ordinal && !adaptive.strained
 
     SectionLabel("Display quality")
 
@@ -197,6 +201,43 @@ private fun DisplayQualitySection(current: QualityMode, onPick: (QualityMode) ->
             color = MediaColors.Warning,
             modifier = Modifier.padding(Space.xl, Space.sm, Space.xl, 0.dp)
         )
+    }
+
+    // A tier that quietly changed itself is worse than one that never adapts,
+    // so the app says what it did and why.
+    if (adaptive.steppedDown) {
+        Text(
+            "Stepped down to ${adaptive.level.label} to hold a steady frame rate. " +
+                "Playback was not affected.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MediaColors.Warning,
+            modifier = Modifier.padding(Space.xl, Space.sm, Space.xl, 0.dp)
+        )
+    } else if (adaptive.strained) {
+        // Measured trouble at a MANUAL level. The blueprint allows the
+        // override and says to offer Auto rather than force it, so this is an
+        // offer with a button, not a silent correction.
+        Column(Modifier.padding(Space.xl, Space.sm, Space.xl, 0.dp)) {
+            Text(
+                "${adaptive.level.label} is dropping frames on this device.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MediaColors.Warning
+            )
+            Spacer(Modifier.height(Space.sm))
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(Radius.pill))
+                    .background(MediaColors.Accent)
+                    .clickable { onPick(QualityMode.AUTO) }
+                    .padding(horizontal = Space.lg, vertical = 9.dp)
+            ) {
+                Text(
+                    "Use Auto",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MediaColors.OnAccent
+                )
+            }
+        }
     }
 
     val ramText =

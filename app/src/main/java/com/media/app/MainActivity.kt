@@ -134,9 +134,18 @@ class MainActivity : ComponentActivity() {
             // the app is open.
             val capability = remember { detectCapability(this) }
             val ceiling = remember(capability) { ceilingFor(capability) }
-            val quality = remember(settings.qualityMode, ceiling) {
-                profileFor(resolveLevel(settings.qualityMode, ceiling))
+            val requested = remember(settings.qualityMode, ceiling) {
+                resolveLevel(settings.qualityMode, ceiling)
             }
+            // Sustained frame performance can step this DOWN on Auto. It
+            // never touches playback, and it never overrides a manual pick -
+            // that surfaces in Settings as an offer instead.
+            val adaptive = rememberAdaptiveQuality(
+                requested = requested,
+                autoMode = settings.qualityMode == QualityMode.AUTO,
+                refreshHz = capability.refreshRateHz
+            )
+            val quality = remember(adaptive.level) { profileFor(adaptive.level) }
             MediaTheme(
                 themeMode = settings.themeMode,
                 fontScale = settings.fontScale,
@@ -145,6 +154,7 @@ class MainActivity : ComponentActivity() {
             ) {
                 androidx.compose.runtime.CompositionLocalProvider(
                     LocalMoodSetter provides { mood = it },
+                    LocalAdaptiveQuality provides adaptive,
                     LocalInPip provides inPip.value
                 ) {
                     Surface(Modifier.fillMaxSize(), color = MediaColors.Ink) {

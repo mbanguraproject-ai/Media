@@ -167,9 +167,15 @@ data class QualityProfile(
     val ambientGradient: Boolean,
     val dynamicArtLighting: Boolean,
 
-    // geometry — tiers are different layouts, not one layout with effects
-    val cornerScale: Float,
-    val densityScale: Float,         // row height / padding multiplier
+    // Geometry — tiers are different LAYOUTS, not one layout with effects.
+    // Stated per tier rather than derived from a multiplier: a single
+    // densityScale float sounded like a system but produced values like
+    // 1.84dp and scaled hairlines along with everything else. These are
+    // designed numbers.
+    val gutter: Dp,                  // the one screen-side padding, app-wide
+    val rowPadV: Dp,                 // vertical padding inside a list row
+    val rowArt: Dp,                  // artwork size in a list row
+    val rowArtCorner: Int,           // CoverArt takes its corner as Int dp
 
     // motion
     val motionScale: Float,          // multiplies every duration
@@ -190,7 +196,7 @@ fun profileFor(level: QualityLevel): QualityProfile = when (level) {
         artScale = 0.60f,
         surfaceLift = 1.0f, shadow = 0.dp, blur = 0.dp,
         ambientGradient = false, dynamicArtLighting = false,
-        cornerScale = 0.70f, densityScale = 0.92f,
+        gutter = 16.dp, rowPadV = 6.dp, rowArt = 44.dp, rowArtCorner = 8,
         motionScale = 0.55f, springMotion = false, refreshAware = false,
         waveformBars = 24, particles = false
     )
@@ -199,8 +205,8 @@ fun profileFor(level: QualityLevel): QualityProfile = when (level) {
         artScale = 0.85f,
         surfaceLift = 1.0f, shadow = 2.dp, blur = 0.dp,
         ambientGradient = false, dynamicArtLighting = false,
-        cornerScale = 1.0f, densityScale = 1.0f,
-        motionScale = 0.85f, springMotion = false, refreshAware = true,
+        gutter = 20.dp, rowPadV = 8.dp, rowArt = 48.dp, rowArtCorner = 10,
+        motionScale = 0.80f, springMotion = false, refreshAware = true,
         waveformBars = 40, particles = false
     )
     QualityLevel.ENHANCED -> QualityProfile(
@@ -208,7 +214,7 @@ fun profileFor(level: QualityLevel): QualityProfile = when (level) {
         artScale = 1.0f,
         surfaceLift = 1.10f, shadow = 6.dp, blur = 12.dp,
         ambientGradient = true, dynamicArtLighting = false,
-        cornerScale = 1.10f, densityScale = 1.04f,
+        gutter = 24.dp, rowPadV = 9.dp, rowArt = 52.dp, rowArtCorner = 12,
         motionScale = 1.0f, springMotion = true, refreshAware = true,
         waveformBars = 56, particles = false
     )
@@ -217,8 +223,8 @@ fun profileFor(level: QualityLevel): QualityProfile = when (level) {
         artScale = 1.25f,
         surfaceLift = 1.20f, shadow = 12.dp, blur = 24.dp,
         ambientGradient = true, dynamicArtLighting = true,
-        cornerScale = 1.20f, densityScale = 1.08f,
-        motionScale = 1.0f, springMotion = true, refreshAware = true,
+        gutter = 26.dp, rowPadV = 11.dp, rowArt = 56.dp, rowArtCorner = 14,
+        motionScale = 1.10f, springMotion = true, refreshAware = true,
         waveformBars = 72, particles = true
     )
     QualityLevel.ULTRA -> QualityProfile(
@@ -226,8 +232,8 @@ fun profileFor(level: QualityLevel): QualityProfile = when (level) {
         artScale = 1.50f,
         surfaceLift = 1.30f, shadow = 18.dp, blur = 36.dp,
         ambientGradient = true, dynamicArtLighting = true,
-        cornerScale = 1.30f, densityScale = 1.12f,
-        motionScale = 1.0f, springMotion = true, refreshAware = true,
+        gutter = 28.dp, rowPadV = 13.dp, rowArt = 60.dp, rowArtCorner = 16,
+        motionScale = 1.20f, springMotion = true, refreshAware = true,
         waveformBars = 96, particles = true
     )
 }

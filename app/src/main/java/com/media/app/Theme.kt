@@ -283,20 +283,42 @@ private fun typography(scale: Float): Typography {
 }
 
 object Motion {
-    const val Fast = 160        // 120–180ms: taps, toggles, icon morphs
-    const val Standard = 260    // 220–320ms: sheets, fades, tab changes
-    const val Large = 420       // 350–500ms: shared elements, screen transitions
+    // Timing and spring character come from the display-quality tier.
+    //
+    // These are plain fields rather than a CompositionLocal on purpose: half
+    // the call sites build their spec inside a coroutine (Animatable.animateTo
+    // from a LaunchedEffect or scope.launch) or a draw scope, where a
+    // CompositionLocal is not reachable. MediaTheme keeps them in step. Only
+    // one tier is live per process, and an animation already in flight simply
+    // finishes on the timing it started with, which is correct.
+    @Volatile
+    internal var scale: Float = 1f
+    @Volatile
+    internal var springy: Boolean = true
+
+    private fun d(base: Int): Int = (base * scale).toInt().coerceIn(16, 4000)
+
+    val Fast: Int get() = d(160)        // taps, toggles, icon morphs
+    val Standard: Int get() = d(260)    // sheets, fades, tab changes
+    val Large: Int get() = d(420)       // shared elements, screen transitions
 
     // Emphasized decelerate: quick departure, long settle. The default.
     val Emphasized = CubicBezierEasing(0.2f, 0f, 0f, 1f)
     // Symmetrical, for things that move and return (press states).
     val Smooth = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)
 
-    // Spatial: things that MOVE. Settles without visible wobble.
-    fun <T> spatial(): SpringSpec<T> = spring(dampingRatio = 0.82f, stiffness = 380f)
-    // Bouncy: things that RESPOND to a finger. Slight overshoot is the point.
-    fun <T> bouncy(): SpringSpec<T> = spring(dampingRatio = 0.55f, stiffness = 700f)
-    // Snappy: small state flips that should feel instant but not robotic.
+    // Below Enhanced the springs go critically damped: no overshoot, no
+    // settle, nothing to re-render on the way down. A constrained device
+    // should feel decisive rather than cheap, which is a different thing from
+    // feeling slow - the durations shorten, they do not stretch.
+    fun <T> spatial(): SpringSpec<T> =
+        if (springy) spring(dampingRatio = 0.82f, stiffness = 380f)
+        else spring(dampingRatio = 1f, stiffness = 900f)
+
+    fun <T> bouncy(): SpringSpec<T> =
+        if (springy) spring(dampingRatio = 0.55f, stiffness = 700f)
+        else spring(dampingRatio = 1f, stiffness = 1000f)
+
     fun <T> snappy(): SpringSpec<T> = spring(dampingRatio = 1f, stiffness = 900f)
 }
 
@@ -349,6 +371,13 @@ fun MediaTheme(
     val scheme = darkColorScheme(primary = palette.accent, background = palette.bg,
         surface = palette.elevated, onBackground = palette.text,
         onSurface = palette.text, onPrimary = palette.onAccent)
+
+    // Motion cannot be a CompositionLocal (see the note in Motion), so the
+    // theme pushes the resolved tier into it instead.
+    androidx.compose.runtime.SideEffect {
+        Motion.scale = quality.motionScale
+        Motion.springy = quality.springMotion
+    }
 
     androidx.compose.runtime.CompositionLocalProvider(
         LocalPalette provides palette,

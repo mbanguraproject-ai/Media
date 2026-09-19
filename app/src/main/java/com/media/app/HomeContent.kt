@@ -43,10 +43,11 @@ import androidx.compose.ui.unit.sp
 // roughly once a month.
 @Composable
 fun StashHeader(onSearch: () -> Unit) {
+    val q = LocalQuality.current
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(start = Space.lg, end = Space.lg, top = Space.md, bottom = Space.md),
+            .padding(start = q.gutter, end = q.gutter, top = Space.md, bottom = Space.md),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -97,10 +98,11 @@ private fun CircleButton(icon: ImageVector, cd: String, onClick: () -> Unit) {
 // a 19sp header.
 @Composable
 fun ResumeBar(item: AppMediaItem, progress: Float, onPlay: () -> Unit) {
+    val q = LocalQuality.current
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = Space.lg, vertical = Space.sm)
+            .padding(horizontal = q.gutter, vertical = Space.sm)
             .clip(RoundedCornerShape(Radius.md))
             .background(MediaColors.FillSubtle)
             .border(1.dp, MediaColors.Fill, RoundedCornerShape(Radius.md))
@@ -146,8 +148,9 @@ fun ResumeBar(item: AppMediaItem, progress: Float, onPlay: () -> Unit) {
 // exists ONLY while one of them is actually filtering the list.
 @Composable
 fun FilterBar(label: String, count: Int, onClear: () -> Unit) {
+    val q = LocalQuality.current
     Row(
-        Modifier.fillMaxWidth().padding(start = Space.lg, end = Space.sm, bottom = Space.xs),
+        Modifier.fillMaxWidth().padding(start = q.gutter, end = Space.sm, bottom = Space.xs),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, style = Typo.Label, color = MediaColors.Cream)
@@ -178,13 +181,14 @@ fun FilterBar(label: String, count: Int, onClear: () -> Unit) {
 // so the file went and the function stayed. Still used by Library and Search.
 @Composable
 fun SectionHeader(title: String) {
+    val q = LocalQuality.current
     // Was Typo.Section at full Cream, which competed with the artwork it was
     // labelling. A section heading is a signpost, not a headline.
     Text(
         title,
         style = Typo.Section.copy(fontWeight = FontWeight.Medium),
         color = MediaColors.CreamDim,
-        modifier = Modifier.padding(Space.xl, Space.xl, Space.xl, Space.sm)
+        modifier = Modifier.padding(q.gutter, Space.xl, q.gutter, Space.sm)
     )
 }
 
@@ -228,8 +232,9 @@ fun SortSegments(selected: SortKey, onSelect: (SortKey) -> Unit) {
 }
 @Composable
 fun CountAndShuffle(count: Int, onShuffle: () -> Unit) {
+    val q = LocalQuality.current
     Row(
-        Modifier.fillMaxWidth().padding(Space.xl, Space.lg, Space.xl, Space.sm),
+        Modifier.fillMaxWidth().padding(q.gutter, Space.lg, q.gutter, Space.sm),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -263,18 +268,19 @@ fun TrackRow(
     // anyone who didn't already know to hold a row down.
     onMenu: (() -> Unit)? = null
 ) {
+    val q = LocalQuality.current
     Row(
         Modifier.fillMaxWidth()
             .combinedClickable(onClick = onClick, onLongClick = onLongPress)
-            .padding(Space.xl, 9.dp),
+            .padding(horizontal = q.gutter, vertical = q.rowPadV),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // §10: rows carry real artwork. Falls back to a generative composition
         // when the file has none. No badge at this size — it would be clutter.
         CoverArt(
             item = item,
-            modifier = Modifier.size(50.dp),
-            corner = 12,
+            modifier = Modifier.size(q.rowArt),
+            corner = q.rowArtCorner,
             targetPx = 144
         )
         Spacer(Modifier.width(Space.md))
