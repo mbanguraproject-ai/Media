@@ -1,5 +1,6 @@
 package com.media.app
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,43 +30,56 @@ import androidx.compose.ui.unit.sp
 
 // ------------------------------------------------------------------ HEADER
 //
-// Was a 28sp screen title stacked over a time-of-day greeting, with search and
-// rescan beside them: two large texts and two controls shouting at the top of
-// every screen. A player's header is not the product - the library is.
+// Was a 28sp "Your library" stacked over a time-of-day greeting, with search
+// and rescan beside them: two large texts and two controls shouting at the top
+// of every screen. A player's header is not the product - the library is.
 //
-// Identity, one control, done. The mark is the launcher icon (three concentric
-// rings, the Aura mark) rather than a second logo invented for the header. It
-// carries ~25% built-in padding, so 32dp of box renders ~16dp of ring, which
-// is what pairs with the wordmark's cap height.
+// Identity, one control, done. The mark is the launcher icon - the same bird,
+// generated from the same photograph - not a second logo invented for the
+// header. It is the colour asset, untinted: the bird already carries the
+// accent, and tinting it would throw away the only colour on this screen that
+// is not somebody's artwork.
+//
+// The gutter is Space.xl, not Space.lg. The rows below it were always on xl,
+// so the mark used to start 8dp left of every piece of artwork under it.
 //
 // Rescan is gone from here entirely. It already exists at Settings > Rescan
-// device, so the header carried a duplicate control for something you touch
-// roughly once a month.
+// device, so the header was carrying a duplicate control for something you
+// touch roughly once a month.
 @Composable
 fun StashHeader(onSearch: () -> Unit) {
-    val q = LocalQuality.current
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(start = q.gutter, end = q.gutter, top = Space.md, bottom = Space.md),
+            .padding(start = Space.xl, end = Space.xl, top = Space.sm, bottom = Space.sm),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_launcher_monochrome),
+        Image(
+            painter = painterResource(R.drawable.aura_mark),
             contentDescription = null,       // the wordmark beside it reads it out
-            tint = MediaColors.Accent,
-            modifier = Modifier.size(32.dp)
+            modifier = Modifier.height(54.dp)
         )
         Spacer(Modifier.width(Space.sm))
-        Text(
-            "Aura",
-            style = Typo.Section.copy(
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 0.2.sp
-            ),
-            color = MediaColors.Cream,
-            maxLines = 1
-        )
+        Column {
+            Text(
+                "Aura",
+                style = Typo.Display.copy(
+                    fontWeight = FontWeight.Light,
+                    letterSpacing = 0.sp
+                ),
+                color = MediaColors.Cream,
+                maxLines = 1
+            )
+            Text(
+                "YOUR VIBE",
+                style = Typo.Micro.copy(
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 3.2.sp
+                ),
+                color = MediaColors.CreamDim,
+                maxLines = 1
+            )
+        }
         Spacer(Modifier.weight(1f))
         CircleButton(Icons.Filled.Search, "Search", onClick = onSearch)
     }
@@ -98,11 +112,10 @@ private fun CircleButton(icon: ImageVector, cd: String, onClick: () -> Unit) {
 // a 19sp header.
 @Composable
 fun ResumeBar(item: AppMediaItem, progress: Float, onPlay: () -> Unit) {
-    val q = LocalQuality.current
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = q.gutter, vertical = Space.sm)
+            .padding(horizontal = Space.xl, vertical = Space.sm)
             .clip(RoundedCornerShape(Radius.md))
             .background(MediaColors.FillSubtle)
             .border(1.dp, MediaColors.Fill, RoundedCornerShape(Radius.md))
@@ -148,9 +161,8 @@ fun ResumeBar(item: AppMediaItem, progress: Float, onPlay: () -> Unit) {
 // exists ONLY while one of them is actually filtering the list.
 @Composable
 fun FilterBar(label: String, count: Int, onClear: () -> Unit) {
-    val q = LocalQuality.current
     Row(
-        Modifier.fillMaxWidth().padding(start = q.gutter, end = Space.sm, bottom = Space.xs),
+        Modifier.fillMaxWidth().padding(start = Space.xl, end = Space.sm, bottom = Space.xs),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, style = Typo.Label, color = MediaColors.Cream)
@@ -181,14 +193,13 @@ fun FilterBar(label: String, count: Int, onClear: () -> Unit) {
 // so the file went and the function stayed. Still used by Library and Search.
 @Composable
 fun SectionHeader(title: String) {
-    val q = LocalQuality.current
     // Was Typo.Section at full Cream, which competed with the artwork it was
     // labelling. A section heading is a signpost, not a headline.
     Text(
         title,
         style = Typo.Section.copy(fontWeight = FontWeight.Medium),
         color = MediaColors.CreamDim,
-        modifier = Modifier.padding(q.gutter, Space.xl, q.gutter, Space.sm)
+        modifier = Modifier.padding(Space.xl, Space.xl, Space.xl, Space.sm)
     )
 }
 
@@ -232,9 +243,8 @@ fun SortSegments(selected: SortKey, onSelect: (SortKey) -> Unit) {
 }
 @Composable
 fun CountAndShuffle(count: Int, onShuffle: () -> Unit) {
-    val q = LocalQuality.current
     Row(
-        Modifier.fillMaxWidth().padding(q.gutter, Space.lg, q.gutter, Space.sm),
+        Modifier.fillMaxWidth().padding(Space.xl, Space.lg, Space.xl, Space.sm),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -272,7 +282,7 @@ fun TrackRow(
     Row(
         Modifier.fillMaxWidth()
             .combinedClickable(onClick = onClick, onLongClick = onLongPress)
-            .padding(horizontal = q.gutter, vertical = q.rowPadV),
+            .padding(horizontal = Space.xl, vertical = q.rowPadV),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // §10: rows carry real artwork. Falls back to a generative composition

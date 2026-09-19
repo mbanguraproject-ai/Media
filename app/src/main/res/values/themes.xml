@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Splash: deep ink + expanding rings, matching the beat visual. -->
+    <!-- Splash: deep ink, the mark, the wordmark. The icon here IS the
+         launcher foreground, so the icon you tap and the one that greets
+         you can never be two different birds. -->
     <style name="Theme.Media.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_ink</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_rings_animated</item>
-        <item name="windowSplashScreenAnimationDuration">800</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
         <!-- Bottom wordmark. API 31+ only: core-splashscreen ignores this on
              older versions, which show the icon alone. Regenerate the PNG with
              tools/make_wordmark.py when the name or version changes. -->
