@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
@@ -116,7 +117,7 @@ private fun MyPlaylistsTab(
 ) {
     if (playlists.isEmpty()) {
         EmptyBlock(
-            icon = Icons.Filled.QueueMusic,
+            icon = Icons.AutoMirrored.Filled.QueueMusic,
             title = "No playlists yet",
             subtitle = "Create your first playlist",
             cta = "Create playlist",
@@ -138,7 +139,7 @@ private fun MyPlaylistsTab(
                         Modifier.size(44.dp).clip(RoundedCornerShape(11.dp))
                             .background(MediaColors.Accent.copy(alpha = 0.18f)),
                         contentAlignment = Alignment.Center
-                    ) { Icon(Icons.Filled.QueueMusic, null, tint = MediaColors.Accent, modifier = Modifier.size(22.dp)) }
+                    ) { Icon(Icons.AutoMirrored.Filled.QueueMusic, null, tint = MediaColors.Accent, modifier = Modifier.size(22.dp)) }
                     Spacer(Modifier.width(Space.md))
                     Text(pl.name, style = Typo.Primary,
                         color = MediaColors.Cream, modifier = Modifier.weight(1f),
@@ -261,7 +262,7 @@ fun PlaylistDetailScreen(
 
         if (tracks.isEmpty()) {
             EmptyBlock(
-                icon = Icons.Filled.QueueMusic,
+                icon = Icons.AutoMirrored.Filled.QueueMusic,
                 title = "Nothing here yet",
                 subtitle = "Long-press any track to add it",
                 cta = null, onCta = {}

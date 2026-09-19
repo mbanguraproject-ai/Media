@@ -10,6 +10,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import android.content.Intent
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.OpenInNew
@@ -88,7 +90,7 @@ fun AddToSheet(
             // §26 primary actions, surfaced first; the toggles below are
             // progressive disclosure for the less frequent choices.
             Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
-                QuickAction(Icons.Filled.PlaylistPlay, "Play next", Modifier.weight(1f)) {
+                QuickAction(Icons.AutoMirrored.Filled.PlaylistPlay, "Play next", Modifier.weight(1f)) {
                     onPlayNext(); onDismiss()
                 }
                 QuickAction(Icons.AutoMirrored.Filled.QueueMusic, "Add to queue", Modifier.weight(1f)) {
@@ -151,7 +153,7 @@ fun AddToSheet(
             if (onViewArtist != null) {
                 ActionRow(Icons.Filled.Person, "View artist") { onViewArtist(); onDismiss() }
             }
-            ActionRow(Icons.Filled.OpenInNew, "Open file") {
+            ActionRow(Icons.AutoMirrored.Filled.OpenInNew, "Open file") {
                 runCatching {
                     context.startActivity(Intent(Intent.ACTION_VIEW).apply {
                         setDataAndType(item.uri, item.mimeType.ifBlank { "*/*" })

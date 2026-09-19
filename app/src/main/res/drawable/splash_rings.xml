@@ -5,11 +5,11 @@
     android:viewportHeight="108">
     <group android:name="ringOut" android:pivotX="54" android:pivotY="54">
         <path android:name="pOut" android:pathData="M26.5,54 A27.5,27.5 0 1,0 81.5,54 A27.5,27.5 0 1,0 26.5,54 Z" android:fillColor="#00000000"
-            android:strokeColor="#9B7CFF" android:strokeWidth="2.6" android:strokeAlpha="0" />
+            android:strokeColor="#2DD4BF" android:strokeWidth="2.6" android:strokeAlpha="0" />
     </group>
     <group android:name="ringIn" android:pivotX="54" android:pivotY="54">
         <path android:name="pIn" android:pathData="M35.9,54 A18.1,18.1 0 1,0 72.1,54 A18.1,18.1 0 1,0 35.9,54 Z" android:fillColor="#00000000"
-            android:strokeColor="#9B7CFF" android:strokeWidth="3" android:strokeAlpha="0" />
+            android:strokeColor="#2DD4BF" android:strokeWidth="3" android:strokeAlpha="0" />
     </group>
     <group android:name="dot" android:pivotX="54" android:pivotY="54">
         <path android:name="pDot" android:pathData="M46.5,54 A7.5,7.5 0 1,0 61.5,54 A7.5,7.5 0 1,0 46.5,54 Z"

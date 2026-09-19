@@ -93,6 +93,6 @@
             android:background="@drawable/ad_cta_bg"
             android:textSize="13sp"
             android:textStyle="bold"
-            android:textColor="@color/white" />
+            android:textColor="@color/ad_on_accent" />
     </LinearLayout>
 </com.google.android.gms.ads.nativead.NativeAdView>

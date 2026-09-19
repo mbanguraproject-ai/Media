@@ -48,7 +48,9 @@ import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.automirrored.outlined.QueueMusic
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -669,7 +671,10 @@ fun HomeScaffold(vm: PlayerViewModel) {
                                 onPlay = { vm.playAt(track, pos.positionMs) }
                             )
                         }
-                        SortSegments(selected = homeSort, onSelect = { homeSort = it })
+                        // Sort segments parked. The selected pill was the loudest
+                        // object on the screen, above the artwork it sat over.
+                        // homeSort stays SortKey.NAME (A-Z); SortSegments is still
+                        // defined in HomeContent.kt for when it comes back.
                         CountAndShuffle(count = shown.size, onShuffle = {
                             if (shown.isNotEmpty()) {
                                 if (!state.shuffle) vm.toggleShuffle()
@@ -1131,7 +1136,7 @@ private fun BottomBar(
             // set has a music-library icon; nothing exotic was needed.
             NavTab(Icons.Filled.LibraryMusic, Icons.Outlined.LibraryMusic,
                 "Library", current == 1, tab) { onSelect(1) }
-            NavTab(Icons.Filled.QueueMusic, Icons.Outlined.QueueMusic, "Playlists", current == 2, tab) { onSelect(2) }
+            NavTab(Icons.AutoMirrored.Filled.QueueMusic, Icons.AutoMirrored.Outlined.QueueMusic, "Playlists", current == 2, tab) { onSelect(2) }
             // Tune is the EQUALISER glyph (sliders) - in a music app that
             // reads as an EQ feature, not "more". Menu (hamburger) signals a
             // drawer that doesn't exist. The tab is settings; show a gear.

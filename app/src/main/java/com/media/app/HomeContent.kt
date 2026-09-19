@@ -171,6 +171,23 @@ fun FilterBar(label: String, count: Int, onClear: () -> Unit) {
     }
 }
 
+// ----------------------------------------------------------------- SECTION
+//
+// Moved here from HomeSections.kt, which existed to build the home shelves.
+// With the shelves gone this was the only live thing left in a 269-line file,
+// so the file went and the function stayed. Still used by Library and Search.
+@Composable
+fun SectionHeader(title: String) {
+    // Was Typo.Section at full Cream, which competed with the artwork it was
+    // labelling. A section heading is a signpost, not a headline.
+    Text(
+        title,
+        style = Typo.Section.copy(fontWeight = FontWeight.Medium),
+        color = MediaColors.CreamDim,
+        modifier = Modifier.padding(Space.xl, Space.xl, Space.xl, Space.sm)
+    )
+}
+
 @Composable
 fun SortSegments(selected: SortKey, onSelect: (SortKey) -> Unit) {
     // Was three stat CARDS carrying counts, sitting above two shelves and an

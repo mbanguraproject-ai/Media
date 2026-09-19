@@ -15,7 +15,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -43,7 +42,7 @@ import androidx.compose.ui.unit.sp
 // ============================================================================
 object Aura {
     val Accent = Color(0xFF2DD4BF)   // active state, progress, selection
-    val Ground = Color(0xFF101116)   // the one flat floor
+    val Ground = Color(0xFF08090B)   // near black — the one flat floor
 }
 
 enum class Mood(
@@ -106,22 +105,20 @@ val DarkPalette = Palette(
     // Was a purple-navy cast (#17141F and friends). A tinted ground under
     // full-colour album art muddies every warm cover on the screen, so the
     // floor is neutral now and the artwork supplies the colour.
-    bg = Aura.Ground,                // #101116 - the one flat floor
-    surface = Color(0xFF16181E),     // +1 step
-    elevated = Color(0xFF1B1E25),    // +2 - cards, panels
-    floating = Color(0xFF22252E),    // +3 - reads above scrolling content
-    modal = Color(0xFF272B35),       // +4 - sheets sit highest
-    hairline = Color(0xFF2A2E38),    // neutral rule
+    bg = Aura.Ground,                // #08090B, near black
+    surface = Color(0xFF0D0E11),     // +1 step
+    elevated = Color(0xFF121418),    // +2 - cards, panels
+    floating = Color(0xFF171A1F),    // +3 - reads above scrolling content
+    modal = Color(0xFF1C1F25),       // +4 - sheets sit highest
+    hairline = Color(0xFF23262D),    // neutral rule
     text = Color(0xFFF2F3F5),
     textDim = Color(0xFFA8AEBA),
-    // Was #6A6580 (L 45%), which measured 2.92:1 on elevated surfaces - below
-    // WCAG AA for body text (4.5) and below even the LARGE-text floor (3.0).
-    // Same hue and saturation, lightness 45% -> 57%. Now 4.51:1 worst case.
-    // 5.35:1 on `elevated`, the worst surface it lands on - clears AA body.
+    // 5.8:1 on `elevated`, the worst surface it lands on. The deeper floor
+    // bought contrast back rather than spending it.
     textFaint = Color(0xFF8B929E),
     accent = Aura.Accent,            // the ONLY accent in the app
     onAccent = Color(0xFF06231F),
-    onInverse = Color(0xFF17141F)
+    onInverse = Aura.Ground          // was a leftover purple
 )
 
 // Light kept as a graceful fallback (screenshots are dark-first).
@@ -170,8 +167,11 @@ object MediaColors {
     // every page, so the bar read as a hole instead of a raised surface - and
     // its purple hue sat under a warm Workout page. Lifting the mood's own
     // surface keeps it one consistent step above, in the right hue, forever.
-    val NavSurface @Composable get() =
-        lerp(LocalPalette.current.bg, Color.White, 0.055f)
+    // Was lifted 5.5% toward white, which on a near-black floor reads as a
+    // grey slab bolted to the bottom of the screen. The bar IS the floor now;
+    // the 0.5dp hairline above it is the only separation it needs, and the
+    // mini-player still floats because it sits on `floating`, three steps up.
+    val NavSurface @Composable get() = LocalPalette.current.bg
     val Surface @Composable get() = LocalPalette.current.surface
     val Elevated @Composable get() = LocalPalette.current.elevated
     val Floating @Composable get() = LocalPalette.current.floating
