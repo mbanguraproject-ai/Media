@@ -377,7 +377,10 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 MediaMetadata.Builder()
                     .setTitle(item.title)
                     .setArtist(item.artist)
-                    .apply { item.artworkUri?.let { setArtworkUri(it) } }
+                    // The track's OWN content uri, never the legacy
+                    // content://media/external/audio/albumart path, which
+                    // scoped storage broke. AuraBitmapLoader resolves this.
+                    .setArtworkUri(item.uri)
                     .build()
             )
             .build()
@@ -481,9 +484,14 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         val currentId = current.localConfiguration?.uri?.lastPathSegment?.toLongOrNull()
         if (currentId != mediaId) return
 
+        // Rebuilding from scratch DROPPED artworkUri, so renaming a track
+        // permanently blanked its notification art until the app restarted.
         val newMeta = MediaMetadata.Builder()
             .setTitle(title)
             .setArtist(artist)
+            .setArtworkUri(
+                current.mediaMetadata.artworkUri ?: current.localConfiguration?.uri
+            )
             .build()
         val updated = current.buildUpon().setMediaMetadata(newMeta).build()
         val idx = c.currentMediaItemIndex
