@@ -160,12 +160,25 @@ data class QualityProfile(
     // artwork fidelity: multiplies every CoverArt decode target
     val artScale: Float,
 
-    // depth
-    val surfaceLift: Float,          // how far surfaces step off the floor
-    val shadow: Dp,
-    val blur: Dp,                    // 0.dp = off
-    val ambientGradient: Boolean,
-    val dynamicArtLighting: Boolean,
+    // Depth. Only what costs something, and only what exists.
+    //
+    // surfaceLift, shadow and particles were here and are gone. Surface
+    // separation is free to render, so varying it per tier would only make
+    // the lower tiers look worse for no saving - and the palette is meant to
+    // be one design, not five. A shadow is invisible against a #000000 floor.
+    // And `particles` named a feature this app has never had: a field that
+    // promises an effect nothing implements is the same lie as a fake
+    // waveform, just hidden in a data class.
+    //
+    // `blur` went with them until it is actually built - Modifier.blur is a
+    // silent no-op below API 31, so it needs a real implementation and a real
+    // fallback, not a Dp sitting in a profile.
+    //
+    // `refreshAware` went too: respecting the panel's true refresh rate is
+    // not a tier choice, it is a rule, and Performance.kt applies it at every
+    // level.
+    val ambientGradient: Boolean,    // full-screen artwork wash on Now Playing
+    val dynamicArtLighting: Boolean, // beat-driven bloom and shockwave rings
 
     // Geometry — tiers are different LAYOUTS, not one layout with effects.
     // Stated per tier rather than derived from a multiplier: a single
@@ -180,11 +193,9 @@ data class QualityProfile(
     // motion
     val motionScale: Float,          // multiplies every duration
     val springMotion: Boolean,
-    val refreshAware: Boolean,
 
     // signature visuals
-    val waveformBars: Int,
-    val particles: Boolean
+    val waveformBars: Int
 )
 
 fun profileFor(level: QualityLevel): QualityProfile = when (level) {
@@ -194,47 +205,42 @@ fun profileFor(level: QualityLevel): QualityProfile = when (level) {
     QualityLevel.ESSENTIAL -> QualityProfile(
         level = level,
         artScale = 0.60f,
-        surfaceLift = 1.0f, shadow = 0.dp, blur = 0.dp,
         ambientGradient = false, dynamicArtLighting = false,
         gutter = 16.dp, rowPadV = 6.dp, rowArt = 44.dp, rowArtCorner = 8,
-        motionScale = 0.55f, springMotion = false, refreshAware = false,
-        waveformBars = 24, particles = false
+        motionScale = 0.55f, springMotion = false,
+        waveformBars = 24
     )
     QualityLevel.STANDARD -> QualityProfile(
         level = level,
         artScale = 0.85f,
-        surfaceLift = 1.0f, shadow = 2.dp, blur = 0.dp,
         ambientGradient = false, dynamicArtLighting = false,
         gutter = 20.dp, rowPadV = 8.dp, rowArt = 48.dp, rowArtCorner = 10,
-        motionScale = 0.80f, springMotion = false, refreshAware = true,
-        waveformBars = 40, particles = false
+        motionScale = 0.80f, springMotion = false,
+        waveformBars = 40
     )
     QualityLevel.ENHANCED -> QualityProfile(
         level = level,
         artScale = 1.0f,
-        surfaceLift = 1.10f, shadow = 6.dp, blur = 12.dp,
         ambientGradient = true, dynamicArtLighting = false,
         gutter = 24.dp, rowPadV = 9.dp, rowArt = 52.dp, rowArtCorner = 12,
-        motionScale = 1.0f, springMotion = true, refreshAware = true,
-        waveformBars = 56, particles = false
+        motionScale = 1.0f, springMotion = true,
+        waveformBars = 56
     )
     QualityLevel.PREMIUM -> QualityProfile(
         level = level,
         artScale = 1.25f,
-        surfaceLift = 1.20f, shadow = 12.dp, blur = 24.dp,
         ambientGradient = true, dynamicArtLighting = true,
         gutter = 26.dp, rowPadV = 11.dp, rowArt = 56.dp, rowArtCorner = 14,
-        motionScale = 1.10f, springMotion = true, refreshAware = true,
-        waveformBars = 72, particles = true
+        motionScale = 1.10f, springMotion = true,
+        waveformBars = 72
     )
     QualityLevel.ULTRA -> QualityProfile(
         level = level,
         artScale = 1.50f,
-        surfaceLift = 1.30f, shadow = 18.dp, blur = 36.dp,
         ambientGradient = true, dynamicArtLighting = true,
         gutter = 28.dp, rowPadV = 13.dp, rowArt = 60.dp, rowArtCorner = 16,
-        motionScale = 1.20f, springMotion = true, refreshAware = true,
-        waveformBars = 96, particles = true
+        motionScale = 1.20f, springMotion = true,
+        waveformBars = 96
     )
 }
 

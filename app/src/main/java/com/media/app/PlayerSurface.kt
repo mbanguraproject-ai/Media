@@ -93,6 +93,7 @@ fun PlayerSurface(
     modifier: Modifier = Modifier
 ) {
     val reduced = LocalReducedMotion.current
+    val q = LocalQuality.current
     val scope = rememberCoroutineScope()
     // Bounded: Motion.spatial() is underdamped (0.82) and WILL overshoot past
     // 1.0, which drove Modifier.padding negative and crashed on expand.
@@ -115,7 +116,12 @@ fun PlayerSurface(
     // Belt and braces: nothing downstream may ever see a value outside 0..1.
     val e = expansion.value.coerceIn(0f, 1f)
     // §12: the environment takes its tone from the current cover.
-    val ambient = rememberAmbientColor(artItem)
+    // Passing null skips the decode and the Palette pass entirely, so the
+    // tiers that draw no wash and no bloom do not pay to extract a colour
+    // they will never use.
+    val ambient = rememberAmbientColor(
+        if (q.ambientGradient || q.dynamicArtLighting) artItem else null
+    )
     // NOT read here. beat.level updates 60x/second, so reading it in
     // composition scope recomposed this entire surface every frame - which
     // starved the drag gesture and made the player feel stuck. Every consumer
@@ -227,7 +233,7 @@ fun PlayerSurface(
             // §12/§4: ambient wash, strongest behind the artwork and gone by
             // mid-screen. Fades in with expansion so the collapsed pill keeps
             // its flat surface. Sits UNDER everything else.
-            if (e > 0.01f) {
+            if (e > 0.01f && q.ambientGradient) {
                 Box(
                     Modifier.matchParentSize().clearAndSetSemantics { }.background(
                         Brush.verticalGradient(
@@ -250,7 +256,7 @@ fun PlayerSurface(
             // behind it rather than a ring stuck on top.
             // Shockwave rings ride outside the bloom and are always mounted
             // while expanded — they animate off their own birth timestamps.
-            if (e > 0.5f) {
+            if (e > 0.5f && q.dynamicArtLighting) {
                 // Full-size layer, centre computed from the artwork rather than
                 // from the Canvas. The old version sized its box to ~1.5x the
                 // screen and offset it negative, so Compose clamped it and the
@@ -267,7 +273,7 @@ fun PlayerSurface(
                     modifier = Modifier.matchParentSize().clearAndSetSemantics { }
                 )
             }
-            if (e > 0.35f) {
+            if (e > 0.35f && q.dynamicArtLighting) {
                 // A Canvas, not a Box with a conditional background: `if
                 // (level > 0.01f)` was a COMPOSITION-level branch on a value
                 // that changes 60x/second, so this mounted and unmounted every
