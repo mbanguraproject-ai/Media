@@ -403,6 +403,21 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         refreshQueue(); refresh()
     }
 
+    /**
+     * Start ONE item at a known offset. play() only restores a saved position
+     * for podcasts and audiobooks - music always starts at zero - so the
+     * Resume bar would have restarted the very track it offered to resume.
+     * A control that says Resume has to resume.
+     */
+    fun playAt(item: AppMediaItem, positionMs: Long) {
+        val c = controller ?: return
+        pillarById = pillarById + (item.id to item.pillar)
+        c.setMediaItems(listOf(exoItemFor(item)), 0, positionMs)
+        c.prepare()
+        c.play()
+        refreshQueue(); refresh()
+    }
+
     fun play(items: List<AppMediaItem>, startIndex: Int) {
         val c = controller ?: return
         if (items.isEmpty() || startIndex !in items.indices) return

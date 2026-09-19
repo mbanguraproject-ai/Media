@@ -6,8 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -22,191 +20,156 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 
 // Flat solid tile color seeded by title — clean, no gradient noise, no fallback junk.
 
 
-private fun greeting(): String {
-    val h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-    return when { h < 12 -> "Good morning"; h < 17 -> "Good afternoon"; else -> "Good evening" }
-}
-
 // ------------------------------------------------------------------ HEADER
+//
+// Was a 28sp screen title stacked over a time-of-day greeting, with search and
+// rescan beside them: two large texts and two controls shouting at the top of
+// every screen. A player's header is not the product - the library is.
+//
+// Identity, one control, done. The mark is the launcher icon (three concentric
+// rings, the Aura mark) rather than a second logo invented for the header. It
+// carries ~25% built-in padding, so 32dp of box renders ~16dp of ring, which
+// is what pairs with the wordmark's cap height.
+//
+// Rescan is gone from here entirely. It already exists at Settings > Rescan
+// device, so the header carried a duplicate control for something you touch
+// roughly once a month.
 @Composable
-fun StashHeader(
-    onSearch: () -> Unit,
-    onRescan: () -> Unit,
-    scanning: Boolean = false,
-    // §16: 0 = full, 1 = compact. Driven by scroll, not by a hide/show toggle —
-    // the doc explicitly rejects "distracting scroll-hide experiments".
-    collapse: Float = 0f
-) {
-    val c = collapse.coerceIn(0f, 1f)
+fun StashHeader(onSearch: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth()
-            .padding(
-                start = Space.xl, end = Space.lg,
-                top = lerp(Space.lg, Space.sm, c),
-                bottom = lerp(Space.md, Space.sm, c)
-            ),
+        Modifier
+            .fillMaxWidth()
+            .padding(start = Space.lg, end = Space.lg, top = Space.md, bottom = Space.md),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(Modifier.weight(1f)) {
-
-            // Title shrinks Display -> Section rather than cutting between two
-            // styles, so the transition is continuous.
-            Text(
-                "Your library",
-                style = Typo.Display.copy(
-                    fontSize = lerp(Typo.Display.fontSize, Typo.Section.fontSize, c),
-                    lineHeight = lerp(Typo.Display.lineHeight, Typo.Section.lineHeight, c)
-                ),
-                color = MediaColors.Cream,
-                maxLines = 1, overflow = TextOverflow.Ellipsis
-            )
-            // Identity FIRST. The greeting sat above the title, putting the
-            // less useful line where the eye lands. It reads better as context
-            // beneath the name - and it is still what goes on scroll.
-            if (c < 0.99f) {
-                Text(
-                    greeting(), style = Typo.Secondary, color = MediaColors.CreamDim,
-                    maxLines = 1,
-                    modifier = Modifier
-                        .height(lerp(18.dp, 0.dp, c))
-                        .alpha((1f - c * 2f).coerceIn(0f, 1f))
-                )
-            }
-        }
-        Spacer(Modifier.width(Space.md))
-        // Search lives HERE and nowhere else — it left the bottom bar so four
-        // tabs can divide the width evenly instead of five crowding it.
-        CircleButton(Icons.Filled.Search, "Search", onClick = onSearch)
+        Icon(
+            painter = painterResource(R.drawable.ic_launcher_monochrome),
+            contentDescription = null,       // the wordmark beside it reads it out
+            tint = MediaColors.Accent,
+            modifier = Modifier.size(32.dp)
+        )
         Spacer(Modifier.width(Space.sm))
-        CircleButton(Icons.Filled.Refresh, "Rescan", spinning = scanning, onClick = onRescan)
+        Text(
+            "Aura",
+            style = Typo.Section.copy(
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.2.sp
+            ),
+            color = MediaColors.Cream,
+            maxLines = 1
+        )
+        Spacer(Modifier.weight(1f))
+        CircleButton(Icons.Filled.Search, "Search", onClick = onSearch)
     }
 }
 
 @Composable
-private fun CircleButton(
-    icon: ImageVector,
-    cd: String,
-    // Rescan gave no feedback at all - you tapped it and nothing visibly
-    // happened, so people tap it again. The icon turns while work is running.
-    spinning: Boolean = false,
-    onClick: () -> Unit
-) {
-    val reduced = LocalReducedMotion.current
-    val angle = if (spinning && !reduced) {
-        val t = rememberInfiniteTransition(label = "spin")
-        t.animateFloat(
-            0f, 360f,
-            infiniteRepeatable(tween(900, easing = LinearEasing)),
-            label = "spinAngle"
-        ).value
-    } else 0f
-
+private fun CircleButton(icon: ImageVector, cd: String, onClick: () -> Unit) {
+    // `spinning` went with the rescan button - nothing in the header animates
+    // any more, which is the point of calling it calm.
     Box(
-        Modifier.size(36.dp).clip(CircleShape)
-            // Same treatment as an unselected chip: no fill, one hairline.
-            // These carried a fill AND a stronger border, so once the chips
-            // were quietened the two stopped reading as one family.
+        Modifier
+            .size(36.dp)
+            .clip(CircleShape)
             .border(1.dp, MediaColors.Fill, CircleShape)
             .pressScale(haptic = true, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            icon, cd, tint = Color.White.copy(alpha = 0.85f),
-            modifier = Modifier.size(16.dp).graphicsLayer { rotationZ = angle }
+            icon, cd,
+            tint = Color.White.copy(alpha = 0.85f),
+            modifier = Modifier.size(16.dp)
         )
     }
 }
 
-// ------------------------------------------------------------------ MOOD CHIPS
+// ------------------------------------------------------------------ RESUME
+//
+// The one genuinely actionable thing the six home shelves offered was the
+// track you did not finish. It is one slim bar now, not a rail of cards under
+// a 19sp header.
 @Composable
-fun MoodChips(active: Mood, onPick: (Mood) -> Unit) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = Space.xl),
-        horizontalArrangement = Arrangement.spacedBy(Space.sm)
+fun ResumeBar(item: AppMediaItem, progress: Float, onPlay: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Space.lg, vertical = Space.sm)
+            .clip(RoundedCornerShape(Radius.md))
+            .background(MediaColors.FillSubtle)
+            .border(1.dp, MediaColors.Fill, RoundedCornerShape(Radius.md))
+            .pressScale(haptic = true, onClick = onPlay)
+            .padding(Space.sm),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        items(Mood.values().toList()) { mood ->
-            val selected = mood == active
-            // Unselected chips carried a full border AND a fill, so five of
-            // them competed with the one that mattered. Off state is now a
-            // hairline with no fill; only the selected chip is solid.
-            val bg by animateColorAsState(
-                if (selected) mood.chipOn else Color.Transparent,
-                tween(Motion.Standard, easing = Motion.Smooth), label = "chipBg"
+        CoverArt(item, Modifier.size(44.dp), corner = 10, targetPx = 144)
+        Spacer(Modifier.width(Space.md))
+        Column(Modifier.weight(1f)) {
+            Text("RESUME", style = Typo.Micro, color = MediaColors.Accent)
+            Spacer(Modifier.height(3.dp))
+            Text(
+                item.title, style = Typo.Primary, color = MediaColors.Cream,
+                maxLines = 1, overflow = TextOverflow.Ellipsis
             )
-            val border by animateColorAsState(
-                if (selected) Color.Transparent else MediaColors.Fill,
-                tween(Motion.Standard, easing = Motion.Smooth), label = "chipBorder"
-            )
-            val fg by animateColorAsState(
-                if (selected) Color.White else MediaColors.CreamDim,
-                tween(Motion.Standard, easing = Motion.Smooth), label = "chipFg"
-            )
+            Spacer(Modifier.height(7.dp))
             Box(
-                Modifier.clip(RoundedCornerShape(Radius.pill))
-                    .background(bg)
-                    .border(1.dp, border, RoundedCornerShape(Radius.pill))
-                    .pressScale(haptic = true) { onPick(mood) }
-                    // Same padding for every chip, so "All" is no longer
-                    // visually heavier than the rest just for being first.
-                    .padding(horizontal = 16.dp, vertical = 9.dp),
-                contentAlignment = Alignment.Center
+                Modifier.fillMaxWidth().height(2.dp)
+                    .clip(RoundedCornerShape(Radius.pill))
+                    .background(MediaColors.Fill)
             ) {
-                Text(mood.label, style = Typo.Label, color = fg, maxLines = 1)
+                Box(
+                    Modifier.fillMaxWidth(progress).fillMaxHeight()
+                        .clip(RoundedCornerShape(Radius.pill))
+                        .background(MediaColors.Accent)
+                )
             }
+        }
+        Spacer(Modifier.width(Space.md))
+        Icon(
+            Icons.Filled.PlayArrow, null, tint = MediaColors.Cream,
+            modifier = Modifier.size(26.dp)
+        )
+    }
+}
+
+// ------------------------------------------------------------------ FILTER
+//
+// Replaces the five permanent mood chips. Those sat under the header on every
+// launch, recolouring the app and asking to be pressed; four of the five did
+// nothing most of the time. Collections live in Playlists now, and this row
+// exists ONLY while one of them is actually filtering the list.
+@Composable
+fun FilterBar(label: String, count: Int, onClear: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(start = Space.lg, end = Space.sm, bottom = Space.xs),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, style = Typo.Label, color = MediaColors.Cream)
+        Spacer(Modifier.width(Space.sm))
+        Text("$count tracks", style = Typo.Secondary, color = MediaColors.CreamFaint)
+        Spacer(Modifier.weight(1f))
+        Row(
+            Modifier
+                .clip(RoundedCornerShape(Radius.pill))
+                .pressScale(haptic = true, onClick = onClear)
+                .padding(horizontal = Space.md, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Filled.Close, null, tint = MediaColors.CreamDim,
+                modifier = Modifier.size(15.dp)
+            )
+            Spacer(Modifier.width(Space.xs))
+            Text("Clear", style = Typo.Label, color = MediaColors.CreamDim)
         }
     }
 }
-
-// ------------------------------------------------------------------ MOOD BANNER
-@Composable
-fun MoodBanner(mood: Mood, collapse: Float = 0f) {
-    val msg = mood.banner ?: return
-    val c = collapse.coerceIn(0f, 1f)
-    // Banner is atmosphere, not navigation — it leaves entirely on collapse.
-    if (c > 0.98f) return
-    val icon = when (mood) {
-        Mood.LATE_NIGHT -> Icons.Filled.Bedtime
-        Mood.WORKOUT -> Icons.Filled.Bolt
-        Mood.FOCUS -> Icons.Filled.TrackChanges
-        else -> Icons.Filled.MusicNote
-    }
-    Row(
-        Modifier.fillMaxWidth()
-            .padding(
-                start = Space.xl, end = Space.xl,
-                top = lerp(Space.md, 0.dp, c), bottom = lerp(Space.xs, 0.dp, c)
-            )
-            .alpha(1f - c)
-            .clip(RoundedCornerShape(Radius.md))
-            .background(mood.accent.copy(alpha = 0.16f))
-            .padding(horizontal = Space.lg, vertical = lerp(15.dp, 0.dp, c)),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(icon, null, tint = mood.accent, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(Space.md))
-        Text(msg, style = Typo.Label, color = MediaColors.Cream, modifier = Modifier.weight(1f))
-        Icon(Icons.Filled.MusicNote, null, tint = mood.accent.copy(alpha = 0.6f),
-            modifier = Modifier.size(15.dp))
-    }
-}
-
-// ------------------------------------------------------------------ STAT CARDS
-data class Stat(val icon: ImageVector, val label: String, val count: Int, val tint: Color)
 
 @Composable
 fun SortSegments(selected: SortKey, onSelect: (SortKey) -> Unit) {

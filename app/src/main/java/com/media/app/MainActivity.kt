@@ -611,34 +611,41 @@ fun HomeScaffold(vm: PlayerViewModel) {
 
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             // FIXED top region — does not scroll. Songs scroll underneath it.
-            // §16: header state derives from scroll position. derivedStateOf
-            // means only the header recomposes as you scroll, not the tree.
+            // The scroll-driven collapse went with the big header: there is
+            // nothing left up here that is worth shrinking.
             val homeListState = rememberLazyListState()
-            val collapse by remember {
-                derivedStateOf {
-                    if (homeListState.firstVisibleItemIndex > 0) 1f
-                    else (homeListState.firstVisibleItemScrollOffset / 220f).coerceIn(0f, 1f)
-                }
+
+            StashHeader(onSearch = { showSearch = true })
+
+            // SHELVES GONE. "Continue listening", "Recently played", "Your
+            // favourites", "Most played", "Recently added" and "Albums you keep
+            // coming back to" were up to six horizontal rails stacked above the
+            // library, each under its own 19sp header - so the list you opened
+            // the app to reach started a screen and a half down.
+            //
+            // The one actionable item among them was the track you did not
+            // finish. That is the bar below; everything else was a rail of
+            // cards restating a list already on this screen.
+            val resume = remember(music, positions) {
+                positions.values
+                    .filter {
+                        it.durationMs > 0 &&
+                            it.positionMs > it.durationMs * 0.05 &&
+                            it.positionMs < it.durationMs * 0.95
+                    }
+                    .maxByOrNull { it.updatedAt }
+                    ?.let { p -> music.firstOrNull { it.id == p.mediaId }?.to(p) }
             }
 
-            StashHeader(
-                onSearch = { showSearch = true },
-                onRescan = { MediaRepository.refresh(); reloadKey++ },
-                scanning = scanning,
-                collapse = collapse
-            )
-            // Mood chips stay put: they are the control surface, and §16 wants
-            // sticky elements where useful.
-            MoodChips(active = mood, onPick = { setMood(it) })
-            MoodBanner(mood, collapse = collapse)
-            // §8: sections are derived from the library, not declared. Empty
-            // ones simply don't exist, so Home fills in as history accumulates.
-            val sections = remember(music, favorites, lastPlayedMap, playCountMap, positions) {
-                buildHomeSections(music, favorites, lastPlayedMap, playCountMap, positions)
+            // Present only while a collection opened from Playlists is actually
+            // filtering the list, so the filter can never be invisible state.
+            if (mood.holdsSongs) {
+                FilterBar(mood.label, shown.size) { setMood(Mood.ALL) }
             }
 
-            // SCROLLING content — stats, shelves and tracks all move together
-            // so the shelves aren't pinned above a scrolling list.
+            // With no shelves the ad has no shelf to follow, so it sits in the
+            // list itself - past the first screen, never above the library.
+            val adSlot = remember(shown.size) { minOf(8, (shown.size - 1).coerceAtLeast(0)) }
             if (scanning) {
                 LibrarySkeleton()
             } else if (shown.isEmpty()) {
@@ -653,47 +660,15 @@ fun HomeScaffold(vm: PlayerViewModel) {
                     contentPadding = PaddingValues(bottom = 170.dp + navBottom),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(sections.size) { s ->
-                        // ONE ad, after the first shelf. Placed inside the
-                        // feed so it scrolls out of the way; nothing on Now
-                        // Playing, no banner stacked under the mini-player.
-                        if (s == 2 && nativeAd != null) {
-                            NativeAdCard(
-                                ad = nativeAd,
-                                modifier = Modifier.padding(
-                                    start = Space.xl, end = Space.xl, top = Space.lg
-                                )
-                            )
-                        }
-                        when (val sec = sections[s]) {
-                            is HomeSection.Tracks -> {
-                                SectionHeader(sec.title)
-                                TrackShelf(
-                                    items = sec.items,
-                                    currentUri = state.currentUri,
-                                    beat = beat,
-                                    onPlay = { i -> vm.playOrToggle(sec.items, i) },
-                                    onLongPress = { addToItem = it }
-                                )
-                            }
-                            is HomeSection.Albums -> {
-                                SectionHeader(sec.title)
-                                AlbumShelf(sec.items) { openAlbum = it }
-                            }
-                        }
-                    }
                     item {
-                        // Fallback slot: with fewer than three sections index 2
-                        // never occurs, so the ad would simply never render.
-                        if (sections.size < 3 && nativeAd != null) {
-                            NativeAdCard(
-                                ad = nativeAd,
-                                modifier = Modifier.padding(
-                                    start = Space.xl, end = Space.xl, top = Space.lg
-                                )
+                        resume?.let { (track, pos) ->
+                            ResumeBar(
+                                item = track,
+                                progress = (pos.positionMs.toFloat() / pos.durationMs)
+                                    .coerceIn(0f, 1f),
+                                onPlay = { vm.playAt(track, pos.positionMs) }
                             )
                         }
-                        if (sections.isNotEmpty()) SectionHeader("All tracks")
                         SortSegments(selected = homeSort, onSelect = { homeSort = it })
                         CountAndShuffle(count = shown.size, onShuffle = {
                             if (shown.isNotEmpty()) {
@@ -703,6 +678,14 @@ fun HomeScaffold(vm: PlayerViewModel) {
                         })
                     }
                     items(shown.size) { idx ->
+                        if (idx == adSlot && nativeAd != null) {
+                            NativeAdCard(
+                                ad = nativeAd,
+                                modifier = Modifier.padding(
+                                    start = Space.lg, end = Space.lg, bottom = Space.sm
+                                )
+                            )
+                        }
                         val track = shown[idx]
                         TrackRow(
                             item = track,
