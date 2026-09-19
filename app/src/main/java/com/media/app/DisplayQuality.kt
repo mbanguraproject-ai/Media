@@ -222,7 +222,7 @@ fun profileFor(level: QualityLevel): QualityProfile = when (level) {
         level = level,
         artScale = 1.0f,
         ambientGradient = true, dynamicArtLighting = false,
-        gutter = 24.dp, rowPadV = 9.dp, rowArt = 52.dp, rowArtCorner = 12,
+        gutter = 24.dp, rowPadV = 10.dp, rowArt = 52.dp, rowArtCorner = 12,
         motionScale = 1.0f, springMotion = true,
         waveformBars = 56
     )
@@ -230,7 +230,7 @@ fun profileFor(level: QualityLevel): QualityProfile = when (level) {
         level = level,
         artScale = 1.25f,
         ambientGradient = true, dynamicArtLighting = true,
-        gutter = 26.dp, rowPadV = 11.dp, rowArt = 56.dp, rowArtCorner = 14,
+        gutter = 28.dp, rowPadV = 12.dp, rowArt = 56.dp, rowArtCorner = 14,
         motionScale = 1.10f, springMotion = true,
         waveformBars = 72
     )
@@ -238,7 +238,7 @@ fun profileFor(level: QualityLevel): QualityProfile = when (level) {
         level = level,
         artScale = 1.50f,
         ambientGradient = true, dynamicArtLighting = true,
-        gutter = 28.dp, rowPadV = 13.dp, rowArt = 60.dp, rowArtCorner = 16,
+        gutter = 32.dp, rowPadV = 14.dp, rowArt = 60.dp, rowArtCorner = 16,
         motionScale = 1.20f, springMotion = true,
         waveformBars = 96
     )

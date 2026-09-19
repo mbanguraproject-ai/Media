@@ -204,19 +204,23 @@ fun Scrubber(
                 )
             }
 
-            // Playhead. The colour split already shows roughly where you are;
-            // this gives the exact frame, which is what you need while
-            // dragging. It grows rather than the bars so the waveform shape
-            // stays readable under the finger.
-            val hw = HeadWidth.toPx() * (1f + 0.45f * grow)
-            val hh = (if (bars != null) BarMax.toPx() else PlainHeadHeight.toPx()) *
-                (1f + 0.16f * grow)
-            drawRoundRect(
-                color = thumbColor,
-                topLeft = Offset(headX - hw / 2f, cy - hh / 2f),
-                size = Size(hw, hh),
-                cornerRadius = CornerRadius(hw / 2f)
-            )
+            // NO cursor over the waveform. The colour boundary between played
+            // and unplayed bars already IS the position, and a white bar drawn
+            // on top of it cut the wave in half - it read as damage rather
+            // than as a control.
+            //
+            // The plain track has no bars to carry that information, so video
+            // keeps its pill.
+            if (bars == null) {
+                val hw = HeadWidth.toPx() * (1f + 0.45f * grow)
+                val hh = PlainHeadHeight.toPx() * (1f + 0.16f * grow)
+                drawRoundRect(
+                    color = thumbColor,
+                    topLeft = Offset(headX - hw / 2f, cy - hh / 2f),
+                    size = Size(hw, hh),
+                    cornerRadius = CornerRadius(hw / 2f)
+                )
+            }
         }
     }
 }

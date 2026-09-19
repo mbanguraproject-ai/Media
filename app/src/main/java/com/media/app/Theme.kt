@@ -329,7 +329,17 @@ object Motion {
 // ============================================================================
 object Space {
     val xxs = 2.dp; val xs = 4.dp; val sm = 8.dp; val md = 12.dp
-    val lg = 16.dp; val xl = 24.dp; val xxl = 32.dp; val xxxl = 48.dp
+    val lg = 16.dp; val xxl = 32.dp; val xxxl = 48.dp
+
+    // The screen gutter, and the ONE step on this scale that follows the
+    // display-quality tier: 16dp on Essential through 32dp on Ultra.
+    //
+    // Home was made tier-aware first while every other screen stayed pinned
+    // at 24dp, so on Essential the home rows started 8dp left of the Library
+    // tab's rows and on Ultra 8dp right of them. Fixing one misalignment had
+    // created a wider one. Routing every screen through a single token means
+    // they cannot disagree again.
+    val xl: Dp @Composable get() = LocalQuality.current.gutter
 }
 
 object Radius {

@@ -58,14 +58,26 @@ private object ArtCache {
             (value.width * value.height * 4 / 1024).coerceAtLeast(1)
     }
 
-    // Files with no art at all: remembered so scrolling past them repeatedly
-    // doesn't re-run the (expensive) extraction every single time.
+    // uri -> the most recent key stored for it. A display-quality change
+    // alters the decode target, so every size-keyed entry misses at once and
+    // the whole list used to drop to placeholders while it re-extracted. This
+    // hands back the size we already have so the art stays on screen and the
+    // correct size swaps in silently behind it.
+    private val lastKeyForUri = LruCache<String, String>(512)
+
+    // Keyed by URI, NOT by uri+size: a file either has embedded art or it
+    // does not, and that answer cannot change with the size we asked for.
+    // Keying it by size meant every tier change re-probed every artless file.
     private val misses = LruCache<String, Boolean>(512)
 
     fun get(key: String): ImageBitmap? = hits.get(key)
-    fun put(key: String, bmp: ImageBitmap) { hits.put(key, bmp) }
-    fun isKnownMiss(key: String): Boolean = misses.get(key) != null
-    fun markMiss(key: String) { misses.put(key, true) }
+    fun anySizeFor(uri: String): ImageBitmap? = lastKeyForUri.get(uri)?.let { hits.get(it) }
+    fun put(uri: String, key: String, bmp: ImageBitmap) {
+        hits.put(key, bmp)
+        lastKeyForUri.put(uri, key)
+    }
+    fun isKnownMiss(uri: String): Boolean = misses.get(uri) != null
+    fun markMiss(uri: String) { misses.put(uri, true) }
 }
 
 // Largest power-of-two subsample that still leaves us at or above target px.
@@ -159,18 +171,24 @@ fun CoverArt(
     // Ultra at 150%. The cache key carries the resolved value, so changing tier
     // re-decodes instead of serving a stale size.
     val scaled = (targetPx * LocalQuality.current.artScale).toInt().coerceAtLeast(64)
-    val key = "${item.uri}@$scaled"
-    // Seed straight from cache so a re-scroll shows art with no loading flash.
-    var art by remember(key) { mutableStateOf(ArtCache.get(key)) }
-    var loading by remember(key) { mutableStateOf(art == null && !ArtCache.isKnownMiss(key)) }
+    val uriKey = item.uri.toString()
+    val key = "$uriKey@$scaled"
+    // Exact size if we have it; otherwise ANY size we decoded earlier, so a
+    // tier change never empties the screen. Only a file with no art at all
+    // reaches the placeholder.
+    var art by remember(key) {
+        mutableStateOf(ArtCache.get(key) ?: ArtCache.anySizeFor(uriKey))
+    }
 
     LaunchedEffect(key) {
-        if (art != null || ArtCache.isKnownMiss(key)) { loading = false; return@LaunchedEffect }
-        loading = true
+        if (ArtCache.get(key) != null || ArtCache.isKnownMiss(uriKey)) return@LaunchedEffect
         val loaded = withContext(Dispatchers.IO) { loadArt(context, item, scaled) }
-        if (loaded != null) ArtCache.put(key, loaded) else ArtCache.markMiss(key)
-        art = loaded
-        loading = false
+        if (loaded != null) {
+            ArtCache.put(uriKey, key, loaded)
+            art = loaded
+        } else {
+            ArtCache.markMiss(uriKey)
+        }
     }
 
     Box(
@@ -178,12 +196,9 @@ fun CoverArt(
         contentAlignment = Alignment.Center
     ) {
         val bitmap = art
-        if (loading) {
-            // §21: the placeholder IS the final fallback, same seed. If the file
-            // turns out to have no art there is no swap at all; if it does, the
-            // incoming image is already tonally matched.
-            GenerativeArtwork(item, Modifier.fillMaxSize())
-        } else if (bitmap != null) {
+        if (bitmap != null) {
+            // Whatever we have, even a stale size. Swapping resolution in
+            // place is invisible; dropping to a placeholder first is not.
             Image(
                 bitmap = bitmap,
                 contentDescription = item.title,
@@ -191,7 +206,6 @@ fun CoverArt(
                 contentScale = ContentScale.Crop
             )
         } else {
-            // §5: composed generative identity, not a letter in a colored box.
             GenerativeArtwork(item, Modifier.fillMaxSize())
         }
 
