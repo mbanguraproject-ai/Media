@@ -244,16 +244,13 @@ fun FullscreenVideo(
                         Modifier.align(Alignment.BottomCenter)
                             .systemBarsPadding().padding(Space.xl, 0.dp, Space.xl, Space.lg)
                     ) {
-                        Slider(
-                            value = state.positionMs.toFloat()
-                                .coerceIn(0f, state.durationMs.toFloat()),
-                            onValueChange = { vm.seekTo(it.toLong()); interactionTick++ },
-                            valueRange = 0f..state.durationMs.toFloat(),
-                            colors = SliderDefaults.colors(
-                                thumbColor = Color.White,
-                                activeTrackColor = MediaColors.Accent,
-                                inactiveTrackColor = Color.White.copy(alpha = 0.28f)
-                            )
+                        Scrubber(
+                            positionMs = state.positionMs,
+                            durationMs = state.durationMs,
+                            onSeek = { vm.seekTo(it) },
+                            inactiveColor = Color.White.copy(alpha = 0.28f),
+                            thumbColor = Color.White,
+                            onInteract = { interactionTick++ }
                         )
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                             Text(fmtClock(state.positionMs), style = Typo.Tertiary,

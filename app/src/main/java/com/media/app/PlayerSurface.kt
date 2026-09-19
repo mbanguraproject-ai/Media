@@ -84,6 +84,10 @@ fun PlayerSurface(
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit,
     beat: BeatState,
+    // This track's real 20Hz bass envelope, or null for video / spoken word
+    // / analysis still running. The scrubber draws a flat track rather than
+    // a fabricated wave when it is absent.
+    envelope: FloatArray? = null,
     bottomInset: androidx.compose.ui.unit.Dp,
     onExpandedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
@@ -460,15 +464,12 @@ fun PlayerSurface(
 
                     if (state.durationMs > 0) {
                         Column(Modifier.fillMaxWidth().padding(horizontal = Space.xl)) {
-                            Slider(
-                                value = state.positionMs.toFloat().coerceIn(0f, state.durationMs.toFloat()),
-                                onValueChange = { vm.seekTo(it.toLong()) },
-                                valueRange = 0f..state.durationMs.toFloat(),
-                                colors = SliderDefaults.colors(
-                                    thumbColor = MediaColors.Cream,
-                                    activeTrackColor = MediaColors.Accent,
-                                    inactiveTrackColor = MediaColors.InkHairline
-                                )
+                            Scrubber(
+                                positionMs = state.positionMs,
+                                durationMs = state.durationMs,
+                                onSeek = { vm.seekTo(it) },
+                                envelope = envelope,
+                                beat = beat
                             )
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                 Text(fmtClock(state.positionMs), style = Typo.Tertiary,

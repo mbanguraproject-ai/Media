@@ -526,8 +526,13 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // scaled, and spoken word has no beat - an audiobook throbbing on the
     // reader's syllables looks broken rather than alive.
     val reactiveArtOn by SettingsStore.reactiveArtFlow(context).collectAsState(initial = false)
-    val reactive = reactiveArtOn && playingItem?.pillar == Pillar.MUSIC && !state.isVideo
-    val envelope = rememberEnvelope(if (reactive) playingItem else null)
+    // Analysis and the artwork pulse are separate questions now. The waveform
+    // scrubber needs the envelope for ANY music track; the Reactive artwork
+    // setting only governs whether the COVER moves. Still music-only: video
+    // has a picture, and spoken word has no waveform worth drawing.
+    val analysable = playingItem?.pillar == Pillar.MUSIC && !state.isVideo
+    val envelope = rememberEnvelope(if (analysable) playingItem else null)
+    val reactive = reactiveArtOn && analysable
     // Volume is the power control: silent means completely still, and turning
     // it up brings both the movement and the hit count with it.
     val musicVolume = rememberMusicVolume()
@@ -986,6 +991,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
                 }
             },
             beat = beat,
+            envelope = envelope,
             bottomInset = navBottom + BottomBarHeight + MiniPlayerGap,
             onExpandedChange = { showPlayer = it }
         )
