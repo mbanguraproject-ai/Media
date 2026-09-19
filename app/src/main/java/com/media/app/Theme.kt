@@ -29,6 +29,23 @@ import androidx.compose.ui.unit.sp
 //  the background wash, and a short banner message. This is a PURELY VISUAL
 //  layer — it does not filter or change playback logic.
 // ============================================================================
+// ============================================================================
+//  ONE ACCENT. ONE GROUND.
+//
+//  Every Mood used to carry its own accent AND its own surface tint, so
+//  switching mood recoloured the entire app: five themes (violet, blue, amber,
+//  teal, pink) competing with each other and with every piece of cover art on
+//  screen at once. Colour now comes from the artwork. The app itself is
+//  neutral, and the accent marks one thing: what is active.
+//
+//  An object, not top-level vals - enum constructors run at class-load time and
+//  would read uninitialised file-level properties.
+// ============================================================================
+object Aura {
+    val Accent = Color(0xFF2DD4BF)   // active state, progress, selection
+    val Ground = Color(0xFF101116)   // the one flat floor
+}
+
 enum class Mood(
     val label: String,
     val accent: Color,
@@ -41,41 +58,14 @@ enum class Mood(
     val banner: String?,    // status message under the chips (null = no banner)
     val chipOn: Color       // selected-chip fill
 ) {
-    ALL(
-        label = "All",
-        accent = Color(0xFF7C5CFF),
-        surface = Color(0xFF15131C),
-        banner = null,
-        chipOn = Color(0xFF7C5CFF)
-    ),
-    LATE_NIGHT(
-        label = "Late Night",
-        accent = Color(0xFF6C8BFF),
-        surface = Color(0xFF13161C),
-        banner = "Now playing Late Night mix",
-        chipOn = Color(0xFF6C8BFF)
-    ),
-    WORKOUT(
-        label = "Workout",
-        accent = Color(0xFFF5A623),
-        surface = Color(0xFF1A1815),
-        banner = "Workout mode activated",
-        chipOn = Color(0xFFF5A623)
-    ),
-    FOCUS(
-        label = "Focus",
-        accent = Color(0xFF2DD4BF),
-        surface = Color(0xFF131C1B),
-        banner = "Focus mode \u2014 stay in the zone",
-        chipOn = Color(0xFF2DD4BF)
-    ),
-    FAVORITES(
-        label = "Favorites",
-        accent = Color(0xFFEC4899),
-        surface = Color(0xFF1C1319),
-        banner = null,
-        chipOn = Color(0xFFEC4899)
-    );
+    // Colour is identical for every entry now. These stay only as COLLECTIONS
+    // (mood_members rows); they carry no theme of their own. The banners went
+    // with the colours - "Workout mode activated" was chrome announcing itself.
+    ALL(       "All",        Aura.Accent, Aura.Ground, null, Aura.Accent),
+    LATE_NIGHT("Late Night", Aura.Accent, Aura.Ground, null, Aura.Accent),
+    WORKOUT(   "Workout",    Aura.Accent, Aura.Ground, null, Aura.Accent),
+    FOCUS(     "Focus",      Aura.Accent, Aura.Ground, null, Aura.Accent),
+    FAVORITES( "Favorites",  Aura.Accent, Aura.Ground, null, Aura.Accent);
 
     // Stable DB key for membership (matches mood_members.moodKey). ALL is never stored.
     val key: String get() = name.lowercase()
@@ -113,19 +103,23 @@ class Palette(
 
 // Dark — deep near-black with a cool base. The mood glow paints over this.
 val DarkPalette = Palette(
-    bg = Color(0xFF17141F),          // deep desaturated purple-navy (mockup base)
-    surface = Color(0xFF1C1928),     // +1 step
-    elevated = Color(0xFF221E31),    // +2
-    floating = Color(0xFF29243A),    // +3 — reads above scrolling content
-    modal = Color(0xFF2F2942),       // +4 — sheets sit highest
-    hairline = Color(0xFF2E2A40),    // soft violet-grey rule
-    text = Color(0xFFF3F1F7),
-    textDim = Color(0xFF9C97AE),
+    // Was a purple-navy cast (#17141F and friends). A tinted ground under
+    // full-colour album art muddies every warm cover on the screen, so the
+    // floor is neutral now and the artwork supplies the colour.
+    bg = Aura.Ground,                // #101116 - the one flat floor
+    surface = Color(0xFF16181E),     // +1 step
+    elevated = Color(0xFF1B1E25),    // +2 - cards, panels
+    floating = Color(0xFF22252E),    // +3 - reads above scrolling content
+    modal = Color(0xFF272B35),       // +4 - sheets sit highest
+    hairline = Color(0xFF2A2E38),    // neutral rule
+    text = Color(0xFFF2F3F5),
+    textDim = Color(0xFFA8AEBA),
     // Was #6A6580 (L 45%), which measured 2.92:1 on elevated surfaces - below
     // WCAG AA for body text (4.5) and below even the LARGE-text floor (3.0).
     // Same hue and saturation, lightness 45% -> 57%. Now 4.51:1 worst case.
-    textFaint = Color(0xFF89849E),
-    accent = Color(0xFF2DD4BF),      // teal primary (mood may override)
+    // 5.35:1 on `elevated`, the worst surface it lands on - clears AA body.
+    textFaint = Color(0xFF8B929E),
+    accent = Aura.Accent,            // the ONLY accent in the app
     onAccent = Color(0xFF06231F),
     onInverse = Color(0xFF17141F)
 )
@@ -177,7 +171,7 @@ object MediaColors {
     // its purple hue sat under a warm Workout page. Lifting the mood's own
     // surface keeps it one consistent step above, in the right hue, forever.
     val NavSurface @Composable get() =
-        lerp(LocalMood.current.surface, Color.White, 0.055f)
+        lerp(LocalPalette.current.bg, Color.White, 0.055f)
     val Surface @Composable get() = LocalPalette.current.surface
     val Elevated @Composable get() = LocalPalette.current.elevated
     val Floating @Composable get() = LocalPalette.current.floating
@@ -186,8 +180,9 @@ object MediaColors {
     val Cream @Composable get() = LocalPalette.current.text
     val CreamDim @Composable get() = LocalPalette.current.textDim
     val CreamFaint @Composable get() = LocalPalette.current.textFaint
-    // Accent now follows the active MOOD, so active states recolor per mood.
-    val Accent @Composable get() = LocalMood.current.accent
+    // ONE accent, from the palette. It no longer follows the mood, because
+    // a theme that changes with a filter chip is five themes, not one.
+    val Accent @Composable get() = LocalPalette.current.accent
     val OnAccent @Composable get() = LocalPalette.current.onAccent
     val OnInverse @Composable get() = LocalPalette.current.onInverse
     // New tokens for the redesign:
@@ -207,7 +202,7 @@ object MediaColors {
 // that cover - and that already exists.
 @Composable
 fun moodBackground(flat: Boolean = true): Brush =
-    SolidColor(LocalMood.current.surface)
+    SolidColor(LocalPalette.current.bg)
 
 // ============================================================================
 //  TYPOGRAPHY (§3)
@@ -350,7 +345,7 @@ fun MediaTheme(
     // Dark-only by design. Any saved LIGHT/SYSTEM value is ignored so the app
     // always renders the intended dark UI (the mockup is dark-first).
     val palette = DarkPalette
-    val scheme = darkColorScheme(primary = mood.accent, background = palette.bg,
+    val scheme = darkColorScheme(primary = palette.accent, background = palette.bg,
         surface = palette.elevated, onBackground = palette.text,
         onSurface = palette.text, onPrimary = palette.onAccent)
 
