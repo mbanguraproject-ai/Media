@@ -82,6 +82,13 @@ fun SettingsScreen(
         SectionLabel("Appearance")
         FontSizePicker(settings.fontScale, onFontScaleChange)
 
+        DisplayQualitySection(
+            current = settings.qualityMode,
+            onPick = { mode ->
+                settingsScope.launch { SettingsStore.setQualityMode(context, mode) }
+            }
+        )
+
         SectionLabel("Playback")
         // OFF by default. It is the most opinionated thing the app does, and
         // an effect someone dislikes is worse than one they never found.
@@ -137,6 +144,132 @@ fun SettingsScreen(
         Text("Your library, lit by what\'s playing.",
             style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamFaint,
             modifier = Modifier.padding(start = Space.xl).padding(bottom = bottomSafePadding(gap = 100.dp)))
+    }
+}
+
+// --------------------------------------------------------- DISPLAY QUALITY
+//
+// Auto is the recommendation; the five named levels are an override.
+//
+// The diagnostics underneath are deliberate. Every other setting here is a
+// preference, but this one's correct value depends on hardware the user cannot
+// see, so the app shows the hardware it actually read and the ceiling it
+// derived from it. A setting that silently decides something this visible
+// should be able to show its working.
+@Composable
+private fun DisplayQualitySection(current: QualityMode, onPick: (QualityMode) -> Unit) {
+    val context = LocalContext.current
+    // Hardware does not change while the app is open, so this is read once.
+    val cap = remember { detectCapability(context) }
+    val ceiling = remember(cap) { ceilingFor(cap) }
+    val active = resolveLevel(current, ceiling)
+    val overReach = current != QualityMode.AUTO && active.ordinal > ceiling.ordinal
+
+    SectionLabel("Display quality")
+
+    QualityOption(
+        title = "Auto",
+        subtitle = "Matches this device \u2014 currently ${active.label}",
+        selected = current == QualityMode.AUTO,
+        onClick = { onPick(QualityMode.AUTO) }
+    )
+    QualityLevel.values().forEach { level ->
+        val mode = QualityMode.valueOf(level.name)
+        val above = level.ordinal > ceiling.ordinal
+        QualityOption(
+            title = level.label,
+            subtitle = if (above) "Above this device's measured ceiling" else level.goal,
+            selected = current == mode,
+            warn = above,
+            onClick = { onPick(mode) }
+        )
+    }
+
+    if (overReach) {
+        Text(
+            "${active.label} is above what this device measured. Frames may drop.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MediaColors.Warning,
+            modifier = Modifier.padding(Space.xl, Space.sm, Space.xl, 0.dp)
+        )
+    }
+
+    val ramText =
+        if (cap.totalRamMb >= 1024) "%.1f GB".format(cap.totalRamMb / 1024f)
+        else "${cap.totalRamMb} MB"
+    val facts = buildString {
+        append(ramText); append(" RAM \u00b7 ")
+        append(cap.cpuCores); append(" cores \u00b7 ")
+        append(cap.refreshRateHz.toInt()); append(" Hz")
+        if (cap.supportsHdr) append(" \u00b7 HDR")
+        if (cap.isLowRamDevice) append(" \u00b7 low-RAM device")
+    }
+    Text(
+        facts,
+        style = MaterialTheme.typography.labelSmall,
+        color = MediaColors.CreamDim,
+        modifier = Modifier.padding(Space.xl, Space.md, Space.xl, 0.dp)
+    )
+    Text(
+        "Measured ceiling: ${ceiling.label} (score ${cap.score}/8)",
+        style = MaterialTheme.typography.labelSmall,
+        color = MediaColors.CreamFaint,
+        modifier = Modifier.padding(Space.xl, 2.dp, Space.xl, 0.dp)
+    )
+    // Required by the blueprint's product-language rule, and true: this setting
+    // changes how Aura renders. It cannot turn an LCD into an OLED, and saying
+    // otherwise would be a claim the app cannot support.
+    Text(
+        "Display quality changes how Aura renders. It does not change your screen.",
+        style = MaterialTheme.typography.labelSmall,
+        color = MediaColors.CreamFaint,
+        modifier = Modifier.padding(Space.xl, Space.sm, Space.xl, Space.sm)
+    )
+}
+
+@Composable
+private fun QualityOption(
+    title: String,
+    subtitle: String,
+    selected: Boolean,
+    warn: Boolean = false,
+    onClick: () -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = Space.xl, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(20.dp)
+                .clip(CircleShape)
+                .border(
+                    1.5.dp,
+                    if (selected) MediaColors.Accent else MediaColors.CreamFaint,
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (selected) {
+                Box(Modifier.size(10.dp).clip(CircleShape).background(MediaColors.Accent))
+            }
+        }
+        Spacer(Modifier.width(Space.lg))
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                color = if (selected) MediaColors.Accent else MediaColors.Cream
+            )
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (warn) MediaColors.Warning else MediaColors.CreamDim
+            )
+        }
     }
 }
 
