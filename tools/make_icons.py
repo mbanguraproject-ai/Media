@@ -51,13 +51,42 @@ RES    = "app/src/main/res"
 
 CANVAS_DP = 108.0          # adaptive icon layer
 SAFE_DP   = 34.0           # max radius of any opaque pixel, from centre
-MARK_DP   = 54.0           # height of the header mark
+MARK_DP   = 96.0           # tallest place the mark is drawn (Settings)
 
 DENSITIES = [("mdpi", 1.0), ("hdpi", 1.5), ("xhdpi", 2.0),
              ("xxhdpi", 3.0), ("xxxhdpi", 4.0)]
 
 
 # --------------------------------------------------------------- cut out
+def refine_background(a, basis, sel, tol=26.0, rounds=6):
+    """Fit the backdrop, then re-fit on what the fit itself calls backdrop.
+
+    Fitting the border frame alone is not enough. The frame is 6% of the
+    image and all of it is at the edge, so the polynomial is extrapolating
+    across the middle - and it was wrong there by enough that two patches of
+    plain backdrop, one above the head and one under the wing, came out as
+    subject and shipped inside the icon as blue lumps on black.
+
+    Feeding the fit every pixel it currently believes is backdrop turns
+    extrapolation into interpolation. Two rounds is usually enough; it stops
+    as soon as the classification stops moving.
+    """
+    H, W, _ = a.shape
+    bg = np.zeros_like(a)
+    d = np.zeros((H, W))
+    for _ in range(rounds):
+        for c in range(3):
+            coef, _r, _k, _s = np.linalg.lstsq(basis[sel], a[..., c][sel], rcond=None)
+            bg[..., c] = basis @ coef
+        d = np.sqrt(((a - bg) ** 2).sum(-1))
+        nxt = d < tol
+        moved = int((nxt != sel).sum())
+        sel = nxt
+        if moved < 200:
+            break
+    return d, sel
+
+
 def cutout(path):
     im = Image.open(path).convert("RGB")
     W, H = im.size
@@ -68,28 +97,27 @@ def cutout(path):
     yy, xx = np.mgrid[0:H, 0:W]
     X = xx / (W - 1.0) * 2 - 1
     Y = yy / (H - 1.0) * 2 - 1
-    terms = [(i, j) for i in range(5) for j in range(5) if i + j <= 4]
+    # Degree 6. A studio backdrop is a smooth field, not a plane; degree 4
+    # could not bend enough to follow this one across the frame.
+    terms = [(i, j) for i in range(7) for j in range(7) if i + j <= 6]
     basis = np.stack([(X ** i) * (Y ** j) for i, j in terms], -1)
 
     f = max(4, int(min(W, H) * 0.06))
-    border = np.zeros((H, W), bool)
-    border[:f] = border[-f:] = True
-    border[:, :f] = border[:, -f:] = True
+    seed = np.zeros((H, W), bool)
+    seed[:f] = seed[-f:] = True
+    seed[:, :f] = seed[:, -f:] = True
 
-    bg = np.zeros_like(a)
-    for c in range(3):
-        coef, _, _, _ = np.linalg.lstsq(basis[border], a[..., c][border], rcond=None)
-        bg[..., c] = basis @ coef
-
-    d = np.sqrt(((a - bg) ** 2).sum(-1))
-    resid = float(np.percentile(d[border], 99.5))
+    d, background = refine_background(a, basis, seed)
+    resid = float(np.percentile(d[background], 99.9))
     subject = float(np.percentile(d, 92))
-    print("  background residual %.1f   subject %.1f" % (resid, subject))
+    print("  backdrop settled at %.1f%% of the frame, residual %.1f, subject %.1f"
+          % (100 * background.mean(), resid, subject))
     if subject < resid * 6:
-        sys.exit("subject does not separate from the background - is %s the "
+        sys.exit("subject does not separate from the backdrop - is %s the "
                  "right image, and is its backdrop a smooth gradient?" % path)
 
-    lo, hi = max(14.0, resid * 1.6), max(36.0, resid * 4.0)
+    # Band sits above the residual the fit actually leaves, not a guess.
+    lo, hi = max(24.0, resid * 1.15), max(60.0, resid * 2.6)
     soft = np.clip((d - lo) / (hi - lo), 0, 1)
     hard = d > (lo + hi) / 2
 
@@ -119,7 +147,7 @@ def cutout(path):
         sys.exit("that blob is %.1f%% of the frame - refusing to build icons "
                  "from it" % (frac * 100))
 
-    # fill enclosed holes (the eye) by flooding the background in from the edge
+    # fill enclosed holes (the eye) by flooding the backdrop in from the edge
     inv = ~body
     seen = np.zeros(inv.shape, bool)
     q = deque()
@@ -141,8 +169,7 @@ def cutout(path):
                 q.append((ny, nx))
     body = body | (inv & ~seen)
 
-    # soft alpha only in a narrow band around the body, so a faint gradient
-    # halfway across the backdrop can never fade itself in
+    # soft alpha only in a narrow band around the body
     band = np.asarray(Image.fromarray((body * 255).astype("uint8"))
                       .filter(ImageFilter.MaxFilter(7))) > 0
     alpha = np.where(body, 1.0, np.where(band, soft, 0.0))
