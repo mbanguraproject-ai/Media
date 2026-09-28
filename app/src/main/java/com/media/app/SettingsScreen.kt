@@ -36,6 +36,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun SettingsScreen(
@@ -65,19 +75,7 @@ fun SettingsScreen(
             IconButton(onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MediaColors.Cream) }
         }
 
-        // Profile block
-        Column(Modifier.fillMaxWidth().padding(Space.xl, Space.sm, Space.xl, Space.xl)) {
-            Box(
-                Modifier.size(64.dp).clip(CircleShape).background(MediaColors.InkRaised),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("M", style = MaterialTheme.typography.displaySmall, color = MediaColors.Cream)
-            }
-            Spacer(Modifier.height(Space.md))
-            Text("Your library", style = MaterialTheme.typography.titleLarge, color = MediaColors.Cream)
-            Text("$audioCount tracks · $videoCount videos",
-                style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamDim)
-        }
+        ProfileMark(audioCount, videoCount)
 
         SectionLabel("Appearance")
         FontSizePicker(settings.fontScale, onFontScaleChange)
@@ -471,6 +469,120 @@ private fun SettingRow(
         }
         if (navigates) {
             Icon(Icons.Filled.ChevronRight, null, tint = MediaColors.CreamFaint, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+// ------------------------------------------------------------------ PROFILE
+//
+// Was a 64dp disc with "M" in it, top left. The M was a monogram for a name
+// the app has never known and never asks for - it stood for nothing, and it
+// was the first thing on the page.
+//
+// The mark goes here instead, centred, and this is the one place in the app
+// where a user can put something of their own. Tap it, pick a photo, done;
+// tap Remove and the bird comes back. Nothing else in the app changes - the
+// header keeps the mark, because that is identity, not preference.
+//
+// No plate behind the bird. It is a cut-out on black, exactly as in the
+// header, and a disc behind it would be a frame around something that already
+// has a shape. A photograph does get the disc, because a rectangle needs one.
+@Composable
+private fun ProfileMark(audioCount: Int, videoCount: Int) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val stamp by SettingsStore.avatarStampFlow(context).collectAsState(initial = 0L)
+    var picture by remember { mutableStateOf<ImageBitmap?>(null) }
+
+    // Keyed on the stamp, so saving or removing re-reads the file and nothing
+    // else does. Decoding on the main thread here would stutter the scroll.
+    LaunchedEffect(stamp) {
+        picture = withContext(Dispatchers.IO) { Avatar.load(context) }
+    }
+
+    // The system photo picker: no storage permission, no access to anything
+    // the user did not choose, and it falls back to the document picker on
+    // devices that do not have it.
+    val picker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val saved = withContext(Dispatchers.IO) { Avatar.save(context, uri) }
+                // Only stamp on success. A failed decode leaves the mark up
+                // rather than leaving an empty circle behind.
+                if (saved) SettingsStore.setAvatarStamp(context, System.currentTimeMillis())
+            }
+        }
+    }
+    val pick = {
+        picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+    }
+
+    Column(
+        Modifier.fillMaxWidth().padding(Space.xl, Space.md, Space.xl, Space.xl),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        val shot = picture
+        if (shot != null) {
+            Image(
+                bitmap = shot,
+                contentDescription = "Change your picture",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(104.dp)
+                    .clip(CircleShape)
+                    .border(1.dp, MediaColors.InkHairline, CircleShape)
+                    .clickable { pick() }
+            )
+        } else {
+            Image(
+                painter = painterResource(R.drawable.aura_mark),
+                contentDescription = "Add your picture",
+                modifier = Modifier.height(96.dp).clickable { pick() }
+            )
+        }
+        Spacer(Modifier.height(Space.md))
+        Text(
+            "Your library",
+            style = MaterialTheme.typography.titleLarge,
+            color = MediaColors.Cream
+        )
+        Text(
+            "$audioCount tracks \u00B7 $videoCount videos",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MediaColors.CreamDim
+        )
+        Spacer(Modifier.height(Space.sm))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                if (shot != null) "Change picture" else "Add your picture",
+                style = MaterialTheme.typography.labelMedium,
+                color = MediaColors.Accent,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(Radius.pill))
+                    .border(1.dp, MediaColors.Fill, RoundedCornerShape(Radius.pill))
+                    .clickable { pick() }
+                    .padding(horizontal = Space.lg, vertical = Space.sm)
+            )
+            if (shot != null) {
+                Spacer(Modifier.width(Space.sm))
+                Text(
+                    "Remove",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MediaColors.CreamDim,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(Radius.pill))
+                        .border(1.dp, MediaColors.Fill, RoundedCornerShape(Radius.pill))
+                        .clickable {
+                            scope.launch {
+                                withContext(Dispatchers.IO) { Avatar.clear(context) }
+                                SettingsStore.setAvatarStamp(context, 0L)
+                            }
+                        }
+                        .padding(horizontal = Space.lg, vertical = Space.sm)
+                )
+            }
         }
     }
 }

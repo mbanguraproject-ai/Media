@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -30,6 +31,7 @@ object SettingsStore {
     private val PLAYER_HINT = booleanPreferencesKey("player_hint_seen")
     private val REACTIVE_ART = booleanPreferencesKey("reactive_artwork")
     private val QUALITY = stringPreferencesKey("display_quality")
+    private val AVATAR = longPreferencesKey("avatar_stamp")
 
     fun flow(context: Context): Flow<MediaSettings> =
         context.dataStore.data.map { p ->
@@ -55,6 +57,16 @@ object SettingsStore {
 
     suspend fun setQualityMode(context: Context, mode: QualityMode) {
         context.dataStore.edit { it[QUALITY] = mode.name }
+    }
+
+    // Not the picture, just a stamp that changes when the picture does. The
+    // image itself is a file (see Avatar); a DataStore write is what tells
+    // Compose to go and read it again. 0 means the default mark.
+    fun avatarStampFlow(context: Context): Flow<Long> =
+        context.dataStore.data.map { it[AVATAR] ?: 0L }
+
+    suspend fun setAvatarStamp(context: Context, stamp: Long) {
+        context.dataStore.edit { it[AVATAR] = stamp }
     }
 
     fun introSeenFlow(context: Context): Flow<Boolean> =
