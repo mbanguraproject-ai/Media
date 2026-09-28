@@ -408,6 +408,20 @@ fun HomeScaffold(vm: PlayerViewModel) {
     val context = LocalContext.current
     val state by vm.state.collectAsState()
     var showPlayer by remember { mutableStateOf(false) }
+    // THE ONE VIDEO SURFACE.
+    //
+    // The mini-player and Now Playing are a single composable that is always
+    // mounted, and for a video item it attaches its own PlayerView to the one
+    // shared MediaController. A second PlayerView on the same player wins the
+    // surface outright, which is why a card in the feed froze on its last
+    // frame and then went black while the audio carried on.
+    //
+    // So exactly one of them is allowed to exist: while a feed card holds the
+    // surface the mini-player is not composed at all, and the moment the card
+    // lets go - scrolled away, an overlay opened, the full player opened - it
+    // comes back and takes over.
+    var feedSurfaceOwners by remember { mutableStateOf(0) }
+    val feedVideoLive = feedSurfaceOwners > 0
     var showSearch by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showLibrary by remember { mutableStateOf(false) }
@@ -597,6 +611,19 @@ fun HomeScaffold(vm: PlayerViewModel) {
         return
     }
 
+    // The pillars, at the top level instead of two screens down.
+    val byPillar = remember(allAudio, video) { (allAudio + video).groupBy { it.pillar } }
+    val pillars = remember(byPillar) {
+        listOf(Pillar.MUSIC, Pillar.VIDEO, Pillar.PODCAST,
+               Pillar.AUDIOBOOK, Pillar.RECORDING)
+            .filter { !byPillar[it].isNullOrEmpty() }
+    }
+    var homePillar by remember { mutableStateOf(Pillar.MUSIC) }
+    // A rescan can empty the pillar you were standing on.
+    LaunchedEffect(pillars) {
+        if (pillars.isNotEmpty() && homePillar !in pillars) homePillar = pillars.first()
+    }
+
     // Android back: ONE handler with an explicit priority order, topmost first.
     // This was a chain of nine BackHandlers whose enabled-guards had to be kept
     // mutually exclusive by hand — and Terms/About had no handler at all, so
@@ -605,6 +632,21 @@ fun HomeScaffold(vm: PlayerViewModel) {
     val anyOverlay = addToItem != null || editItem != null || showTerms || showAbout ||
         showPlayer || showSearch || showSettings || openPlaylist != null ||
         showPlaylists || openAlbum != null || openArtist != null || showLibrary
+
+    // WHO MAY HOLD THE VIDEO SURFACE - decided here, in composition, before
+    // either PlayerView is built.
+    //
+    // Deciding it from an effect was the bug. The card and the mini-player
+    // both attach in the same frame, Home composes first and the mini-player
+    // second, so the mini-player took the surface; the effect that hid it then
+    // ran a frame later, and tearing its PlayerView down set the player's
+    // video output back to null. Result: audio playing, card black, and the
+    // card never re-attaching because its `player` reference had not changed.
+    // Going fullscreen and back only worked because it rebuilt the view.
+    //
+    // This is plain derived state, so it is already true on the frame the
+    // video becomes current and the mini-player simply never attaches.
+    val feedOwnsVideo = state.isVideo && homePillar == Pillar.VIDEO && !anyOverlay
     BackHandler(enabled = anyOverlay) {
         when {
             addToItem != null -> addToItem = null
@@ -634,8 +676,14 @@ fun HomeScaffold(vm: PlayerViewModel) {
         // Favorites mood shows only favorited tracks; every other mood shows all music.
         // Home now has a sort, driven by the three cards below the mood chips.
         var homeSort by remember { mutableStateOf(SortKey.NAME) }
-        val shown = remember(music, mood, moodMembers, homeSort, lastPlayedMap, playCountMap) {
-            val base = if (mood.holdsSongs) music.filter { moodMembers.contains(it.id) } else music
+
+        val shown = remember(
+            byPillar, homePillar, mood, moodMembers, homeSort, lastPlayedMap, playCountMap
+        ) {
+            val inPillar = byPillar[homePillar].orEmpty()
+            // Moods are a music idea. They never filter video or spoken word.
+            val base = if (homePillar == Pillar.MUSIC && mood.holdsSongs)
+                inPillar.filter { moodMembers.contains(it.id) } else inPillar
             base.sortedFor(homeSort, lastPlayedMap, playCountMap)
         }
 
@@ -646,6 +694,8 @@ fun HomeScaffold(vm: PlayerViewModel) {
             val homeListState = rememberLazyListState()
 
             StashHeader(onSearch = { showSearch = true })
+
+            PillarStrip(pillars, homePillar) { homePillar = it }
 
             // SHELVES GONE. "Continue listening", "Recently played", "Your
             // favourites", "Most played", "Recently added" and "Albums you keep
@@ -669,7 +719,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
 
             // Present only while a collection opened from Playlists is actually
             // filtering the list, so the filter can never be invisible state.
-            if (mood.holdsSongs) {
+            if (homePillar == Pillar.MUSIC && mood.holdsSongs) {
                 FilterBar(mood.label, shown.size) { setMood(Mood.ALL) }
             }
 
@@ -703,12 +753,16 @@ fun HomeScaffold(vm: PlayerViewModel) {
                         // object on the screen, above the artwork it sat over.
                         // homeSort stays SortKey.NAME (A-Z); SortSegments is still
                         // defined in HomeContent.kt for when it comes back.
-                        CountAndShuffle(count = shown.size, onShuffle = {
-                            if (shown.isNotEmpty()) {
-                                if (!state.shuffle) vm.toggleShuffle()
-                                vm.play(shown, (shown.indices).random())
+                        CountAndShuffle(
+                            count = shown.size,
+                            noun = pillarNoun(homePillar),
+                            onShuffle = {
+                                if (shown.isNotEmpty()) {
+                                    if (!state.shuffle) vm.toggleShuffle()
+                                    vm.play(shown, (shown.indices).random())
+                                }
                             }
-                        })
+                        )
                     }
                     items(shown.size) { idx ->
                         if (idx == adSlot && nativeAd != null) {
@@ -720,20 +774,47 @@ fun HomeScaffold(vm: PlayerViewModel) {
                             )
                         }
                         val track = shown[idx]
-                        TrackRow(
-                            item = track,
-                            isPlaying = state.currentUri == track.uri.toString() && state.isPlaying,
-                            isFavorite = favorites.contains(track.id),
-                            onClick = { vm.playOrToggle(shown, idx) },
-                            onLongPress = { addToItem = track },
-                            onMenu = { addToItem = track },
-                            onToggleFav = {
-                                scope.launch {
-                                    if (favorites.contains(track.id)) db.moodDao().remove(Mood.FAVORITES.key, track.id)
-                                    else db.moodDao().add(MoodMember(Mood.FAVORITES.key, track.id, System.currentTimeMillis()))
+                        if (homePillar == Pillar.VIDEO) {
+                            val onIt = state.currentUri == track.uri.toString()
+                            VideoCard(
+                                item = track,
+                                isCurrent = onIt,
+                                isPlaying = onIt && state.isPlaying,
+                                progress = if (onIt && state.durationMs > 0L)
+                                    state.positionMs.toFloat() / state.durationMs else 0f,
+                                canRenderVideo = feedOwnsVideo,
+                                onSurfaceOwned = { own ->
+                                    feedSurfaceOwners += if (own) 1 else -1
+                                },
+                                vm = vm,
+                                onClick = { vm.playOrToggle(shown, idx) },
+                                onPlayPause = { vm.playOrToggle(shown, idx) },
+                                onSeek = { f ->
+                                    if (state.durationMs > 0L)
+                                        vm.seekTo((f * state.durationMs).toLong())
+                                },
+                                onExpand = { showPlayer = true },
+                                onMenu = { addToItem = track }
+                            )
+                        } else {
+                            TrackRow(
+                                item = track,
+                                isPlaying = state.currentUri == track.uri.toString() && state.isPlaying,
+                                isFavorite = favorites.contains(track.id),
+                                onClick = {
+                                    vm.playOrToggle(shown, idx)
+                                    if (track.type == MediaType.VIDEO) showPlayer = true
+                                },
+                                onLongPress = { addToItem = track },
+                                onMenu = { addToItem = track },
+                                onToggleFav = {
+                                    scope.launch {
+                                        if (favorites.contains(track.id)) db.moodDao().remove(Mood.FAVORITES.key, track.id)
+                                        else db.moodDao().add(MoodMember(Mood.FAVORITES.key, track.id, System.currentTimeMillis()))
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
@@ -965,7 +1046,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // that arrives unannounced while you are looking elsewhere. It now slides
     // up from behind the nav bar and leaves the same way.
     androidx.compose.animation.AnimatedVisibility(
-        visible = state.hasItem && !playerHidden,
+        visible = state.hasItem && !playerHidden && !feedVideoLive,
         // Fixed ~55dp of travel, NOT { it }: the lambda receives the container
         // height, and this container is the full screen because PlayerSurface
         // fills it when expanded. Aligning it BottomCenter instead would stop
@@ -1002,6 +1083,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
             },
             beat = beat,
             envelope = envelope,
+            videoSurface = !feedOwnsVideo,
             bottomInset = navBottom + BottomBarHeight + MiniPlayerGap,
             onExpandedChange = { showPlayer = it }
         )

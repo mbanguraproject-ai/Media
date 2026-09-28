@@ -4,6 +4,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -17,13 +19,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
 // Flat solid tile color seeded by title — clean, no gradient noise, no fallback junk.
 
@@ -56,52 +60,82 @@ fun StashHeader(onSearch: () -> Unit) {
     ) {
         Image(
             painter = painterResource(R.drawable.aura_mark),
-            contentDescription = null,       // the wordmark beside it reads it out
+            // The mark carries the name on its own now, so it has to say so.
+            contentDescription = "Aura",
             modifier = Modifier.height(54.dp)
         )
-        Spacer(Modifier.width(Space.sm))
-        Column {
-            Text(
-                "Aura",
-                style = Typo.Display.copy(
-                    fontWeight = FontWeight.Light,
-                    letterSpacing = 0.sp
-                ),
-                color = MediaColors.Cream,
-                maxLines = 1
-            )
-            Text(
-                "YOUR VIBE",
-                style = Typo.Micro.copy(
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = 3.2.sp
-                ),
-                color = MediaColors.CreamDim,
-                maxLines = 1
-            )
-        }
         Spacer(Modifier.weight(1f))
-        CircleButton(Icons.Filled.Search, "Search", onClick = onSearch)
+        Icon(
+            Icons.Filled.Search, "Search",
+            tint = MediaColors.Cream,
+            modifier = Modifier
+                .clip(CircleShape)
+                .pressScale(haptic = true, onClick = onSearch)
+                .padding(Space.sm)
+                .size(22.dp)
+        )
     }
 }
 
+// ------------------------------------------------------------------ PILLARS
+//
+// Music, Video, Podcasts and Audiobooks were four taps deep: bottom nav ->
+// Library -> a tab row inside that. They are the top level of what this app
+// actually holds, so they belong at the top level of the screen.
+//
+// Only pillars with something in them appear, and with fewer than two there
+// is no strip at all: a phone with no podcasts should never see the word
+// Podcasts, and a music-only library should not carry a row with one item.
+//
+// The underline is drawn rather than laid out. A Box sized to the label needs
+// an intrinsic measurement, and intrinsics inside a scrollable row are how you
+// get a crash on the one device with a long language and a large font scale.
+private val PillarNames = mapOf(
+    Pillar.MUSIC to ("Music" to "tracks"),
+    Pillar.VIDEO to ("Video" to "videos"),
+    Pillar.PODCAST to ("Podcasts" to "episodes"),
+    Pillar.AUDIOBOOK to ("Audiobooks" to "audiobooks"),
+    Pillar.RECORDING to ("Recordings" to "recordings")
+)
+
+fun pillarLabel(p: Pillar): String = PillarNames[p]?.first ?: "Music"
+fun pillarNoun(p: Pillar): String = PillarNames[p]?.second ?: "tracks"
+
 @Composable
-private fun CircleButton(icon: ImageVector, cd: String, onClick: () -> Unit) {
-    // `spinning` went with the rescan button - nothing in the header animates
-    // any more, which is the point of calling it calm.
-    Box(
+fun PillarStrip(available: List<Pillar>, current: Pillar, onPick: (Pillar) -> Unit) {
+    if (available.size < 2) return
+    val accent = MediaColors.Accent
+    Row(
         Modifier
-            .size(36.dp)
-            .clip(CircleShape)
-            .border(1.dp, MediaColors.Fill, CircleShape)
-            .pressScale(haptic = true, onClick = onClick),
-        contentAlignment = Alignment.Center
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = Space.xl),
+        horizontalArrangement = Arrangement.spacedBy(Space.lg),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            icon, cd,
-            tint = Color.White.copy(alpha = 0.85f),
-            modifier = Modifier.size(16.dp)
-        )
+        available.forEach { p ->
+            val selected = p == current
+            Text(
+                pillarLabel(p),
+                style = Typo.Primary,
+                color = if (selected) MediaColors.Cream else MediaColors.CreamFaint,
+                maxLines = 1,
+                modifier = Modifier
+                    .clickable { onPick(p) }
+                    .drawBehind {
+                        if (selected) {
+                            val t = 2.dp.toPx()
+                            drawRoundRect(
+                                color = accent,
+                                topLeft = Offset(0f, size.height - t),
+                                size = Size(size.width, t),
+                                cornerRadius = CornerRadius(t / 2f)
+                            )
+                        }
+                    }
+                    .padding(top = Space.xs, bottom = Space.sm)
+            )
+        }
     }
 }
 
@@ -242,13 +276,13 @@ fun SortSegments(selected: SortKey, onSelect: (SortKey) -> Unit) {
     }
 }
 @Composable
-fun CountAndShuffle(count: Int, onShuffle: () -> Unit) {
+fun CountAndShuffle(count: Int, noun: String = "tracks", onShuffle: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().padding(Space.xl, Space.lg, Space.xl, Space.sm),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("$count tracks", style = Typo.Secondary, color = MediaColors.CreamDim)
+        Text("$count $noun", style = Typo.Secondary, color = MediaColors.CreamDim)
         Row(
             Modifier.clip(RoundedCornerShape(20.dp))
                 .border(1.dp, MediaColors.Accent.copy(alpha = 0.55f), RoundedCornerShape(20.dp))

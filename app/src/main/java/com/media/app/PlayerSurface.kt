@@ -66,7 +66,7 @@ import kotlin.math.abs
 // ============================================================================
 
 private const val MINI_HEIGHT = 60
-private const val PILL_MARGIN = 12
+private const val PILL_MARGIN = 20
 private const val MINI_ART = 44
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -89,6 +89,11 @@ fun PlayerSurface(
     // a fabricated wave when it is absent.
     envelope: FloatArray? = null,
     bottomInset: androidx.compose.ui.unit.Dp,
+    // False while a card in the video feed holds the one video surface. This
+    // composable is mounted whenever anything is playing, so without it the
+    // collapsed pill would attach a second PlayerView to the same player and
+    // win the surface outright.
+    videoSurface: Boolean = true,
     onExpandedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -140,7 +145,10 @@ fun PlayerSurface(
         val sidePad = lerpDp(PILL_MARGIN.dp, 0.dp, e)
         val botPad = lerpDp(bottomInset, 0.dp, e)
         val corner = lerpDp(28.dp, 0.dp, e)
-        val bg = lerpColor(MediaColors.Floating, MediaColors.Ink, e)
+        // Elevated, not Floating. Floating is three steps off the floor and
+        // on a true black page it reads as a grey slab left over from the old
+        // palette rather than as the app's own surface lifted a little.
+        val bg = lerpColor(MediaColors.Elevated, MediaColors.Ink, e)
         val ink = MediaColors.Ink
 
         // ---- shared artwork geometry ----
@@ -347,7 +355,7 @@ fun PlayerSurface(
                         // Video renders INSIDE the morphing box, so it scales
                         // and travels with everything else. factory runs once,
                         // so the surface is never recreated mid-animation.
-                        state.isVideo -> AndroidView(
+                        state.isVideo && videoSurface -> AndroidView(
                             factory = { ctx ->
                                 PlayerView(ctx).apply {
                                     useController = false
@@ -356,6 +364,9 @@ fun PlayerSurface(
                                 }
                             },
                             update = { it.player = vm.boundPlayer() },
+                            // Hand the surface back explicitly instead of
+                            // letting surfaceDestroyed null the output.
+                            onRelease = { it.player = null },
                             modifier = Modifier.fillMaxSize()
                         )
                         item != null -> CoverArt(
@@ -371,7 +382,7 @@ fun PlayerSurface(
             if (miniAlpha > 0.01f) {
                 Row(
                     Modifier.fillMaxWidth().height(MINI_HEIGHT.dp)
-                        .padding(start = (MINI_ART + 16).dp, end = Space.sm)
+                        .padding(start = (MINI_ART + 16).dp, end = Space.lg)
                         .alpha(miniAlpha),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
