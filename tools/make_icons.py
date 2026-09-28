@@ -13,10 +13,12 @@ lives outside app/src/main/res, so it is not in the APK.
 The mark is the hummingbird, cut out of its background and placed on deep
 black. Three rules shaped the geometry:
 
-  FULL BLEED BLACK. The plate fills the whole 108dp layer. Adaptive icons do
-  not keep their own shape - the launcher applies its own mask, and Samsung's
-  is a squircle. Black is @color/window_ink, the same black the app itself
-  sits on, so icon and app are one surface.
+  FULL BLEED. The plate fills the whole 108dp layer. Adaptive icons do not
+  keep their own shape - the launcher applies its own mask, and Samsung's is a
+  squircle. The plate is the photograph's OWN backdrop, which falls out of the
+  background fit for free: the same gradient, with the bird taken out of it.
+  It is not a second design decision, and at 48dp it is what lets the bird
+  read as a bird instead of a smudge.
 
   SAFE RADIUS. Everything visible is scaled so that no opaque pixel sits more
   than SAFE_DP from the centre. At 34dp that is a 68dp circle inside the 72dp
@@ -84,7 +86,7 @@ def refine_background(a, basis, sel, tol=26.0, rounds=6):
         sel = nxt
         if moved < 200:
             break
-    return d, sel
+    return d, sel, bg
 
 
 def cutout(path):
@@ -107,7 +109,7 @@ def cutout(path):
     seed[:f] = seed[-f:] = True
     seed[:, :f] = seed[:, -f:] = True
 
-    d, background = refine_background(a, basis, seed)
+    d, background, fitted = refine_background(a, basis, seed)
     resid = float(np.percentile(d[background], 99.9))
     subject = float(np.percentile(d, 92))
     print("  backdrop settled at %.1f%% of the frame, residual %.1f, subject %.1f"
@@ -176,8 +178,10 @@ def cutout(path):
 
     rgba = np.dstack([np.asarray(im, np.uint8), (alpha * 255).astype("uint8")])
     ys, xs = np.nonzero(alpha > 0.02)
-    return Image.fromarray(rgba, "RGBA").crop(
+    cut = Image.fromarray(rgba, "RGBA").crop(
         (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1))
+    plate = Image.fromarray(np.clip(fitted, 0, 255).astype("uint8"), "RGB")
+    return cut, plate
 
 
 # ------------------------------------------- smallest circle holding it all
@@ -238,8 +242,8 @@ def foreground(px, bird, circle):
     return out
 
 
-def on_black(fg):
-    out = Image.new("RGBA", fg.size, (0, 0, 0, 255))
+def on_plate(fg, plate):
+    out = plate.resize(fg.size, Image.LANCZOS).convert("RGBA")
     out.alpha_composite(fg)
     return out
 
@@ -270,7 +274,7 @@ if __name__ == "__main__":
     if not os.path.exists(SOURCE):
         sys.exit("missing %s - put the hummingbird photograph there first" % SOURCE)
     print("reading", SOURCE)
-    bird = cutout(SOURCE)
+    bird, plate = cutout(SOURCE)
     circle = enclosing_circle(bird)
     print("  cut to %dx%d, enclosing circle r=%.0f at (%.0f,%.0f)"
           % (bird.width, bird.height, circle[2], circle[0], circle[1]))
@@ -283,7 +287,7 @@ if __name__ == "__main__":
         total += write(monochrome(fg), "%s/drawable-%s/ic_launcher_monochrome.png" % (RES, name))
 
         legacy = int(round(48 * mult))
-        lg = on_black(foreground(legacy, bird, circle))
+        lg = on_plate(foreground(legacy, bird, circle), plate)
         total += write(lg.convert("RGB"), "%s/mipmap-%s/ic_launcher.png" % (RES, name))
         total += write(circle_mask(lg), "%s/mipmap-%s/ic_launcher_round.png" % (RES, name))
         print("  %-8s foreground %dpx   legacy %dpx" % (name, px, legacy))
@@ -296,7 +300,14 @@ if __name__ == "__main__":
     total += write(bird.resize((w, h), Image.LANCZOS), "%s/drawable-xxxhdpi/aura_mark.png" % RES)
     print("  header mark %dx%d (xxxhdpi)" % (w, h))
 
-    total += write(on_black(foreground(512, bird, circle)).convert("RGB"),
+    # One plate, not one per density. It is a smooth gradient with no detail
+    # to lose, so a single nodpi bitmap stretched to the layer is identical on
+    # screen and about 120KB lighter than five copies.
+    total += write(plate.resize((320, 320), Image.LANCZOS),
+                   "%s/drawable-nodpi/ic_launcher_background.png" % RES)
+    print("  plate 320x320 (nodpi)")
+
+    total += write(on_plate(foreground(512, bird, circle), plate).convert("RGB"),
                    "store/play_icon_512.png")
     print("  store/play_icon_512.png")
     print("shipped assets: %.0f KB" % (total / 1024.0))
