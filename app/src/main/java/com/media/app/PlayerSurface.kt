@@ -132,6 +132,19 @@ fun PlayerSurface(
         source = if (sourceItem != null && !state.isVideo) AudioInfo.source(ctxForSource, sourceItem).first else null
     }
     var controlsPx by remember { mutableStateOf(0) }
+    // Lyrics for the under-artwork line. Same engine and cache as the full
+    // view, so opening it afterwards costs nothing.
+    val lyricsRevision by LyricsEngine.revision.collectAsState()
+    val previewItem = libraryItem ?: artItem
+    var previewLyrics by remember(previewItem?.id) { mutableStateOf<LyricsState?>(null) }
+    LaunchedEffect(previewItem?.id, onlineLookups, lyricsRevision, state.isVideo) {
+        val it = previewItem
+        previewLyrics = if (it == null || state.isVideo) null
+            else LyricsEngine.load(ctxForSource, it, online = onlineLookups)
+    }
+    val previewOffset = remember(previewItem?.id, lyricsRevision) {
+        previewItem?.let { LyricsStore.offset(it.id) } ?: 0L
+    }
     var showQueue by remember { mutableStateOf(false) }
     val queue by vm.queue.collectAsState()
 
@@ -491,10 +504,6 @@ fun PlayerSurface(
                             modifier = Modifier.size(24.dp).pressScale(haptic = true) { showLyrics = !showLyrics }
                         )
                         Spacer(Modifier.width(Space.md))
-                        FavoriteButton(
-                            isFavorite, Modifier.size(24.dp), onToggleFavorite
-                        )
-                        Spacer(Modifier.width(Space.md))
                     }
                     Icon(
                         Icons.AutoMirrored.Filled.QueueMusic, "Queue", tint = MediaColors.Cream,
@@ -523,11 +532,52 @@ fun PlayerSurface(
                         .navigationBarsPadding().alpha(fullAlpha)
                         .onSizeChanged { controlsPx = it.height }
                 ) {
+                    // The line being sung, under the artwork, the way Spotify
+                    // shows it. Only for real synced lyrics, and hidden while
+                    // the full lyrics are open. Tap opens them.
+                    val nowLine = remember(previewLyrics, state.positionMs, previewOffset) {
+                        (previewLyrics as? LyricsState.Synced)?.lines?.let { lines ->
+                            Lrc.activeIndex(lines, state.positionMs, previewOffset)
+                                .takeIf { it >= 0 }?.let { lines[it].text }
+                        }
+                    }
+                    if (!state.isVideo && !showLyrics && previewLyrics is LyricsState.Synced) {
+                        androidx.compose.animation.AnimatedContent(
+                            targetState = nowLine.orEmpty(),
+                            transitionSpec = {
+                                (fadeIn(tween(Motion.Standard)) togetherWith fadeOut(tween(Motion.Fast)))
+                            },
+                            label = "lyricLine",
+                            modifier = Modifier.fillMaxWidth()
+                                .padding(start = Space.xl, end = Space.xl, bottom = Space.md)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) { showLyrics = true }
+                        ) { line ->
+                            Text(
+                                line.ifBlank { "\u266A" },
+                                style = Typo.Primary.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
+                                color = MediaColors.Cream,
+                                maxLines = 2, overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                     Column(Modifier.fillMaxWidth().padding(Space.xl, 0.dp, Space.xl, Space.md)) {
-                        Text(state.currentTitle, style = Typo.Section, color = MediaColors.Cream,
-                            maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text(state.currentArtist, style = Typo.Body, color = MediaColors.CreamDim,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        // Heart beside the title, under the art: where the
+                        // thumb is, not up in the top bar.
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(state.currentTitle, style = Typo.Section, color = MediaColors.Cream,
+                                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                Text(state.currentArtist, style = Typo.Body, color = MediaColors.CreamDim,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                            if (!state.isVideo) {
+                                Spacer(Modifier.width(Space.md))
+                                FavoriteButton(isFavorite, Modifier.size(28.dp), onToggleFavorite)
+                            }
+                        }
                         // What the file really is, quietly. Tap for the whole
                         // path from file to headphones.
                         source?.badge?.let { badge ->

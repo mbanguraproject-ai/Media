@@ -187,6 +187,8 @@ object LyricsEngine {
             when (val r = fetch(item, tags)) {
                 is Fetch.Found -> {
                     LyricsStore.put(item.id, r.record)
+                    // Anything else showing this track's lyrics re-reads them.
+                    _revision.value++
                     cached = r.record
                     if (r.record.instrumental) return@withContext LyricsState.Instrumental
                     if (r.record.synced) {
