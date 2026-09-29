@@ -21,9 +21,13 @@ black. Three rules shaped the geometry:
   read as a bird instead of a smudge.
 
   SAFE RADIUS. Everything visible is scaled so that no opaque pixel sits more
-  than SAFE_DP from the centre. At 34dp that is a 68dp circle inside the 72dp
-  the mask actually shows - the outer ring holds nothing but the translucent
-  tip of one wing and the point of the beak.
+  than SAFE_DP from the centre. 34dp was wrong: it put a 68dp bird inside the
+  72dp the mask shows, leaving 3.5dp between the beak and the right edge, so
+  the icon read as cropped next to every other app on the shelf while the
+  512 store icon - same geometry, no mask - looked airy. The safe radius is a
+  no-clip GUARANTEE, not a composition target. 30dp gives a 60dp circle in
+  the same window: 11dp of air on the left, 7.8dp on the right, a bird at 74%
+  of the visible tile, and one framing shared by the launcher and the store.
 
   ONE SILHOUETTE. The themed (monochrome) icon is the same alpha channel,
   flattened. It cannot drift from the colour icon because it IS the colour
@@ -52,7 +56,7 @@ SOURCE = "art/hummingbird.png"
 RES    = "app/src/main/res"
 
 CANVAS_DP = 108.0          # adaptive icon layer
-SAFE_DP   = 34.0           # max radius of any opaque pixel, from centre
+SAFE_DP   = 30.0           # max radius of any opaque pixel, from centre
 MARK_DP   = 96.0           # tallest place the mark is drawn (Settings)
 
 DENSITIES = [("mdpi", 1.0), ("hdpi", 1.5), ("xhdpi", 2.0),
