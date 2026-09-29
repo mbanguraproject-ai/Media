@@ -38,6 +38,8 @@ object Pip {
         }
     }
 
+    // Every caller checks isSupported() first, which requires API 26.
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.O)
     fun params(width: Int, height: Int, autoEnter: Boolean): PictureInPictureParams =
         PictureInPictureParams.Builder()
             .setAspectRatio(ratioFor(width, height))
@@ -54,6 +56,8 @@ object Pip {
             .build()
 
     fun enter(activity: Activity, width: Int, height: Int) {
+        // Explicit, so lint can see it: isSupported() already implies API 26.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         if (!isSupported(activity)) return
         runCatching { activity.enterPictureInPictureMode(params(width, height, true)) }
     }

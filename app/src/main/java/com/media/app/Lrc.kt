@@ -42,7 +42,7 @@ object Lrc {
         val offset = OFFSET.find(text)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
         val out = ArrayList<LyricLine>()
         for (raw in text.lineSequence()) {
-            val line = raw.trim().removePrefix("﻿")
+            val line = raw.trim().removePrefix("\uFEFF")
             if (line.isEmpty()) continue
             var rest = line
             val stamps = ArrayList<Long>()

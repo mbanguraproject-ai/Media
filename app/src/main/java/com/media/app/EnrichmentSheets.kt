@@ -39,7 +39,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -168,8 +167,9 @@ fun ArtworkSheet(
     val context = LocalContext.current
     val launch = rememberCoroutineScope()
     val version by ArtworkStore.version.collectAsState()
-    val status by produceState<ArtStatus?>(null, item.id, version) {
-        value = withContext(Dispatchers.IO) { ArtworkRepair.inspect(context, item) }
+    var status by remember(item.id, version) { mutableStateOf<ArtStatus?>(null) }
+    LaunchedEffect(item.id, version) {
+        status = withContext(Dispatchers.IO) { ArtworkRepair.inspect(context, item) }
     }
     var searching by remember { mutableStateOf(false) }
     var searched by remember { mutableStateOf(false) }
@@ -259,8 +259,9 @@ fun ArtworkSheet(
 
 @Composable
 private fun CandidateTile(c: ArtCandidate, busy: Boolean, modifier: Modifier, onPick: () -> Unit) {
-    val thumb by produceState<ImageBitmap?>(null, c.key) {
-        value = ArtworkRepair.thumbnail(c)?.let { bytes ->
+    var thumb by remember(c.key) { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(c.key) {
+        thumb = ArtworkRepair.thumbnail(c)?.let { bytes ->
             withContext(Dispatchers.Default) {
                 BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
             }
@@ -303,14 +304,17 @@ fun TrackDetailsSheet(
 ) {
     val context = LocalContext.current
     val launch = rememberCoroutineScope()
-    val info by produceState<Pair<SourceFormat, FileTags?>?>(null, item.id) {
-        value = AudioInfo.source(context, item)
+    var info by remember(item.id) { mutableStateOf<Pair<SourceFormat, FileTags?>?>(null) }
+    LaunchedEffect(item.id) {
+        info = AudioInfo.source(context, item)
     }
-    val art by produceState<ArtStatus?>(null, item.id) {
-        value = withContext(Dispatchers.IO) { ArtworkRepair.inspect(context, item) }
+    var art by remember(item.id) { mutableStateOf<ArtStatus?>(null) }
+    LaunchedEffect(item.id) {
+        art = withContext(Dispatchers.IO) { ArtworkRepair.inspect(context, item) }
     }
-    val lyrics by produceState<LyricsState>(LyricsState.Loading, item.id) {
-        value = LyricsEngine.load(context, item, online = false)
+    var lyrics by remember(item.id) { mutableStateOf<LyricsState>(LyricsState.Loading) }
+    LaunchedEffect(item.id) {
+        lyrics = LyricsEngine.load(context, item, online = false)
     }
     var identifying by remember { mutableStateOf(false) }
     var match by remember { mutableStateOf<Pair<MbRecording, Float>?>(null) }
@@ -442,8 +446,9 @@ fun TrackDetailsSheet(
 @Composable
 fun AudioPathSheet(item: AppMediaItem, onOpenSound: () -> Unit, onDismiss: () -> Unit) {
     val context = LocalContext.current
-    val info by produceState<Pair<SourceFormat, FileTags?>?>(null, item.id) {
-        value = AudioInfo.source(context, item)
+    var info by remember(item.id) { mutableStateOf<Pair<SourceFormat, FileTags?>?>(null) }
+    LaunchedEffect(item.id) {
+        info = AudioInfo.source(context, item)
     }
     val route = remember { AudioInfo.output(context) }
     val sound by SoundEngine.status.collectAsState()

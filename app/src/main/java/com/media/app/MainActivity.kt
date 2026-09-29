@@ -414,7 +414,8 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // over Home counts as an overlay, so the surface goes back to the pill.
     var showShare by remember { mutableStateOf(false) }
     val shareState by ShareSession.state.collectAsState()
-    remember(context) { ShareSession.attach(context) }
+    // Once per context. remember must hold a value, so it holds the context.
+    remember(context) { ShareSession.attach(context); context }
     // THE ONE VIDEO SURFACE.
     //
     // The mini-player and Now Playing are a single composable that is always

@@ -127,8 +127,9 @@ fun PlayerSurface(
     )
     val ctxForSource = androidx.compose.ui.platform.LocalContext.current
     val sourceItem = libraryItem ?: artItem
-    val source by produceState<SourceFormat?>(null, sourceItem?.uri, state.isVideo) {
-        value = if (sourceItem != null && !state.isVideo) AudioInfo.source(ctxForSource, sourceItem).first else null
+    var source by remember(sourceItem?.uri, state.isVideo) { mutableStateOf<SourceFormat?>(null) }
+    LaunchedEffect(sourceItem?.uri, state.isVideo) {
+        source = if (sourceItem != null && !state.isVideo) AudioInfo.source(ctxForSource, sourceItem).first else null
     }
     var controlsPx by remember { mutableStateOf(0) }
     var showQueue by remember { mutableStateOf(false) }

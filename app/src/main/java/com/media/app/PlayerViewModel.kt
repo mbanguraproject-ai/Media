@@ -96,6 +96,8 @@ data class QueueEntry(
     val uri: String
 )
 
+// PlaybackService is @UnstableApi (float output); naming it here needs the opt-in.
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     private var controller: MediaController? = null
