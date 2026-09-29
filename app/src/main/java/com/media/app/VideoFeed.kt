@@ -3,7 +3,12 @@ package com.media.app
 import android.text.format.DateUtils
 import androidx.compose.foundation.background
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
@@ -18,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import kotlinx.coroutines.delay
 
 // ============================================================================
 //  VIDEO FEED
@@ -97,6 +104,30 @@ fun VideoCard(
     onMenu: () -> Unit
 ) {
     val live = isCurrent && canRenderVideo
+
+    // Controls get out of the way. Two black discs sitting on the picture for
+    // the whole runtime are the most distracting thing on the card, and they
+    // are wanted for about a second at a time. Tapping the picture brings them
+    // back for three seconds.
+    //
+    // Paused is the exception and it is not negotiable: with the controls
+    // hidden and playback stopped, the play button is the only way back, so it
+    // stays put until playback resumes.
+    var reveal by remember(item.id) { mutableStateOf(0) }
+    var chrome by remember(item.id) { mutableStateOf(false) }
+    LaunchedEffect(reveal, isPlaying, live) {
+        when {
+            !live -> chrome = false
+            !isPlaying -> chrome = true
+            reveal == 0 -> chrome = false
+            else -> {
+                chrome = true
+                delay(CHROME_LINGER_MS)
+                chrome = false
+            }
+        }
+    }
+
     DisposableEffect(live) {
         if (live) onSurfaceOwned(true)
         onDispose { if (live) onSurfaceOwned(false) }
@@ -107,7 +138,12 @@ fun VideoCard(
                 .fillMaxWidth()
                 .aspectRatio(CARD_ASPECT)
                 .background(Color.Black)
-                .clickable(enabled = !isCurrent, onClick = onClick)
+                // No ripple: a grey wash blooming across a film every time you
+                // ask for the controls is worse than the controls.
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { if (isCurrent) reveal++ else onClick() }
         ) {
             if (live) {
                 AndroidView(
@@ -123,6 +159,7 @@ fun VideoCard(
                     modifier = Modifier.fillMaxSize()
                 )
                 InlineControls(
+                    chrome = chrome,
                     isPlaying = isPlaying,
                     progress = progress,
                     onPlayPause = onPlayPause,
@@ -184,11 +221,14 @@ fun VideoCard(
     }
 }
 
-// Always visible rather than tap-to-reveal with a timer. The expand control is
-// the only route from here to the full player, and a control you have to
-// discover by tapping a video that is already playing is not a route.
+private const val CHROME_LINGER_MS = 3000L
+
+// The two buttons come and go; the progress line does not. Knowing where you
+// are in a video is not a control, it is the one thing you read without
+// asking, and hiding it would mean tapping the picture to find out.
 @Composable
 private fun InlineControls(
+    chrome: Boolean,
     isPlaying: Boolean,
     progress: Float,
     onPlayPause: () -> Unit,
@@ -201,6 +241,11 @@ private fun InlineControls(
         // legible darkens the picture to pay for the picture's own controls.
         // Each icon carries a small disc instead, which is the only area that
         // needs to stop being video.
+        AnimatedVisibility(
+            visible = chrome,
+            enter = fadeIn(tween(140)),
+            exit = fadeOut(tween(220))
+        ) {
         Row(
             Modifier
                 .fillMaxWidth()
@@ -229,6 +274,7 @@ private fun InlineControls(
                     .padding(Space.sm)
                     .size(22.dp)
             )
+        }
         }
         // A 2dp line is not a control. The strip that takes the touch is 18dp
         // and transparent, with the line drawn along its bottom edge, so the

@@ -109,7 +109,13 @@ val DarkPalette = Palette(
     surface = Color(0xFF0B0B0D),     // +1 step
     elevated = Color(0xFF15151A),    // +2 - cards, panels
     floating = Color(0xFF1F1F26),    // +3 - reads above scrolling content
-    modal = Color(0xFF292930),       // +4 - sheets sit highest
+    // Was 0xFF292930. On a pure black floor that is a grey slab, and it read
+    // as a leftover from the old grey design every time a sheet came up. A
+    // sheet does not need to out-lighten the page to look raised: it sits on
+    // a 0xCC scrim that has already taken the page to near-black, and it has
+    // a Fill border and rounded top corners. Those do the separating -
+    // lightness was only making it grey.
+    modal = Color(0xFF1A1A21),       // +4 - sheets sit highest
     hairline = Color(0xFF33333B),    // neutral rule
     text = Color(0xFFF2F3F5),
     textDim = Color(0xFFA8AEBA),
@@ -144,7 +150,6 @@ val LocalPalette = androidx.compose.runtime.staticCompositionLocalOf { DarkPalet
 // so every screen keeps compiling; only the resolved values are new.
 object MediaColors {
     val Ink @Composable get() = LocalPalette.current.bg
-    val InkRaised @Composable get() = LocalPalette.current.elevated   // legacy alias
 
     // §4/§52: these were repeated as raw hex across four files. Semantic
     // names, one definition. 0x17FFFFFF was collapsed into Fill — it sat one

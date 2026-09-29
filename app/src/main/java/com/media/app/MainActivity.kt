@@ -489,6 +489,10 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // Override application is pure and cheap, so an edit re-maps in place
     // without re-querying MediaStore.
     val allAudio = remember(rawAudio, overrides) { MediaRepository.applyOverrides(rawAudio, overrides) }
+    // Video edits went into the database and never came back out: overrides
+    // were applied to the audio list only, so renaming a video wrote a row and
+    // changed nothing on screen. Silent, which is the worst kind.
+    val allVideo = remember(video, overrides) { MediaRepository.applyOverrides(video, overrides) }
     val music = remember(allAudio) { allAudio.filter { it.pillar == Pillar.MUSIC } }
 
     // Active mood + its whole-app theme setter (from MainActivity).
@@ -526,7 +530,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // ---- beat pulse: ONE driver, shared by the player and Home ----
     // Runs whenever something is playing, not just when the player is open,
     // because the playing card on Home consumes the same level.
-    val allById = remember(allAudio, video) { (allAudio + video).associateBy { it.id } }
+    val allById = remember(allAudio, allVideo) { (allAudio + allVideo).associateBy { it.id } }
     // Consent first, SDK second. Kicked off once, after the permission gate,
     // so it never lands on top of onboarding.
     // Entitlement: cached value seeds the flow so no ad can flash before Play
@@ -617,7 +621,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
     }
 
     // The pillars, at the top level instead of two screens down.
-    val byPillar = remember(allAudio, video) { (allAudio + video).groupBy { it.pillar } }
+    val byPillar = remember(allAudio, allVideo) { (allAudio + allVideo).groupBy { it.pillar } }
     val pillars = remember(byPillar) {
         listOf(Pillar.MUSIC, Pillar.VIDEO, Pillar.PODCAST,
                Pillar.AUDIOBOOK, Pillar.RECORDING)
@@ -824,7 +828,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
 
     if (showSearch) {
         SearchScreen(
-            all = allAudio + video,
+            all = allAudio + allVideo,
             onPlay = { list, idx ->
                 vm.play(list, idx)
                 showSearch = false
@@ -854,7 +858,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
     openPlaylist?.let { pl ->
         // Members carry addedAt, so honour insertion order rather than whatever
         // order the flat observeAllMembers query happens to return.
-        val byId = remember(allAudio, video) { (allAudio + video).associateBy { it.id } }
+        val byId = remember(allAudio, allVideo) { (allAudio + allVideo).associateBy { it.id } }
         val tracks = remember(allPlaylistMembers, pl.id, byId) {
             allPlaylistMembers.filter { it.playlistId == pl.id }
                 .sortedBy { it.addedAt }
@@ -900,7 +904,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
     }
     if (showLibrary) {
         LibraryScreen(
-            all = allAudio + video,
+            all = allAudio + allVideo,
             state = state,
             initialPillar = libraryPillar,
             lastPlayed = lastPlayedMap,
@@ -1357,7 +1361,7 @@ fun SleepTimerSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = MediaColors.InkRaised,
+        containerColor = MediaColors.Modal,
         dragHandle = { BottomSheetDefaults.DragHandle(color = MediaColors.CreamFaint) }
     ) {
         Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(Space.xl, Space.sm, Space.xl, Space.xl)) {

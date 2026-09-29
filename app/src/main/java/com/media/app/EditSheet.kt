@@ -40,6 +40,11 @@ fun EditSheet(
     var title by remember { mutableStateOf(item.title) }
     var artist by remember { mutableStateOf(item.artist) }
     var details by remember { mutableStateOf(item.details ?: "") }
+    // A video has no business being filed as Song / Podcast / Audiobook, but
+    // the picker had no fourth option, so every saved video edit stored MUSIC.
+    // Harmless only while the override was being ignored - the moment video
+    // overrides are honoured, that row moves the video out of Video entirely.
+    val isVideo = item.type == MediaType.VIDEO
     var choice by remember {
         mutableStateOf(
             when (item.pillar) {
@@ -53,7 +58,7 @@ fun EditSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = MediaColors.InkRaised,
+        containerColor = MediaColors.Modal,
         dragHandle = { BottomSheetDefaults.DragHandle(color = MediaColors.CreamFaint) }
     ) {
         // Back must dismiss the KEYBOARD first, not the whole sheet.
@@ -91,14 +96,16 @@ fun EditSheet(
             EditField(title, { title = it }, "Title")
             Spacer(Modifier.height(Space.lg))
 
-            FieldLabel(choice.fieldLabel)
-            EditField(artist, { artist = it }, choice.fieldLabel)
+            val whoLabel = if (isVideo) "Creator" else choice.fieldLabel
+            FieldLabel(whoLabel)
+            EditField(artist, { artist = it }, whoLabel)
             Spacer(Modifier.height(Space.lg))
 
             FieldLabel("Details")
             EditField(details, { details = it }, "Notes, description…", minHeight = 72)
             Spacer(Modifier.height(Space.xl))
 
+            if (!isVideo) {
             FieldLabel("This is a")
             Spacer(Modifier.height(Space.sm))
             Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
@@ -127,6 +134,7 @@ fun EditSheet(
                     }
                 }
             }
+            }
 
             Spacer(Modifier.height(Space.xl))
         }
@@ -136,7 +144,7 @@ fun EditSheet(
             Box(
                 Modifier.fillMaxWidth()
                     .background(MediaColors.Accent, RoundedCornerShape(12.dp))
-                    .clickable { onSave(title, artist, details, choice.stored) }
+                    .clickable { onSave(title, artist, details, if (isVideo) "VIDEO" else choice.stored) }
                     .padding(vertical = 15.dp),
                 contentAlignment = Alignment.Center
             ) {

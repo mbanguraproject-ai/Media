@@ -2,12 +2,21 @@ package com.media.app
 
 import android.app.Activity
 import android.content.Context
+import android.view.View
 import androidx.compose.runtime.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.viewinterop.AndroidView
+import com.google.android.gms.ads.AdListener
 import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
@@ -18,10 +27,14 @@ import java.util.concurrent.atomic.AtomicBoolean
 // ============================================================================
 //  ADS
 //
-//  ONE native card, in the Home feed, after the first shelf. Nothing on Now
-//  Playing, no banner competing with the mini-player, no interstitial between
-//  tracks. A player is used with the screen off — permanent chrome would be in
-//  the way far longer than it would ever be seen.
+//  ONE banner, in Settings, under Text size. The native card used to sit
+//  mid-list between two rows, which is the one place a person is scrolling
+//  fast and aiming at targets: obstructive to use and a mis-tap generator.
+//  Settings is somewhere you arrive deliberately and read.
+//
+//  Nothing on Home, nothing on Now Playing, no interstitial between tracks.
+//  A player is used with the screen off; permanent chrome would be in the
+//  way far longer than it would ever be seen.
 //
 //  IDs below are GOOGLE'S OFFICIAL TEST IDS. They must stay until you swap in
 //  your own from the AdMob console. Loading live ads in a debug build, or
@@ -95,23 +108,64 @@ fun AuraBanner(ready: Boolean, modifier: Modifier = Modifier) {
     // unit id produces an invisible box and a stream of no-fill errors, and
     // reusing the NATIVE unit for a banner is a format mismatch, not a shortcut.
     if (!ready || Ads.BANNER_UNIT_ID.isBlank()) return
+
+    // THE CARD BELONGS TO THE AD, NOT TO THE SCREEN. Drawn by the caller it
+    // was an empty grey slab in Settings whenever there was no ad in it - and
+    // there is no ad in it far more often than you would think: a brand new
+    // unit does not fill for hours, a user with no connection never fills, and
+    // no-fill is a normal daily outcome. An AdView also reserves its adaptive
+    // height the moment it exists, so "it will collapse on its own" is false.
+    // Nothing is drawn until onAdLoaded actually fires.
+    var loaded by remember { mutableStateOf(false) }
     val widthDp = LocalConfiguration.current.screenWidthDp - 64
-    AndroidView(
-        modifier = modifier.fillMaxWidth(),
-        factory = { ctx ->
-            AdView(ctx).apply {
-                adUnitId = Ads.BANNER_UNIT_ID
+
+    Box(
+        modifier
+            .fillMaxWidth()
+            .then(
+                if (loaded) Modifier
+                    // The gutter above belongs to the ad too, or an unfilled
+                    // banner still pushes what is below it down by 16dp.
+                    .padding(top = Space.lg)
+                    .padding(horizontal = Space.xl)
+                    .clip(RoundedCornerShape(Radius.lg))
+                    .background(MediaColors.Elevated)
+                    .padding(Space.sm)
+                else Modifier
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                val view = AdView(ctx)
+                // GONE until it has something to show. The request still runs
+                // while hidden; AdMob counts the impression when it becomes
+                // visible, which is exactly when onAdLoaded flips it.
+                view.visibility = View.GONE
+                view.adUnitId = Ads.BANNER_UNIT_ID
                 // Adaptive, not the fixed 320x50: it asks for the height that
                 // suits this screen width, so the ad is never letterboxed
                 // inside a box the wrong shape.
-                setAdSize(
+                view.setAdSize(
                     AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
                         ctx, widthDp.coerceAtLeast(200)
                     )
                 )
-                loadAd(AdRequest.Builder().build())
-            }
-        },
-        onRelease = { it.destroy() }
-    )
+                view.adListener = object : AdListener() {
+                    override fun onAdLoaded() {
+                        view.visibility = View.VISIBLE
+                        loaded = true
+                    }
+
+                    override fun onAdFailedToLoad(error: LoadAdError) {
+                        view.visibility = View.GONE
+                        loaded = false
+                    }
+                }
+                view.loadAd(AdRequest.Builder().build())
+                view
+            },
+            onRelease = { it.destroy() }
+        )
+    }
 }

@@ -354,10 +354,14 @@ object MediaRepository {
     // Apply user overrides on top of the raw item.
     private fun applyOverride(item: AppMediaItem, ov: MediaOverride?): AppMediaItem {
         if (ov == null) return item
-        val newPillar = when (ov.pillar) {
-            "MUSIC" -> Pillar.MUSIC
-            "PODCAST" -> Pillar.PODCAST
-            "AUDIOBOOK" -> Pillar.AUDIOBOOK
+        // A video stays a video whatever the row says. Edits saved before the
+        // sheet was fixed stored MUSIC for videos, and without this they would
+        // vanish from the Video tab the moment overrides started applying.
+        val newPillar = when {
+            item.type == MediaType.VIDEO -> item.pillar
+            ov.pillar == "MUSIC" -> Pillar.MUSIC
+            ov.pillar == "PODCAST" -> Pillar.PODCAST
+            ov.pillar == "AUDIOBOOK" -> Pillar.AUDIOBOOK
             else -> item.pillar
         }
         return item.copy(

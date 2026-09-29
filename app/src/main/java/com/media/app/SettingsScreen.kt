@@ -89,21 +89,7 @@ fun SettingsScreen(
         // ad within a thumb's width of a control is how accidental clicks
         // happen, and accidental clicks are how AdMob accounts get closed.
         val bannerHidden by Billing.adFree.collectAsState()
-        if (adsReady && !bannerHidden) {
-            Spacer(Modifier.height(Space.lg))
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Space.xl)
-                    .clip(RoundedCornerShape(Radius.lg))
-                    .background(MediaColors.Elevated)
-                    .padding(Space.sm),
-                contentAlignment = Alignment.Center
-            ) {
-                AuraBanner(ready = adsReady)
-            }
-            Spacer(Modifier.height(Space.sm))
-        }
+        if (!bannerHidden) AuraBanner(ready = adsReady)
 
         DisplayQualitySection(
             current = settings.qualityMode,
@@ -179,6 +165,19 @@ fun SettingsScreen(
 // see, so the app shows the hardware it actually read and the ceiling it
 // derived from it. A setting that silently decides something this visible
 // should be able to show its working.
+// "1 videos" is the kind of thing a reviewer screenshots. Also drops a half
+// that reads zero, rather than announcing what someone does not have.
+private fun librarySummary(audio: Int, video: Int): String {
+    val a = if (audio == 1) "1 track" else "$audio tracks"
+    val v = if (video == 1) "1 video" else "$video videos"
+    return when {
+        audio == 0 && video == 0 -> "Nothing here yet"
+        video == 0 -> a
+        audio == 0 -> v
+        else -> a + " \u00B7 " + v
+    }
+}
+
 @Composable
 private fun DisplayQualitySection(current: QualityMode, onPick: (QualityMode) -> Unit) {
     val context = LocalContext.current
@@ -436,7 +435,7 @@ private fun FontSizePicker(current: Float, onChange: (Float) -> Unit) {
                         // buttons: two different selection languages on one
                         // screen. Teal marks state everywhere; white is kept
                         // for exactly one thing, the play button.
-                        .background(if (sel) MediaColors.Accent else MediaColors.InkRaised)
+                        .background(if (sel) MediaColors.Accent else MediaColors.Elevated)
                         .border(0.5.dp, if (sel) MediaColors.Accent else MediaColors.InkHairline, RoundedCornerShape(10.dp))
                         .clickable { onChange(scale) }.padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
@@ -574,7 +573,7 @@ private fun ProfileMark(audioCount: Int, videoCount: Int) {
             color = MediaColors.Cream
         )
         Text(
-            "$audioCount tracks \u00B7 $videoCount videos",
+            librarySummary(audioCount, videoCount),
             style = MaterialTheme.typography.bodyMedium,
             color = MediaColors.CreamDim
         )
