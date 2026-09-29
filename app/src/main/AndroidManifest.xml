@@ -4,6 +4,13 @@
     <!-- Back for ads only. The app itself still plays entirely from local
          storage and sends nothing anywhere. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Aura Share. Discovery is UDP multicast, and Wi-Fi hardware filters
+         multicast away to save power unless a lock is held - without these
+         the phone hears no replies at all, which looks exactly like an empty
+         network. Nothing here reaches the internet; it is all on the LAN. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Required on targetSdk 33+ for the advertising ID. -->
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />

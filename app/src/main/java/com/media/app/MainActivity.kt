@@ -408,6 +408,11 @@ fun HomeScaffold(vm: PlayerViewModel) {
     val context = LocalContext.current
     val state by vm.state.collectAsState()
     var showPlayer by remember { mutableStateOf(false) }
+    // Aura Share. Held at this level because the header opens it, the back
+    // handler closes it, and the video feed has to know it is open - a sheet
+    // over Home counts as an overlay, so the surface goes back to the pill.
+    var showShare by remember { mutableStateOf(false) }
+    val share = remember { ShareController(context.applicationContext) }
     // THE ONE VIDEO SURFACE.
     //
     // The mini-player and Now Playing are a single composable that is always
@@ -631,7 +636,8 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // also resets currentTab so the nav highlight doesn't lie.
     val anyOverlay = addToItem != null || editItem != null || showTerms || showAbout ||
         showPlayer || showSearch || showSettings || openPlaylist != null ||
-        showPlaylists || openAlbum != null || openArtist != null || showLibrary
+        showPlaylists || openAlbum != null || openArtist != null || showLibrary ||
+        showShare
 
     // WHO MAY HOLD THE VIDEO SURFACE - decided here, in composition, before
     // either PlayerView is built.
@@ -649,6 +655,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
     val feedOwnsVideo = state.isVideo && homePillar == Pillar.VIDEO && !anyOverlay
     BackHandler(enabled = anyOverlay) {
         when {
+            showShare -> showShare = false
             addToItem != null -> addToItem = null
             editItem != null -> editItem = null
             showTerms -> showTerms = false
@@ -693,7 +700,11 @@ fun HomeScaffold(vm: PlayerViewModel) {
             // nothing left up here that is worth shrinking.
             val homeListState = rememberLazyListState()
 
-            StashHeader(onSearch = { showSearch = true })
+            StashHeader(
+                onSearch = { showSearch = true },
+                sharing = share.active != null,
+                onShare = { showShare = true }
+            )
 
             PillarStrip(pillars, homePillar) { homePillar = it }
 
@@ -1133,6 +1144,19 @@ fun HomeScaffold(vm: PlayerViewModel) {
                 }
             }
         }
+    }
+
+    // Two players in one room is not a feature. Handing a file to the TV
+    // pauses this one.
+    LaunchedEffect(share.active) {
+        if (share.active != null && state.isPlaying) vm.togglePlayPause()
+    }
+    if (showShare) {
+        ShareSheet(
+            share = share,
+            nowPlaying = playingItem,
+            onDismiss = { showShare = false }
+        )
     }
 
     addToItem?.let { item ->

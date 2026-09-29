@@ -51,7 +51,7 @@ import androidx.compose.ui.unit.dp
 // device, so the header was carrying a duplicate control for something you
 // touch roughly once a month.
 @Composable
-fun StashHeader(onSearch: () -> Unit) {
+fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -65,6 +65,19 @@ fun StashHeader(onSearch: () -> Unit) {
             modifier = Modifier.height(54.dp)
         )
         Spacer(Modifier.weight(1f))
+        // Lit while something is playing elsewhere. A cast control that looks
+        // the same connected and disconnected is the reason people cannot
+        // tell why their phone is silent.
+        Icon(
+            if (sharing) Icons.Filled.CastConnected else Icons.Filled.Cast,
+            if (sharing) "Playing on another device" else "Aura Share",
+            tint = if (sharing) MediaColors.Accent else MediaColors.Cream,
+            modifier = Modifier
+                .clip(CircleShape)
+                .pressScale(haptic = true, onClick = onShare)
+                .padding(Space.sm)
+                .size(22.dp)
+        )
         Icon(
             Icons.Filled.Search, "Search",
             tint = MediaColors.Cream,
