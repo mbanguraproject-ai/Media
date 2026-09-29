@@ -412,7 +412,8 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // handler closes it, and the video feed has to know it is open - a sheet
     // over Home counts as an overlay, so the surface goes back to the pill.
     var showShare by remember { mutableStateOf(false) }
-    val share = remember { ShareController(context.applicationContext) }
+    val shareState by ShareSession.state.collectAsState()
+    remember(context) { ShareSession.attach(context) }
     // THE ONE VIDEO SURFACE.
     //
     // The mini-player and Now Playing are a single composable that is always
@@ -702,7 +703,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
 
             StashHeader(
                 onSearch = { showSearch = true },
-                sharing = share.active != null,
+                sharing = shareState.sharing,
                 onShare = { showShare = true }
             )
 
@@ -1148,13 +1149,24 @@ fun HomeScaffold(vm: PlayerViewModel) {
 
     // Two players in one room is not a feature. Handing a file to the TV
     // pauses this one.
-    LaunchedEffect(share.active) {
-        if (share.active != null && state.isPlaying) vm.togglePlayPause()
+    LaunchedEffect(shareState.sharing) {
+        if (shareState.sharing && state.isPlaying) vm.togglePlayPause()
     }
     if (showShare) {
+        // Aura Share gets the REAL queue, not just the current track, so Next
+        // and end-of-track work on the TV the way they do on the phone. The
+        // index is found by uri rather than carried over, because an entry
+        // whose item is no longer in the library drops out of the mapping.
+        val sessionQueue by vm.queue.collectAsState()
+        val shareQueue = remember(sessionQueue, allById) {
+            sessionQueue.mapNotNull { allById[it.mediaId] }
+        }
+        val shareIndex = remember(shareQueue, state.currentUri) {
+            shareQueue.indexOfFirst { it.uri.toString() == state.currentUri }.coerceAtLeast(0)
+        }
         ShareSheet(
-            share = share,
-            nowPlaying = playingItem,
+            queue = shareQueue,
+            startIndex = shareIndex,
             onDismiss = { showShare = false }
         )
     }

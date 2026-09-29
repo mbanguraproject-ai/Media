@@ -41,7 +41,12 @@ data class Renderer(
     val name: String,
     val model: String,
     val controlUrl: String,      // absolute, AVTransport
-    val serviceType: String
+    val serviceType: String,
+    // RenderingControl is a SEPARATE service on the same device and plenty of
+    // renderers ship without it. Null means this one has no volume we can
+    // reach, which is a thing to hide a slider for, not to fail over.
+    val volumeUrl: String? = null,
+    val volumeType: String? = null
 )
 
 private const val SSDP_HOST = "239.255.255.250"
@@ -248,11 +253,15 @@ object AuraShare {
     private fun describe(location: String): Renderer? {
         val base = runCatching { URL(location) }.getOrNull() ?: return null
         val xml = request(base, "GET", timeoutMs = 2500) ?: return null
-        val service = SERVICE.findAll(xml).map { it.groupValues[1] }
-            .firstOrNull { it.contains("AVTransport", true) } ?: return null
+        val services = SERVICE.findAll(xml).map { it.groupValues[1] }.toList()
+        val service = services.firstOrNull { it.contains("AVTransport", true) } ?: return null
         val type = TAG("serviceType").find(service)?.groupValues?.get(1)?.trim() ?: return null
         val control = TAG("controlURL").find(service)?.groupValues?.get(1)?.trim() ?: return null
         val absolute = runCatching { URL(base, control).toString() }.getOrNull() ?: return null
+        val rc = services.firstOrNull { it.contains("RenderingControl", true) }
+        val rcType = rc?.let { TAG("serviceType").find(it)?.groupValues?.get(1)?.trim() }
+        val rcUrl = rc?.let { TAG("controlURL").find(it)?.groupValues?.get(1)?.trim() }
+            ?.let { runCatching { URL(base, it).toString() }.getOrNull() }
         val name = TAG("friendlyName").find(xml)?.groupValues?.get(1)?.trim().orEmpty()
         val model = TAG("modelName").find(xml)?.groupValues?.get(1)?.trim().orEmpty()
         return Renderer(
@@ -260,26 +269,35 @@ object AuraShare {
             name = if (name.isNotEmpty()) unescape(name) else base.host,
             model = unescape(model),
             controlUrl = absolute,
-            serviceType = type
+            serviceType = type,
+            volumeUrl = rcUrl,
+            volumeType = rcType
         )
     }
 
     // -------------------------------------------------------------- ACTIONS
-    private fun soap(r: Renderer, action: String, args: String): String? {
-        val url = runCatching { URL(r.controlUrl) }.getOrNull() ?: return null
+    private fun call(endpoint: String?, type: String?, action: String, args: String): String? {
+        if (endpoint == null || type == null) return null
+        val url = runCatching { URL(endpoint) }.getOrNull() ?: return null
         val envelope = """<?xml version="1.0" encoding="utf-8"?>
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-<s:Body><u:$action xmlns:u="${r.serviceType}"><InstanceID>0</InstanceID>$args</u:$action></s:Body>
+<s:Body><u:$action xmlns:u="$type"><InstanceID>0</InstanceID>$args</u:$action></s:Body>
 </s:Envelope>"""
         return request(
             url, "POST",
             mapOf(
-                "SOAPACTION" to "\"${r.serviceType}#$action\"",
+                "SOAPACTION" to "\"$type#$action\"",
                 "CONTENT-TYPE" to "text/xml; charset=\"utf-8\""
             ),
             envelope.toByteArray(Charsets.UTF_8)
         )
     }
+
+    private fun soap(r: Renderer, action: String, args: String): String? =
+        call(r.controlUrl, r.serviceType, action, args)
+
+    private fun render(r: Renderer, action: String, args: String): String? =
+        call(r.volumeUrl, r.volumeType, action, args)
 
     /**
      * Hand the renderer a URL and start it.
@@ -327,6 +345,27 @@ object AuraShare {
     fun transportState(r: Renderer): String? =
         soap(r, "GetTransportInfo", "")
             ?.let { TAG("CurrentTransportState").find(it)?.groupValues?.get(1)?.trim() }
+
+    fun next(r: Renderer): Boolean = soap(r, "Next", "") != null
+    fun previous(r: Renderer): Boolean = soap(r, "Previous", "") != null
+
+    /** How long the renderer thinks the item is, in ms, or -1. */
+    fun duration(r: Renderer): Long {
+        val body = soap(r, "GetPositionInfo", "") ?: return -1L
+        val d = TAG("TrackDuration").find(body)?.groupValues?.get(1)?.trim() ?: return -1L
+        return parseClock(d)
+    }
+
+    /** 0..100, or -1 when this renderer has no volume service. */
+    fun volume(r: Renderer): Int {
+        val body = render(r, "GetVolume", "<Channel>Master</Channel>") ?: return -1
+        return TAG("CurrentVolume").find(body)?.groupValues?.get(1)?.trim()?.toIntOrNull() ?: -1
+    }
+
+    fun setVolume(r: Renderer, value: Int): Boolean = render(
+        r, "SetVolume",
+        "<Channel>Master</Channel><DesiredVolume>${value.coerceIn(0, 100)}</DesiredVolume>"
+    ) != null
 
     // ---------------------------------------------------------------- UTIL
     /**

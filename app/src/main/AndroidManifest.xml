@@ -50,6 +50,15 @@
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-9121922395304175~8852224517" />
 
+        <!-- The phone is the server while Aura Share is running, so the
+             process has to survive the user leaving the app. mediaPlayback is
+             the right type: Android names casting in its own definition of
+             it, and the permission is already declared for local playback. -->
+        <service
+            android:name=".ShareService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
         <service
             android:name=".PlaybackService"
             android:exported="true"
