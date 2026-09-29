@@ -12,12 +12,6 @@
          rotation). Matches Aura.Ground so the handover is invisible. -->
     <color name="window_ink">#000000</color>
 
-    <color name="ad_surface">#15151A</color>     <!-- = palette elevated -->
-    <color name="ad_accent">#2DD4BF</color>      <!-- = Aura.Accent -->
     <!-- The CTA label was white on the accent fill: 2.1:1, unreadable. Dark
          on accent is the same pairing Compose uses for onAccent. -->
-    <color name="ad_on_accent">#06231F</color>
-    <color name="ad_text">#F2F3F5</color>
-    <color name="ad_text_dim">#A8AEBA</color>
-    <color name="ad_text_faint">#8B929E</color>
 </resources>

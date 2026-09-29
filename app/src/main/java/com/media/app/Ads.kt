@@ -3,14 +3,14 @@ package com.media.app
 import android.app.Activity
 import android.content.Context
 import androidx.compose.runtime.*
-import androidx.compose.ui.platform.LocalContext
-import com.google.android.gms.ads.AdListener
-import com.google.android.gms.ads.AdLoader
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.viewinterop.AndroidView
 import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.MobileAds
-import com.google.android.gms.ads.nativead.NativeAd
-import com.google.android.gms.ads.nativead.NativeAdOptions
+import com.google.android.gms.ads.AdSize
+import com.google.android.gms.ads.AdView
 import com.google.android.ump.ConsentRequestParameters
 import com.google.android.ump.UserMessagingPlatform
 import java.util.concurrent.atomic.AtomicBoolean
@@ -36,9 +36,17 @@ object Ads {
      * request live ads from a development build, and never tap your own live
      * ads. Both are the fastest routes to an AdMob suspension.
      */
-    val NATIVE_UNIT_ID: String
-        get() = if (BuildConfig.DEBUG) "ca-app-pub-3940256099942544/2247696110"
-                else "ca-app-pub-9121922395304175/1883491481"
+    /**
+     * PASTE YOUR LIVE BANNER UNIT HERE. A banner needs its own unit from the
+     * AdMob console - the old native unit is a different format and will never
+     * fill a banner slot. While this is empty the app simply shows no ad,
+     * which is the correct behaviour for a release with nothing to serve.
+     */
+    private const val LIVE_BANNER_UNIT = ""
+
+    val BANNER_UNIT_ID: String
+        get() = if (BuildConfig.DEBUG) "ca-app-pub-3940256099942544/6300978111"
+                else LIVE_BANNER_UNIT
 
     private val initialised = AtomicBoolean(false)
 
@@ -82,33 +90,28 @@ object Ads {
  * rather than a gap, so a failed load costs the user no layout at all.
  */
 @Composable
-fun rememberNativeAd(enabled: Boolean): NativeAd? {
-    val context = LocalContext.current
-    var ad by remember { mutableStateOf<NativeAd?>(null) }
-
-    DisposableEffect(enabled) {
-        if (!enabled || !Ads.canRequestAds(context)) {
-            return@DisposableEffect onDispose { }
-        }
-        val loader = AdLoader.Builder(context, Ads.NATIVE_UNIT_ID)
-            .forNativeAd { loaded -> ad = loaded }
-            .withNativeAdOptions(
-                NativeAdOptions.Builder()
-                    // Top-right keeps AdChoices clear of the card's own text.
-                    .setAdChoicesPlacement(NativeAdOptions.ADCHOICES_TOP_RIGHT)
-                    .build()
-            )
-            .withAdListener(object : AdListener() {
-                override fun onAdFailedToLoad(error: LoadAdError) { ad = null }
-            })
-            .build()
-        loader.loadAd(AdRequest.Builder().build())
-
-        onDispose {
-            // NativeAd holds native resources; leaking it leaks memory.
-            ad?.destroy()
-            ad = null
-        }
-    }
-    return ad
+fun AuraBanner(ready: Boolean, modifier: Modifier = Modifier) {
+    // No unit, no banner. Shipping an AdView pointed at an empty or wrong-format
+    // unit id produces an invisible box and a stream of no-fill errors, and
+    // reusing the NATIVE unit for a banner is a format mismatch, not a shortcut.
+    if (!ready || Ads.BANNER_UNIT_ID.isBlank()) return
+    val widthDp = LocalConfiguration.current.screenWidthDp - 64
+    AndroidView(
+        modifier = modifier.fillMaxWidth(),
+        factory = { ctx ->
+            AdView(ctx).apply {
+                adUnitId = Ads.BANNER_UNIT_ID
+                // Adaptive, not the fixed 320x50: it asks for the height that
+                // suits this screen width, so the ad is never letterboxed
+                // inside a box the wrong shape.
+                setAdSize(
+                    AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
+                        ctx, widthDp.coerceAtLeast(200)
+                    )
+                )
+                loadAd(AdRequest.Builder().build())
+            }
+        },
+        onRelease = { it.destroy() }
+    )
 }

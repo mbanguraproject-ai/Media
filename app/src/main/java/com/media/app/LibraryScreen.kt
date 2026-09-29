@@ -2,17 +2,12 @@ package com.media.app
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.dp
 
 // §9's filter set. SONGS/ALBUMS/ARTISTS are three views of the same music
 // pillar; the rest map straight to a pillar.
@@ -65,28 +60,10 @@ fun LibraryScreen(
             // carry an order of their own.
         }
 
-        LazyRow(
-            contentPadding = PaddingValues(Space.xl, Space.sm),
-            horizontalArrangement = Arrangement.spacedBy(Space.sm)
-        ) {
-            items(LibTab.values().size) { i ->
-                val f = LibTab.values()[i]
-                val selected = f == tab
-                Box(
-                    Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(if (selected) MediaColors.Cream else MediaColors.InkRaised)
-                        .clickable { tab = f }
-                        .padding(horizontal = Space.lg, vertical = Space.sm)
-                ) {
-                    Text(
-                        f.label,
-                        style = Typo.Label,
-                        color = if (selected) MediaColors.Ink else MediaColors.CreamDim
-                    )
-                }
-            }
-        }
+        TabStrip(
+            labels = LibTab.values().map { it.label },
+            selected = LibTab.values().indexOf(tab)
+        ) { tab = LibTab.values()[it] }
 
         when (tab) {
             LibTab.ALBUMS -> AlbumGrid(albums, onOpenAlbum)

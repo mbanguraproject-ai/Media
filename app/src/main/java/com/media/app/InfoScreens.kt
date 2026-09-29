@@ -78,21 +78,105 @@ fun AboutScreen(version: String, onClose: () -> Unit) {
 @Composable
 fun TermsScreen(onClose: () -> Unit) {
     InfoScaffold("Terms of Use", onClose) {
-        Para("By using Aura, you agree to these terms. They are intentionally simple.")
+        Para(
+            "These terms cover your use of Aura. They are written to be read, " +
+            "not to be got past."
+        )
 
-        Heading("The app")
-        Para("Aura is a free media player that organizes and plays media files already on your device. It is provided as-is, without warranty of any kind.")
+        Heading("What Aura is")
+        Para(
+            "Aura is a media player for files that are already on your device. " +
+            "It reads your storage through Android's media library, plays what " +
+            "it finds, and lets you organise it. It is not a streaming service " +
+            "and it has no catalogue of its own."
+        )
 
-        Heading("Your content")
-        Para("Aura does not upload, share, or take ownership of your files. Your media and your edits stay on your device and belong to you.")
+        Heading("Your files stay yours")
+        Para(
+            "Aura does not upload your media anywhere. Playlists, favourites, " +
+            "corrected titles and artwork choices are stored on this device " +
+            "only, and are removed when you uninstall the app. Aura claims no " +
+            "ownership of anything you play through it."
+        )
+
+        Heading("Aura Share and your network")
+        Para(
+            "When you send something to a TV or speaker, your phone serves that " +
+            "one file over your own Wi-Fi to the device you picked, for as long " +
+            "as it is playing. Nothing leaves your network and nothing is " +
+            "uploaded to us or to anyone else. Anyone already on that network " +
+            "could reach that file while it is being shared, so treat it as you " +
+            "would anything else on your home Wi-Fi."
+        )
+
+        Heading("Permissions, and why")
+        Para(
+            "Audio and video access is what lets Aura see your library at all. " +
+            "Notifications carry the playback controls. Network and Wi-Fi state " +
+            "are used by Aura Share to find devices on your local network and " +
+            "by advertising. Aura asks for nothing it does not use."
+        )
+
+        Heading("Advertising")
+        Para(
+            "The free version shows ads supplied by Google AdMob. Google may " +
+            "use your device's advertising identifier to choose them. In the " +
+            "UK and the EEA you are asked for consent the first time the app " +
+            "runs; if you decline, ads still appear but are not personalised. " +
+            "You can reset or delete the advertising identifier at any time in " +
+            "Android's settings. Google's own privacy terms govern what it " +
+            "collects, and the privacy policy linked in Settings says more."
+        )
+
+        Heading("Removing ads")
+        Para(
+            "Ad-free is a one-time purchase made through Google Play. Google " +
+            "takes the payment and holds the receipt; Aura only asks Play " +
+            "whether you own it. Refunds are handled by Google under Play's " +
+            "own policy, not by us, and the purchase is tied to your Google " +
+            "account rather than to this phone."
+        )
+
+        Heading("Deleting files")
+        Para(
+            "Aura can delete a file from your device when you ask it to. " +
+            "Deletion is permanent, is confirmed by Android itself on modern " +
+            "versions, and cannot be undone from inside the app."
+        )
 
         Heading("Acceptable use")
-        Para("Use Aura only with content you have the right to play. You are responsible for the media you add to your device.")
+        Para(
+            "Use Aura with content you have the right to play. What you put on " +
+            "your device is your responsibility, and Aura neither checks nor " +
+            "polices it."
+        )
+
+        Heading("No warranty")
+        Para(
+            "Aura is provided as-is, without warranty of any kind. It is a " +
+            "player: it reads your files and does not modify them, but you " +
+            "should keep backups of anything you cannot replace, as you would " +
+            "with any software."
+        )
 
         Heading("Liability")
-        Para("The developer is not liable for any loss or damage arising from use of the app, to the extent permitted by law.")
+        Para(
+            "To the extent the law allows, the developer is not liable for loss " +
+            "or damage arising from use of the app. Nothing here removes rights " +
+            "you have under the consumer law where you live."
+        )
 
         Heading("Changes")
-        Para("These terms may be updated over time. Continued use of the app means you accept the current terms.")
+        Para(
+            "These terms may change as the app does. The current version is " +
+            "always the one in this screen, and continued use after a change " +
+            "means you accept it."
+        )
+
+        Heading("Contact")
+        Para(
+            "Questions, and anything you think is wrong here, go to the contact " +
+            "address on mebs.app."
+        )
     }
 }

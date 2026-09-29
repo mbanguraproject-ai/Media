@@ -372,7 +372,7 @@ fun MediaTheme(
     themeMode: ThemeMode = ThemeMode.DARK,
     fontScale: Float = 1.0f,
     mood: Mood = Mood.default,
-    quality: QualityProfile = profileFor(QualityLevel.STANDARD),
+    quality: QualityProfile = profileFor(QualityLevel.ENHANCED),
     content: @Composable () -> Unit
 ) {
     // Dark-only by design. Any saved LIGHT/SYSTEM value is ignored so the app

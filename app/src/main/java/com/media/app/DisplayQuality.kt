@@ -24,9 +24,12 @@ import androidx.compose.ui.unit.dp
 //  They do not claim to change the panel. An LCD running Ultra is an LCD.
 // ============================================================================
 
+// Essential and Standard are gone. They existed to be compact and flat on a
+// weak device and they looked it - a dense grey list nobody would choose. A
+// tier you would not ship as the whole app is not a tier, it is a penalty, so
+// the floor is Enhanced and the work of protecting a slow phone is left to
+// the frame monitor, which measures instead of guessing.
 enum class QualityLevel(val label: String, val goal: String) {
-    ESSENTIAL("Essential", "Maximum compatibility and battery efficiency"),
-    STANDARD("Standard", "Balanced visual quality and performance"),
     ENHANCED("Enhanced", "Richer visuals with moderate effects"),
     PREMIUM("Premium", "High-end visuals and smooth motion"),
     ULTRA("Ultra", "Maximum visual fidelity and effects")
@@ -35,8 +38,7 @@ enum class QualityLevel(val label: String, val goal: String) {
 /** What the user picked. AUTO follows the detected ceiling. */
 enum class QualityMode(val label: String) {
     AUTO("Auto"),
-    ESSENTIAL("Essential"), STANDARD("Standard"), ENHANCED("Enhanced"),
-    PREMIUM("Premium"), ULTRA("Ultra");
+    ENHANCED("Enhanced"), PREMIUM("Premium"), ULTRA("Ultra");
 
     companion object {
         fun fromName(s: String?): QualityMode =
@@ -127,9 +129,7 @@ fun detectCapability(context: Context): DeviceCapability {
 
 /** The highest level this device is trusted to hold. AUTO never exceeds it. */
 fun ceilingFor(cap: DeviceCapability): QualityLevel = when {
-    cap.isLowRamDevice -> QualityLevel.ESSENTIAL
-    cap.score <= 1 -> QualityLevel.ESSENTIAL
-    cap.score <= 3 -> QualityLevel.STANDARD
+    cap.isLowRamDevice -> QualityLevel.ENHANCED
     cap.score <= 5 -> QualityLevel.ENHANCED
     cap.score <= 7 -> QualityLevel.PREMIUM
     else -> QualityLevel.ULTRA
@@ -138,8 +138,6 @@ fun ceilingFor(cap: DeviceCapability): QualityLevel = when {
 /** A manual pick is honoured even above the ceiling: the doc allows the override. */
 fun resolveLevel(mode: QualityMode, ceiling: QualityLevel): QualityLevel = when (mode) {
     QualityMode.AUTO -> ceiling
-    QualityMode.ESSENTIAL -> QualityLevel.ESSENTIAL
-    QualityMode.STANDARD -> QualityLevel.STANDARD
     QualityMode.ENHANCED -> QualityLevel.ENHANCED
     QualityMode.PREMIUM -> QualityLevel.PREMIUM
     QualityMode.ULTRA -> QualityLevel.ULTRA
@@ -199,25 +197,6 @@ data class QualityProfile(
 )
 
 fun profileFor(level: QualityLevel): QualityProfile = when (level) {
-    // Compact on purpose: more rows per screen, less scrolling, flatter
-    // corners. It should read as a deliberately dense player, not as Ultra
-    // with the effects switched off.
-    QualityLevel.ESSENTIAL -> QualityProfile(
-        level = level,
-        artScale = 0.60f,
-        ambientGradient = false, dynamicArtLighting = false,
-        gutter = 16.dp, rowPadV = 6.dp, rowArt = 44.dp, rowArtCorner = 8,
-        motionScale = 0.55f, springMotion = false,
-        waveformBars = 24
-    )
-    QualityLevel.STANDARD -> QualityProfile(
-        level = level,
-        artScale = 0.85f,
-        ambientGradient = false, dynamicArtLighting = false,
-        gutter = 20.dp, rowPadV = 8.dp, rowArt = 48.dp, rowArtCorner = 10,
-        motionScale = 0.80f, springMotion = false,
-        waveformBars = 40
-    )
     QualityLevel.ENHANCED -> QualityProfile(
         level = level,
         artScale = 1.0f,
@@ -244,4 +223,4 @@ fun profileFor(level: QualityLevel): QualityProfile = when (level) {
     )
 }
 
-val LocalQuality = staticCompositionLocalOf { profileFor(QualityLevel.STANDARD) }
+val LocalQuality = staticCompositionLocalOf { profileFor(QualityLevel.ENHANCED) }

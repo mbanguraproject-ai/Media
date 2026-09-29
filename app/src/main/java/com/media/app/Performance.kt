@@ -72,7 +72,7 @@ data class AdaptiveQuality(
 }
 
 val LocalAdaptiveQuality = compositionLocalOf {
-    AdaptiveQuality(QualityLevel.STANDARD, QualityLevel.STANDARD, false)
+    AdaptiveQuality(QualityLevel.ENHANCED, QualityLevel.ENHANCED, false)
 }
 
 private fun QualityLevel.stepDown(): QualityLevel =

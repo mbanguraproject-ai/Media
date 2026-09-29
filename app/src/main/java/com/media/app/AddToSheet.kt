@@ -54,6 +54,7 @@ fun AddToSheet(
     onAddToQueue: () -> Unit,
     onViewAlbum: (() -> Unit)? = null,
     onViewArtist: (() -> Unit)? = null,
+    onDelete: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
@@ -153,6 +154,12 @@ fun AddToSheet(
             if (onViewArtist != null) {
                 ActionRow(Icons.Filled.Person, "View artist") { onViewArtist(); onDismiss() }
             }
+            // Last, and the only red thing on the sheet. A destructive row
+            // that looks like every other row is a mis-tap waiting to happen.
+            ActionRow(
+                Icons.Filled.DeleteOutline, "Delete from device",
+                tint = MediaColors.Danger
+            ) { onDelete(); onDismiss() }
             ActionRow(Icons.AutoMirrored.Filled.OpenInNew, "Open file") {
                 runCatching {
                     context.startActivity(Intent(Intent.ACTION_VIEW).apply {
@@ -198,7 +205,12 @@ private fun QuickAction(
 }
 
 @Composable
-private fun ActionRow(icon: ImageVector, label: String, onClick: () -> Unit) {
+private fun ActionRow(
+    icon: ImageVector,
+    label: String,
+    tint: Color = MediaColors.Cream,
+    onClick: () -> Unit
+) {
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick).padding(vertical = 12.dp, horizontal = 4.dp),
@@ -207,9 +219,9 @@ private fun ActionRow(icon: ImageVector, label: String, onClick: () -> Unit) {
         Box(
             Modifier.size(38.dp).clip(RoundedCornerShape(10.dp)).background(MediaColors.FillStrong),
             contentAlignment = Alignment.Center
-        ) { Icon(icon, null, tint = MediaColors.Cream, modifier = Modifier.size(19.dp)) }
+        ) { Icon(icon, null, tint = tint, modifier = Modifier.size(19.dp)) }
         Spacer(Modifier.width(Space.md))
-        Text(label, style = Typo.Primary, color = MediaColors.Cream, modifier = Modifier.weight(1f))
+        Text(label, style = Typo.Primary, color = tint, modifier = Modifier.weight(1f))
         Icon(Icons.Filled.ChevronRight, null, tint = MediaColors.CreamFaint,
             modifier = Modifier.size(22.dp))
     }

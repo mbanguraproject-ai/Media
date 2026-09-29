@@ -116,7 +116,23 @@ fun pillarNoun(p: Pillar): String = PillarNames[p]?.second ?: "tracks"
 
 @Composable
 fun PillarStrip(available: List<Pillar>, current: Pillar, onPick: (Pillar) -> Unit) {
+    // One item is not a choice, and a row with one word in it reads as a
+    // heading nobody can act on.
     if (available.size < 2) return
+    TabStrip(available.map { pillarLabel(it) }, available.indexOf(current)) {
+        onPick(available[it])
+    }
+}
+
+/**
+ * The app's ONE way of showing a set of views and which is current.
+ *
+ * Library used to do this with a filled pill - white when selected - which
+ * made the loudest object on the screen a tab label, and put white somewhere
+ * other than the play button, which is the only thing allowed to have it.
+ */
+@Composable
+fun TabStrip(labels: List<String>, selected: Int, onPick: (Int) -> Unit) {
     val accent = MediaColors.Accent
     Row(
         Modifier
@@ -126,17 +142,17 @@ fun PillarStrip(available: List<Pillar>, current: Pillar, onPick: (Pillar) -> Un
         horizontalArrangement = Arrangement.spacedBy(Space.lg),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        available.forEach { p ->
-            val selected = p == current
+        labels.forEachIndexed { index, label ->
+            val isOn = index == selected
             Text(
-                pillarLabel(p),
+                label,
                 style = Typo.Primary,
-                color = if (selected) MediaColors.Cream else MediaColors.CreamFaint,
+                color = if (isOn) MediaColors.Cream else MediaColors.CreamFaint,
                 maxLines = 1,
                 modifier = Modifier
-                    .clickable { onPick(p) }
+                    .clickable { onPick(index) }
                     .drawBehind {
-                        if (selected) {
+                        if (isOn) {
                             val t = 2.dp.toPx()
                             drawRoundRect(
                                 color = accent,

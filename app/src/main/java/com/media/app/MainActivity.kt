@@ -546,7 +546,6 @@ fun HomeScaffold(vm: PlayerViewModel) {
             Ads.startConsentThenInit(act) { adsReady = true }
         }
     }
-    val nativeAd = rememberNativeAd(enabled = adsReady && !adFree)
 
     val playingItem = rememberArtItem(state)
     // Video never pulses: the artwork box holds a PlayerView, so scaling and
@@ -735,9 +734,6 @@ fun HomeScaffold(vm: PlayerViewModel) {
                 FilterBar(mood.label, shown.size) { setMood(Mood.ALL) }
             }
 
-            // With no shelves the ad has no shelf to follow, so it sits in the
-            // list itself - past the first screen, never above the library.
-            val adSlot = remember(shown.size) { minOf(8, (shown.size - 1).coerceAtLeast(0)) }
             if (scanning) {
                 LibrarySkeleton()
             } else if (shown.isEmpty()) {
@@ -777,14 +773,6 @@ fun HomeScaffold(vm: PlayerViewModel) {
                         )
                     }
                     items(shown.size) { idx ->
-                        if (idx == adSlot && nativeAd != null) {
-                            NativeAdCard(
-                                ad = nativeAd,
-                                modifier = Modifier.padding(
-                                    start = Space.lg, end = Space.lg, bottom = Space.sm
-                                )
-                            )
-                        }
                         val track = shown[idx]
                         if (homePillar == Pillar.VIDEO) {
                             val onIt = state.currentUri == track.uri.toString()
@@ -904,6 +892,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
                 MediaRepository.refresh()
                 reloadKey++
             },
+            adsReady = adsReady,
             onOpenTerms = { showTerms = true },
             onOpenAbout = { showAbout = true },
             onClose = { showSettings = false }
@@ -1171,6 +1160,14 @@ fun HomeScaffold(vm: PlayerViewModel) {
         )
     }
 
+    // Deleting is the one thing in here that touches the user's storage, so
+    // it goes through the system's own consent flow and the library is
+    // rescanned only once the file is really gone.
+    val deleteMedia = rememberMediaDeleter { gone ->
+        if (state.currentUri == gone.uri.toString()) vm.skipFailedItem()
+        MediaRepository.refresh()
+        reloadKey++
+    }
     addToItem?.let { item ->
         val itemMoods = allMoodMembers.filter { it.mediaId == item.id }.map { it.moodKey }.toSet()
         val itemPlaylists = allPlaylistMembers.filter { it.mediaId == item.id }.map { it.playlistId }.toSet()
@@ -1204,6 +1201,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
                 artistsAll.firstOrNull { it.id == item.artistId }
                     ?.let { openArtist = it; openAlbum = null }
             }) else null,
+            onDelete = { deleteMedia(item) },
             onDismiss = { addToItem = null }
         )
     }
