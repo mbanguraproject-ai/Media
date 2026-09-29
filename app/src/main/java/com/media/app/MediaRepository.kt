@@ -1,6 +1,7 @@
 package com.media.app
 
 import android.content.Context
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.MediaStore
 import kotlinx.coroutines.Dispatchers
@@ -182,7 +183,16 @@ internal fun normalizeAlbum(raw: String?): String =
 
 object MediaRepository {
 
-    private const val TEN_MIN_MS = 10 * 60 * 1000L
+    // Half an hour, not ten minutes. A ten-minute file outside a known
+    // folder is far more likely to be a long song, a live take or a mix than
+    // a podcast, and calling it a podcast hides it from Music entirely.
+    private const val LONG_FORM_MS = 30 * 60 * 1000L
+
+    private const val DURATION_REPAIR_BUDGET_MS = 4000L
+
+    // Lossless is a decision somebody made about music. Nobody publishes a
+    // podcast as FLAC, and a twenty-minute movement is not a talk show.
+    private val LOSSLESS = listOf("flac", "wav", "alac", "aiff", "aif", "ape", "dsd", "wv")
 
     // Paths that mean "this is a voice note, not a song". WhatsApp keeps audio
     // under its own media folders; most recorder apps write to Recordings/ or
@@ -194,7 +204,12 @@ object MediaRepository {
         "voice notes", "telegram audio"
     )
 
-    private fun classifyAudio(title: String, relPath: String, durationMs: Long): Pillar {
+    private fun classifyAudio(
+        title: String,
+        relPath: String,
+        durationMs: Long,
+        mime: String
+    ): Pillar {
         val path = relPath.lowercase()
         val name = title.lowercase()
         return when {
@@ -207,7 +222,8 @@ object MediaRepository {
             path.contains("podcasts/") -> Pillar.PODCAST
             path.contains("music/") -> Pillar.MUSIC
             name.contains("podcast") -> Pillar.PODCAST
-            durationMs > TEN_MIN_MS -> Pillar.PODCAST
+            LOSSLESS.any { mime.contains(it, ignoreCase = true) } -> Pillar.MUSIC
+            durationMs > LONG_FORM_MS -> Pillar.PODCAST
             else -> Pillar.MUSIC
         }
     }
@@ -271,13 +287,14 @@ object MediaRepository {
                 val artUri = android.content.ContentUris.withAppendedId(albumArtBase, albumId)
                 // MediaStore TRACK encodes disc*1000 + track; we only want track.
                 val rawTrack = c.getInt(trackCol)
+                val mime = c.getString(mimeCol) ?: ""
                 items += AppMediaItem(
                     id = id, title = title,
                     artist = normalizeArtist(c.getString(artistCol)),
                     durationMs = dur,
                     uri = Uri.withAppendedPath(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id.toString()),
                     type = MediaType.AUDIO,
-                    pillar = classifyAudio(title, relPath, dur),
+                    pillar = classifyAudio(title, relPath, dur, mime),
                     artworkUri = artUri,
                     album = normalizeAlbum(c.getString(albumNameCol)),
                     albumId = albumId,
@@ -286,12 +303,52 @@ object MediaRepository {
                     year = c.getInt(yearCol),
                     dateAdded = c.getLong(addedCol),
                     dateModified = c.getLong(modifiedCol),
-                    mimeType = c.getString(mimeCol) ?: "",
+                    mimeType = mime,
                     relPath = relPath
                 )
             }
         }
-        return items
+        return repairDurations(context, items)
+    }
+
+    /**
+     * MediaStore reports a duration of 0 for files whose header it could not
+     * read, which in practice means the formats it is least confident about -
+     * so the rows most in need of a duration are the ones missing it.
+     *
+     * It is not cosmetic. The scrubber refuses to seek without a duration,
+     * resume position is meaningless against zero, and the row reads 0:00.
+     *
+     * Budgeted, not exhaustive. Opening a file to read its header costs tens
+     * of milliseconds, and a library where everything is broken would turn a
+     * rescan into a minute of nothing. Whatever is not repaired inside the
+     * budget keeps its zero and is repaired on the next scan.
+     */
+    private fun repairDurations(
+        context: Context,
+        items: List<AppMediaItem>
+    ): List<AppMediaItem> {
+        val broken = items.withIndex().filter { it.value.durationMs <= 0L }
+        if (broken.isEmpty()) return items
+        val out = items.toMutableList()
+        val deadline = System.currentTimeMillis() + DURATION_REPAIR_BUDGET_MS
+        for ((index, item) in broken) {
+            if (System.currentTimeMillis() > deadline) break
+            // A fresh retriever per file: reusing one across setDataSource
+            // calls is flaky on more than one manufacturer's build.
+            val retriever = MediaMetadataRetriever()
+            val ms = try {
+                retriever.setDataSource(context, item.uri)
+                retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                    ?.toLongOrNull() ?: 0L
+            } catch (t: Throwable) {
+                0L
+            } finally {
+                runCatching { retriever.release() }
+            }
+            if (ms > 0L) out[index] = item.copy(durationMs = ms)
+        }
+        return out
     }
 
     // Apply user overrides on top of the raw item.
