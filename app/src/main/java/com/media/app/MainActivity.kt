@@ -1131,7 +1131,8 @@ fun HomeScaffold(vm: PlayerViewModel) {
             libraryItem = libraryPlaying,
             onlineLookups = onlineLookups,
             onEnableOnline = { scope.launch { SettingsStore.setOnline(context, true) } },
-            onOpenAudioPath = { showAudioPath = true }
+            onOpenAudioPath = { showAudioPath = true },
+            onOpenSound = { showSound = true }
         )
     }
     // One-time nudge for reactive artwork. Only when the player is actually

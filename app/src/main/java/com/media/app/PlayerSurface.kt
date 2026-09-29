@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Lyrics
+import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.PictureInPictureAlt
 import androidx.compose.material.icons.filled.Repeat
@@ -106,6 +107,7 @@ fun PlayerSurface(
     onlineLookups: Boolean = false,
     onEnableOnline: () -> Unit = {},
     onOpenAudioPath: () -> Unit = {},
+    onOpenSound: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val reduced = LocalReducedMotion.current
@@ -502,6 +504,15 @@ fun PlayerSurface(
                             Icons.Filled.Lyrics, if (showLyrics) "Hide lyrics" else "Lyrics",
                             tint = if (showLyrics) MediaColors.Accent else MediaColors.Cream,
                             modifier = Modifier.size(24.dp).pressScale(haptic = true) { showLyrics = !showLyrics }
+                        )
+                        Spacer(Modifier.width(Space.md))
+                        // The Sound screen, one tap from what is playing.
+                        // Accent while the EQ is on, like shuffle and repeat.
+                        val eqOn = SoundEngine.settings.collectAsState().value.eqEnabled
+                        Icon(
+                            Icons.Filled.Equalizer, "Equalizer",
+                            tint = if (eqOn) MediaColors.Accent else MediaColors.Cream,
+                            modifier = Modifier.size(24.dp).pressScale(haptic = true, onClick = onOpenSound)
                         )
                         Spacer(Modifier.width(Space.md))
                     }
