@@ -122,6 +122,7 @@ class MainActivity : ComponentActivity() {
         window.decorView.postDelayed({ keep = false }, 850)
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        Enrichment.init(this)
         setContent {
             val settings by SettingsStore.flow(this).collectAsState(initial = MediaSettings())
             // Dark-only app: bars always use light icons.
@@ -526,6 +527,12 @@ fun HomeScaffold(vm: PlayerViewModel) {
 
     // Edit sheet state
     var editItem by remember { mutableStateOf<AppMediaItem?>(null) }
+    // Enrichment overlays: the artwork fixer, track details, the audio path
+    // and the Sound screen.
+    var detailsItem by remember { mutableStateOf<AppMediaItem?>(null) }
+    var artworkItem by remember { mutableStateOf<AppMediaItem?>(null) }
+    var showAudioPath by remember { mutableStateOf(false) }
+    var showSound by remember { mutableStateOf(false) }
 
     // ---- beat pulse: ONE driver, shared by the player and Home ----
     // Runs whenever something is playing, not just when the player is open,
@@ -580,6 +587,28 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // the main thread. Computed once per library instead (§38).
     val albumsAll = remember(allAudio) { MediaRepository.albumsOf(allAudio) }
     val artistsAll = remember(allAudio) { MediaRepository.artistsOf(allAudio) }
+
+    // ---- enrichment ----
+    // Remembered: HomeScaffold recomposes twice a second with the position,
+    // and a fresh flow each time would restart the collection each time.
+    val onlineLookups by remember(context) { SettingsStore.onlineFlow(context) }.collectAsState(initial = false)
+    // The library row for what is playing: the session only carries title,
+    // artist and uri, and lyrics and artwork need the album too.
+    val libraryPlaying = playingItem?.let { allById[it.id] }
+    // A cover fix applies to the whole album when there is a real one.
+    val artScope: (AppMediaItem) -> List<AppMediaItem> = { item ->
+        if (ArtworkStore.groupKey(item).startsWith("album-"))
+            albumsAll.firstOrNull { it.id == item.albumId }?.tracks ?: listOf(item)
+        else listOf(item)
+    }
+    // Bad covers repair themselves as they play, when lookups are on.
+    LaunchedEffect(libraryPlaying?.id, onlineLookups) {
+        val item = libraryPlaying ?: return@LaunchedEffect
+        if (onlineLookups) ArtworkRepair.fixIfNeeded(context, item, artScope(item).map { it.id })
+    }
+    // And a repaired cover reaches the notification straight away.
+    val artVersion by ArtworkStore.version.collectAsState()
+    LaunchedEffect(artVersion, playingItem?.id) { playingItem?.let { vm.refreshArtwork(it.id) } }
 
     // ---- picture-in-picture ----
     KeepScreenOnWhileVideo(state.isVideo, state.isPlaying)
@@ -638,7 +667,8 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // mutually exclusive by hand — and Terms/About had no handler at all, so
     // back exited the app instead of closing them. Returning from a tab screen
     // also resets currentTab so the nav highlight doesn't lie.
-    val anyOverlay = addToItem != null || editItem != null || showTerms || showAbout ||
+    val anyOverlay = showSound || artworkItem != null || detailsItem != null || showAudioPath ||
+        addToItem != null || editItem != null || showTerms || showAbout ||
         showPlayer || showSearch || showSettings || openPlaylist != null ||
         showPlaylists || openAlbum != null || openArtist != null || showLibrary ||
         showShare
@@ -659,6 +689,10 @@ fun HomeScaffold(vm: PlayerViewModel) {
     val feedOwnsVideo = state.isVideo && homePillar == Pillar.VIDEO && !anyOverlay
     BackHandler(enabled = anyOverlay) {
         when {
+            showSound -> showSound = false
+            artworkItem != null -> artworkItem = null
+            detailsItem != null -> detailsItem = null
+            showAudioPath -> showAudioPath = false
             showShare -> showShare = false
             addToItem != null -> addToItem = null
             editItem != null -> editItem = null
@@ -899,7 +933,9 @@ fun HomeScaffold(vm: PlayerViewModel) {
             adsReady = adsReady,
             onOpenTerms = { showTerms = true },
             onOpenAbout = { showAbout = true },
-            onClose = { showSettings = false }
+            onClose = { showSettings = false },
+            onOpenSound = { showSound = true },
+            onRepairArtwork = { ArtworkRepair.startLibraryRepair(context, music) }
         )
     }
     if (showLibrary) {
@@ -1090,7 +1126,11 @@ fun HomeScaffold(vm: PlayerViewModel) {
             envelope = envelope,
             videoSurface = !feedOwnsVideo,
             bottomInset = navBottom + BottomBarHeight + MiniPlayerGap,
-            onExpandedChange = { showPlayer = it }
+            onExpandedChange = { showPlayer = it },
+            libraryItem = libraryPlaying,
+            onlineLookups = onlineLookups,
+            onEnableOnline = { scope.launch { SettingsStore.setOnline(context, true) } },
+            onOpenAudioPath = { showAudioPath = true }
         )
     }
     // One-time nudge for reactive artwork. Only when the player is actually
@@ -1206,8 +1246,49 @@ fun HomeScaffold(vm: PlayerViewModel) {
                     ?.let { openArtist = it; openAlbum = null }
             }) else null,
             onDelete = { deleteMedia(item) },
-            onDismiss = { addToItem = null }
+            onDismiss = { addToItem = null },
+            onDetails = if (item.type == MediaType.AUDIO) ({ detailsItem = item }) else null,
+            onArtwork = if (item.type == MediaType.AUDIO) ({ artworkItem = item }) else null
         )
+    }
+    detailsItem?.let { item ->
+        TrackDetailsSheet(
+            item = item,
+            onlineAllowed = onlineLookups,
+            onApply = { title, artist ->
+                // An ordinary edit: stored as an override, the file untouched.
+                scope.launch {
+                    db.dao().upsert(
+                        overrides[item.id]?.copy(customTitle = title, customArtist = artist)
+                            ?: MediaOverride(mediaId = item.id, customTitle = title, customArtist = artist)
+                    )
+                }
+                vm.updateCurrentMetadata(item.id, title, artist)
+                detailsItem = null
+            },
+            onFixArtwork = { artworkItem = item; detailsItem = null },
+            onDismiss = { detailsItem = null }
+        )
+    }
+    artworkItem?.let { item ->
+        ArtworkSheet(
+            item = item,
+            scope = artScope(item),
+            onlineAllowed = onlineLookups,
+            onDismiss = { artworkItem = null }
+        )
+    }
+    if (showAudioPath) {
+        (libraryPlaying ?: playingItem)?.let { item ->
+            AudioPathSheet(
+                item = item,
+                onOpenSound = { showSound = true; showAudioPath = false },
+                onDismiss = { showAudioPath = false }
+            )
+        }
+    }
+    if (showSound) {
+        SoundScreen(onClose = { showSound = false })
     }
     } // close outer Box
 }

@@ -380,10 +380,45 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                     // The track's OWN content uri, never the legacy
                     // content://media/external/audio/albumart path, which
                     // scoped storage broke. AuraBitmapLoader resolves this.
-                    .setArtworkUri(item.uri)
+                    .setArtworkUri(artworkUriFor(item.id, item.uri))
                     .build()
             )
             .build()
+
+    /**
+     * A repaired cover gets its stamp as a query parameter. Media3 keys its
+     * bitmap cache on the uri, so an unchanged uri would keep drawing the old
+     * cover in the notification; AuraBitmapLoader strips the stamp again.
+     */
+    private fun artworkUriFor(id: Long, uri: android.net.Uri): android.net.Uri {
+        val stamp = ArtworkStore.stamp(id)
+        return if (stamp == 0L) uri else uri.buildUpon().appendQueryParameter("art", stamp.toString()).build()
+    }
+
+    /**
+     * After a cover is repaired: if that track is playing, hand the session
+     * the new artwork uri so the notification and lock screen redraw now
+     * rather than at the next track. Same metadata-only replace the rename
+     * path uses; title and artist are carried over untouched.
+     */
+    fun refreshArtwork(mediaId: Long) {
+        val c = controller ?: return
+        val current = c.currentMediaItem ?: return
+        val base = current.localConfiguration?.uri ?: return
+        if (base.lastPathSegment?.toLongOrNull() != mediaId) return
+        val fresh = artworkUriFor(mediaId, base)
+        if (current.mediaMetadata.artworkUri == fresh) return
+        val updated = current.buildUpon()
+            .setMediaMetadata(current.mediaMetadata.buildUpon().setArtworkUri(fresh).build())
+            .build()
+        val idx = c.currentMediaItemIndex
+        val pos = c.currentPosition
+        val wasPlaying = c.isPlaying
+        c.replaceMediaItem(idx, updated)
+        c.seekTo(idx, pos)
+        if (wasPlaying) c.play()
+        refresh()
+    }
 
     /** §26: insert directly after whatever is playing. */
     fun playNext(item: AppMediaItem) {

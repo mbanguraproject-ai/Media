@@ -27,6 +27,26 @@ It plays them with a proper background service (lock-screen and notification con
 - Notification and lock-screen artwork tracks the current song (via MediaStore album-art URIs).
 - Synced play/pause state across cards, mini-player, and the full player.
 
+### Artwork repair (4.0)
+- Every cover is graded: missing, low resolution (under 300px), or a blank placeholder.
+- Bad covers are replaced from Cover Art Archive, matched to the right release through MusicBrainz and scored against the file's own title, artist, album and length. Only confident matches (80%+) apply on their own; anything less is offered as a choice.
+- Per track or album: pick from up to nine candidate covers, use a picture from the gallery, or go back to the file's own cover. A fix applies to the whole album.
+- "Repair artwork" in Settings works through the whole library in the background.
+- Fixed covers reach the notification and lock screen, because the session's own bitmap loader decodes them in-process. Files are never modified.
+
+### Lyrics (4.0)
+- Synced lyrics in Now Playing: current line highlighted, the list follows playback, tap a line to seek, and ±0.5s offset nudges that are remembered per track.
+- Sources in priority order: embedded synced (SYLT or LRC in the lyrics tag) → a `.lrc` beside the track → cache → LRCLIB synced → embedded plain → cached/online plain. Online results are validated against the track before they are kept, and plain lyrics are labelled "Not synced".
+
+### Sound and audio path (4.0)
+- 10-band EQ with presets, preamp, ReplayGain (track/album, with untagged fallback), limiter, bass and spatial — Android audio effects on the player's session, so they work with the 24-bit float output path too.
+- Audio path sheet: source format → decoder → sound chain → Android mixer (with resampling shown) → the actual output device.
+- Now Playing shows the real format under the artist ("FLAC · 24-bit · 96 kHz", marked Hi-Res when it is).
+- Track details: codec, bit depth, sample rate, bitrate, tags, MusicBrainz IDs, ReplayGain, artwork and lyrics sources, and a MusicBrainz identify that can correct the title and artist as an ordinary edit.
+- A built-in tag reader for ID3v2.2–2.4, FLAC, Ogg Vorbis/Opus, MP4/ALAC, WAV and AIFF.
+
+Online lookups (MusicBrainz, Cover Art Archive, LRCLIB) are off until switched on in Settings, or used for one track by hand; only title, artist, album and length are sent.
+
 ### Organization
 - Automatic classification of audio into pillars via a cascade: folder (Audiobooks/Podcasts/Music) → filename contains "podcast" → duration over 10 minutes = podcast, else music.
 - Manual override: long-press any item to rename, set artist/host/author (field adapts to pillar), add optional details, and move it between Music / Podcasts / Audiobook. Overrides beat the automatic rules and persist across sessions and app updates (real DB migrations, no data loss). "Reset to automatic" clears an override.

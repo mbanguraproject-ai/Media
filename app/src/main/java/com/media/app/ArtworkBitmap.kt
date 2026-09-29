@@ -113,8 +113,9 @@ object DefaultArtwork {
 }
 
 /**
- * Resolves session artwork: embedded picture -> MediaStore thumbnail ->
- * default tile. The last step is why the notification can no longer be blank.
+ * Resolves session artwork: repaired cover -> embedded picture -> MediaStore
+ * thumbnail -> default tile. The last step is why the notification can no
+ * longer be blank.
  */
 @UnstableApi
 class AuraBitmapLoader(private val context: Context) : BitmapLoader {
@@ -142,14 +143,35 @@ class AuraBitmapLoader(private val context: Context) : BitmapLoader {
         io.submit(Callable { resolve(uri) })
 
     private fun resolve(uri: Uri): Bitmap {
+        // The key keeps the ?art= stamp, so a repaired cover is a cache miss
+        // and the notification redraws; the file itself is the bare uri.
         val key = uri.toString()
         cache.get(key)?.let { return it }
+        val base = if (uri.query != null) uri.buildUpon().clearQuery().build() else uri
         val isVideo = runCatching {
-            context.contentResolver.getType(uri)?.startsWith("video") == true
+            context.contentResolver.getType(base)?.startsWith("video") == true
         }.getOrDefault(false)
-        val bmp = embedded(uri) ?: thumbnail(uri) ?: DefaultArtwork.render(isVideo = isVideo)
+        val bmp = repaired(base) ?: embedded(base) ?: thumbnail(base) ?: DefaultArtwork.render(isVideo = isVideo)
         cache.put(key, bmp)
         return bmp
+    }
+
+    /**
+     * A cover fixed in the app. Decoded HERE, in our own process, and handed
+     * to the session as a Bitmap - which is why it reaches the notification
+     * when a file:// uri to the same image never could.
+     */
+    private fun repaired(uri: Uri): Bitmap? {
+        val id = uri.lastPathSegment?.toLongOrNull() ?: return null
+        val file = ArtworkStore.fileFor(id) ?: return null
+        return runCatching {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(file.path, bounds)
+            var sample = 1
+            while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= TARGET) sample *= 2
+            BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = sample })
+                ?.let { downscale(it) }
+        }.getOrNull()
     }
 
     private fun embedded(uri: Uri): Bitmap? {

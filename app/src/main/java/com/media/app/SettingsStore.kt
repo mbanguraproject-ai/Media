@@ -32,6 +32,8 @@ object SettingsStore {
     private val REACTIVE_ART = booleanPreferencesKey("reactive_artwork")
     private val QUALITY = stringPreferencesKey("display_quality")
     private val AVATAR = longPreferencesKey("avatar_stamp")
+    private val ONLINE = booleanPreferencesKey("online_enrichment")
+    private val ONLINE_ASKED = booleanPreferencesKey("online_enrichment_asked")
 
     fun flow(context: Context): Flow<MediaSettings> =
         context.dataStore.data.map { p ->
@@ -110,5 +112,23 @@ object SettingsStore {
 
     suspend fun setReactiveArt(context: Context, value: Boolean) {
         context.dataStore.edit { it[REACTIVE_ART] = value }
+    }
+
+    // Artwork and lyrics lookups. OFF until the listener says yes: the app's
+    // promise is that nothing leaves the phone, and this is the one feature
+    // that has to break it - so it is asked for, never assumed. Asking for a
+    // single cover or a lyrics search by hand is consent for that one lookup.
+    fun onlineFlow(context: Context): Flow<Boolean> =
+        context.dataStore.data.map { it[ONLINE] ?: false }
+
+    suspend fun setOnline(context: Context, value: Boolean) {
+        context.dataStore.edit { it[ONLINE] = value; it[ONLINE_ASKED] = true }
+    }
+
+    fun onlineAskedFlow(context: Context): Flow<Boolean> =
+        context.dataStore.data.map { it[ONLINE_ASKED] ?: false }
+
+    suspend fun setOnlineAsked(context: Context) {
+        context.dataStore.edit { it[ONLINE_ASKED] = true }
     }
 }

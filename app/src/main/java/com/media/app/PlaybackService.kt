@@ -1,5 +1,10 @@
 package com.media.app
 
+import android.content.SharedPreferences
+import android.os.Handler
+import android.os.Looper
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
@@ -10,9 +15,16 @@ import androidx.media3.session.MediaSessionService
 class PlaybackService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null
+    private var effects: SoundEffects? = null
+    private var soundListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
+    private val main = Handler(Looper.getMainLooper())
+    // Tag reads for ReplayGain are file I/O; one thread, in order, so a
+    // quick skip through the queue cannot apply an older track's gain last.
+    private val tagReads = java.util.concurrent.Executors.newSingleThreadExecutor()
 
     override fun onCreate() {
         super.onCreate()
+        Enrichment.init(this)
         // FLOAT OUTPUT, for the files that have more than 16 bits to give.
         //
         // The default sink converts everything to 16-bit integer, so a 24-bit
@@ -39,6 +51,49 @@ class PlaybackService : MediaSessionService() {
         mediaSession = MediaSession.Builder(this, player)
             .setBitmapLoader(AuraBitmapLoader(this))
             .build()
+
+        // The Sound chain rides on the player's audio session. A new session
+        // id (rare: a device route change can cause one) rebuilds it.
+        val fx = SoundEffects(this).also { effects = it }
+        fx.attach(player.audioSessionId)
+        player.addListener(object : Player.Listener {
+            override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                fx.attach(audioSessionId)
+            }
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                loadGain(player, mediaItem)
+            }
+        })
+        soundListener = SoundEngine.listen(this) {
+            SoundEngine.load(this)
+            fx.apply()
+            // Switching ReplayGain on, or between track and album, changes
+            // the gain for what is already playing.
+            loadGain(player, player.currentMediaItem)
+        }
+        loadGain(player, player.currentMediaItem)
+    }
+
+    private fun loadGain(player: Player, item: MediaItem?) {
+        val fx = effects ?: return
+        val uri = item?.localConfiguration?.uri
+        if (uri == null || SoundEngine.settings.value.replayGain == ReplayGainMode.OFF) {
+            fx.setTrackGain(null)
+            return
+        }
+        val id = item?.mediaId ?: return
+        // runCatching: a transition racing onDestroy must not throw
+        // RejectedExecutionException from a shut-down executor.
+        runCatching {
+            tagReads.execute {
+                val tags = readTags(this, uri)
+                val gain = SoundEngine.replayGainFor(tags, SoundEngine.settings.value)
+                main.post {
+                    // Only if that track is still the one playing.
+                    if (effects != null && player.currentMediaItem?.mediaId == id) fx.setTrackGain(gain)
+                }
+            }
+        }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
@@ -46,6 +101,11 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        soundListener?.let { SoundEngine.unlisten(this, it) }
+        soundListener = null
+        effects?.release()
+        effects = null
+        tagReads.shutdownNow()
         mediaSession?.run {
             player.release()
             release()

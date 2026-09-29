@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Back for ads only. The app itself still plays entirely from local
-         storage and sends nothing anywhere. -->
+    <!-- Ads, and the optional artwork/lyrics lookups (MusicBrainz, Cover Art
+         Archive, LRCLIB), which are off until the listener turns them on or
+         asks for one track. Playback itself never touches the network. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Aura Share. Discovery is UDP multicast, and Wi-Fi hardware filters
          multicast away to save power unless a lock is held - without these

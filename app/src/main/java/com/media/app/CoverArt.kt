@@ -120,8 +120,21 @@ private fun downscale(bmp: Bitmap, target: Int): Bitmap {
     return scaled
 }
 
+private fun decodeSampled(file: java.io.File, target: Int): Bitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(file.path, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    val opts = BitmapFactory.Options().apply { inSampleSize = sampleSizeFor(bounds, target) }
+    return BitmapFactory.decodeFile(file.path, opts)
+}
+
 // Cheapest source first, file extraction last.
 internal fun loadArt(context: Context, item: AppMediaItem, target: Int): ImageBitmap? {
+    // 0. A cover repaired or chosen in the app outranks everything the file
+    //    or MediaStore has: it exists because those were wrong.
+    ArtworkStore.fileFor(item.id)?.let { f ->
+        runCatching { decodeSampled(f, target) }.getOrNull()?.let { return it.asImageBitmap() }
+    }
     // 1. Audio: the MediaStore album-art URI. Far cheaper than opening the file.
     if (item.type == MediaType.AUDIO) {
         item.artworkUri?.let { uri ->
@@ -171,7 +184,11 @@ fun CoverArt(
     // Ultra at 150%. The cache key carries the resolved value, so changing tier
     // re-decodes instead of serving a stale size.
     val scaled = (targetPx * LocalQuality.current.artScale).toInt().coerceAtLeast(64)
-    val uriKey = item.uri.toString()
+    // A repaired cover changes the stamp, which changes every key below, so
+    // the new cover loads and the old "no art" verdict no longer applies.
+    val artVersion by ArtworkStore.version.collectAsState()
+    val stamp = remember(artVersion, item.id) { ArtworkStore.stamp(item.id) }
+    val uriKey = if (stamp == 0L) item.uri.toString() else "${item.uri}#$stamp"
     val key = "$uriKey@$scaled"
     // Exact size if we have it; otherwise ANY size we decoded earlier, so a
     // tier change never empties the screen. Only a file with no art at all

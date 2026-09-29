@@ -55,7 +55,10 @@ fun AddToSheet(
     onViewAlbum: (() -> Unit)? = null,
     onViewArtist: (() -> Unit)? = null,
     onDelete: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    // Enrichment. Null hides the row (video has neither).
+    onDetails: (() -> Unit)? = null,
+    onArtwork: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     Box(
@@ -153,6 +156,12 @@ fun AddToSheet(
             }
             if (onViewArtist != null) {
                 ActionRow(Icons.Filled.Person, "View artist") { onViewArtist(); onDismiss() }
+            }
+            if (onArtwork != null) {
+                ActionRow(Icons.Filled.Image, "Fix artwork") { onArtwork(); onDismiss() }
+            }
+            if (onDetails != null) {
+                ActionRow(Icons.Filled.Info, "Track details") { onDetails(); onDismiss() }
             }
             // Last, and the only red thing on the sheet. A destructive row
             // that looks like every other row is a mis-tap waiting to happen.

@@ -58,7 +58,13 @@ fun AboutScreen(version: String, onClose: () -> Unit) {
         Para("Music for your songs. Podcasts for long-form talk. Audiobooks for the books you listen to. And video, in any format your phone understands. Aura sorts them automatically, and you can always reorganize anything by hand.")
 
         Heading("Yours, and only yours")
-        Para("Everything plays locally, straight from your device. There are no accounts to make and nothing to sign in to. Your library, your listening history and your edits never leave your phone — the app itself sends nothing anywhere.")
+        Para("Everything plays locally, straight from your device. There are no accounts to make and nothing to sign in to. Your library, your listening history and your edits never leave your phone. The one exception is yours to switch on: looking up missing artwork and lyrics online, which sends only a track's title, artist, album and length.")
+
+        Heading("Covers and lyrics, repaired")
+        Para("Missing, blurry or blank covers are found and replaced from Cover Art Archive, matched to the right release through MusicBrainz, and you can always choose another or use a picture of your own. Synced lyrics follow the song line by line in Now Playing, from the file itself, a .lrc file beside it, or LRCLIB. Nothing is ever written back into your files.")
+
+        Heading("Sound, shown honestly")
+        Para("A ten-band equalizer, preamp, ReplayGain, a limiter, bass and spatial sound. The audio path shows exactly what happens between the file and your headphones: the real format, whether it is lossless or hi-res, what the chain changes, and where the phone resamples.")
 
         Heading("It reacts to what you play")
         Para("Artwork pulses with the bass, analysed from the file itself — no microphone, no network. The background takes its colour from the cover that\'s playing, and moods retint the whole app. Tracks without cover art get their own generated artwork instead of a letter in a box.")
@@ -97,6 +103,16 @@ fun TermsScreen(onClose: () -> Unit) {
             "corrected titles and artwork choices are stored on this device " +
             "only, and are removed when you uninstall the app. Aura claims no " +
             "ownership of anything you play through it."
+        )
+
+        Heading("Online artwork and lyrics")
+        Para(
+            "If you turn on online lookups in Settings, or ask for a cover or " +
+            "lyrics by hand, Aura sends that track's title, artist, album and " +
+            "length to MusicBrainz, Cover Art Archive and LRCLIB, and saves " +
+            "what comes back on this device. Nothing else about you or your " +
+            "library is sent, and nothing is written into your files. Those " +
+            "services' own terms apply to what they receive."
         )
 
         Heading("Aura Share and your network")

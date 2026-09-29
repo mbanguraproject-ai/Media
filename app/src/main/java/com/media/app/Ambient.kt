@@ -57,9 +57,12 @@ fun rememberAmbientColor(item: AppMediaItem?): Color {
     val fallback = tame(MediaColors.Accent.toArgb0())
     var target by remember { mutableStateOf(fallback) }
 
-    LaunchedEffect(item?.uri) {
+    // A repaired cover recolours the room too.
+    val artVersion by ArtworkStore.version.collectAsState()
+    val stamp = remember(artVersion, item?.id) { item?.let { ArtworkStore.stamp(it.id) } ?: 0L }
+    LaunchedEffect(item?.uri, stamp) {
         if (item == null) { target = fallback; return@LaunchedEffect }
-        val key = item.uri.toString()
+        val key = "${item.uri}#$stamp"
         ambientCache.get(key)?.let { target = Color(it); return@LaunchedEffect }
 
         val extracted = withContext(Dispatchers.IO) {

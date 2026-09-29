@@ -57,7 +57,9 @@ fun SettingsScreen(
     adsReady: Boolean,
     onOpenTerms: () -> Unit,
     onOpenAbout: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onOpenSound: () -> Unit = {},
+    onRepairArtwork: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val settingsScope = rememberCoroutineScope()
@@ -109,6 +111,44 @@ fun SettingsScreen(
             checked = reactiveArt,
             onChange = { on -> settingsScope.launch { SettingsStore.setReactiveArt(context, on) } }
         )
+
+        SectionLabel("Sound")
+        val sound by SoundEngine.settings.collectAsState()
+        SettingRow(
+            Icons.Outlined.Tune, "Sound",
+            if (sound.eqEnabled) sound.preset else null,
+            subtitle = "Equalizer, ReplayGain, limiter, bass and spatial"
+        ) { onOpenSound() }
+
+        SectionLabel("Artwork & lyrics")
+        val online by remember(context) { SettingsStore.onlineFlow(context) }.collectAsState(initial = false)
+        ToggleRow(
+            icon = Icons.Outlined.Language,
+            title = "Find artwork and lyrics online",
+            subtitle = "Asks MusicBrainz, Cover Art Archive and LRCLIB. Only a track's title, artist, album and length are sent.",
+            checked = online,
+            onChange = { on -> settingsScope.launch { SettingsStore.setOnline(context, on) } }
+        )
+        val repair by ArtworkRepair.progress.collectAsState()
+        val artVersion by ArtworkStore.version.collectAsState()
+        val fixedCount = remember(artVersion) { ArtworkStore.fixedCount() }
+        SettingRow(
+            Icons.Outlined.AutoFixHigh,
+            if (repair.running) "Stop repairing" else "Repair artwork",
+            when {
+                repair.running -> "${repair.done} / ${repair.total}"
+                fixedCount > 0 -> "$fixedCount fixed"
+                else -> null
+            },
+            subtitle = when {
+                repair.running -> "Checking ${repair.current ?: "your library"}\u2026"
+                repair.offline -> "Stopped: couldn't reach MusicBrainz"
+                repair.total > 0 && !repair.running -> "Last run fixed ${repair.fixed} of ${repair.total} albums with bad covers"
+                online -> "Finds missing, blurry and blank covers and replaces them"
+                else -> "Turn on online lookups above to use this"
+            },
+            navigates = online || repair.running
+        ) { if (repair.running) ArtworkRepair.cancel() else onRepairArtwork() }
 
         SectionLabel("Library")
         SettingRow(Icons.Outlined.Storage, "Storage", "$audioCount + $videoCount items", navigates = false) {}

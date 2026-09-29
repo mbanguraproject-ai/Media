@@ -10,6 +10,8 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -21,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.PictureInPictureAlt
 import androidx.compose.material.icons.filled.Repeat
@@ -39,6 +42,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
@@ -95,6 +100,12 @@ fun PlayerSurface(
     // win the surface outright.
     videoSurface: Boolean = true,
     onExpandedChange: (Boolean) -> Unit,
+    // The full library row for what is playing: lyrics lookups need the
+    // album and folder, which the session's own metadata does not carry.
+    libraryItem: AppMediaItem? = null,
+    onlineLookups: Boolean = false,
+    onEnableOnline: () -> Unit = {},
+    onOpenAudioPath: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val reduced = LocalReducedMotion.current
@@ -106,6 +117,20 @@ fun PlayerSurface(
         Animatable(if (expanded) 1f else 0f).apply { updateBounds(0f, 1f) }
     }
     var showSleepSheet by remember { mutableStateOf(false) }
+    // Lyrics take the artwork's place rather than opening a new screen: the
+    // words belong with the music, and the transport stays under the thumb.
+    var showLyrics by remember { mutableStateOf(false) }
+    LaunchedEffect(state.isVideo) { if (state.isVideo) showLyrics = false }
+    val lyr by animateFloatAsState(
+        if (showLyrics && !state.isVideo) 1f else 0f,
+        tween(if (reduced) 0 else Motion.Standard), label = "lyrics"
+    )
+    val ctxForSource = androidx.compose.ui.platform.LocalContext.current
+    val sourceItem = libraryItem ?: artItem
+    val source by produceState<SourceFormat?>(null, sourceItem?.uri, state.isVideo) {
+        value = if (sourceItem != null && !state.isVideo) AudioInfo.source(ctxForSource, sourceItem).first else null
+    }
+    var controlsPx by remember { mutableStateOf(0) }
     var showQueue by remember { mutableStateOf(false) }
     val queue by vm.queue.collectAsState()
 
@@ -323,6 +348,8 @@ fun PlayerSurface(
                         // bounce; the bloom and rings carry the beat.
                         val s = 1f + beat.level * 0.03f
                         scaleX = s; scaleY = s
+                        // Gives way to the lyrics; the pill keeps its cover.
+                        alpha = 1f - lyr * e
                     }
                     // Depth grows as it expands: a pill needs almost none, the
                     // hero cover is the strongest thing on the screen.
@@ -457,6 +484,12 @@ fun PlayerSurface(
                     // Video has no favourites concept here and the row is
                     // already carrying fullscreen + PiP.
                     if (!state.isVideo) {
+                        Icon(
+                            Icons.Filled.Lyrics, if (showLyrics) "Hide lyrics" else "Lyrics",
+                            tint = if (showLyrics) MediaColors.Accent else MediaColors.Cream,
+                            modifier = Modifier.size(24.dp).pressScale(haptic = true) { showLyrics = !showLyrics }
+                        )
+                        Spacer(Modifier.width(Space.md))
                         FavoriteButton(
                             isFavorite, Modifier.size(24.dp), onToggleFavorite
                         )
@@ -468,15 +501,50 @@ fun PlayerSurface(
                     )
                 }
 
+                // Lyrics, in the space between the top bar and the controls.
+                val lyricsItem = libraryItem ?: artItem
+                if (lyr > 0.01f && lyricsItem != null && !state.isVideo) {
+                    val statusTopL = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                    LyricsPanel(
+                        item = lyricsItem,
+                        positionMs = state.positionMs,
+                        online = onlineLookups,
+                        onSeek = { vm.seekTo(it) },
+                        onEnableOnline = onEnableOnline,
+                        modifier = Modifier.fillMaxSize()
+                            .padding(top = statusTopL + 56.dp, bottom = with(density) { controlsPx.toDp() })
+                            .alpha(fullAlpha * lyr)
+                    )
+                }
+
                 Column(
                     Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                         .navigationBarsPadding().alpha(fullAlpha)
+                        .onSizeChanged { controlsPx = it.height }
                 ) {
                     Column(Modifier.fillMaxWidth().padding(Space.xl, 0.dp, Space.xl, Space.md)) {
                         Text(state.currentTitle, style = Typo.Section, color = MediaColors.Cream,
                             maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text(state.currentArtist, style = Typo.Body, color = MediaColors.CreamDim,
                             maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        // What the file really is, quietly. Tap for the whole
+                        // path from file to headphones.
+                        source?.badge?.let { badge ->
+                            Text(
+                                if (source?.hiRes == true) "Hi-Res \u00b7 $badge" else badge,
+                                style = Typo.Tertiary,
+                                color = if (source?.hiRes == true) MediaColors.Accent else MediaColors.CreamFaint,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                // Plain click: pressScale's 48dp minimum would
+                                // push the transport down by a whole row.
+                                modifier = Modifier.padding(top = Space.xxs)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = onOpenAudioPath
+                                    )
+                            )
+                        }
                     }
 
                     if (state.durationMs > 0) {
