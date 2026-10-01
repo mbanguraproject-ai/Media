@@ -427,10 +427,10 @@ fun PlayerSurface(
 //
 //  This was one lambda of ~750 lines, which compiles to one method. In 4.5
 //  HomeScaffold, grown the same way, needed more than 256 Dalvik registers
-//  (the verifier named v258); in that range R8 wrote a plain `move` for an
-//  object reference, ART rejected the whole class, and the release build
-//  crashed at launch. Debug builds do not go through R8 and never showed it.
-//  Small functions keep every method far below that range.
+//  in the build that crashed (the verifier named v258); past that limit the
+//  compiler moved an object reference with a plain `move`, ART rejected the
+//  whole class, and the app could not start. Small functions keep every
+//  method far below that range, in debug builds as well as release.
 // ----------------------------------------------------------------------------
 
 /**

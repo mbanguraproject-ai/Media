@@ -424,13 +424,16 @@ private val MiniPlayerGap = 12.dp
  * WHY THIS EXISTS. HomeScaffold was one composable of ~900 lines holding all
  * of this as separate remembered states, with every screen, sheet and the
  * player inlined into it. Compiled, that was a single method needing more
- * than 256 registers, and R8's allocator, working past that limit, emitted
- * a plain `move` for an object reference in it. Android's verifier rejects
- * that outright - "copy-cat1 v0<-v258 type=Reference: AppMediaItem" - so 4.5
- * crashed on launch in release builds only (debug builds do not go through
- * R8). The state now lives here and each part of the screen is its own
- * composable, so no method comes near the limit. Behaviour is unchanged:
- * these are the same mutableStateOf values, just held together.
+ * than 256 registers, and past that limit the compiler moved an object
+ * reference with a plain `move`. Android's verifier rejects that outright -
+ * "copy-cat1 v0<-v258 type=Reference: AppMediaItem" - so 4.5 crashed on
+ * launch. The build that crashed was unminified (its trace keeps real names
+ * and line numbers), and unminified DEX keeps every local alive for the
+ * debugger, so it needs far more registers than R8's release output of the
+ * same code. The state now lives here and each part of the screen is its
+ * own composable, so no method comes near the limit in either build.
+ * Behaviour is unchanged: these are the same mutableStateOf values, just
+ * held together.
  */
 @Stable
 class HomeNav {

@@ -124,21 +124,25 @@ Signing is via keystore.properties (git-ignored, never committed).
 
 ### Release check
 
-Debug builds are not run through R8; release builds are. A fault that only R8
-introduces never shows in debug. 4.5 shipped one: `HomeScaffold` had grown
-into a single method needing more than 256 Dalvik registers, R8 emitted a
-plain `move` for an object reference in it, and ART's verifier rejected the
-class, so the app crashed at launch. The big composables are now split into
-small ones.
+4.5 crashed at launch with a `VerifyError` in `HomeScaffold`. The method had
+grown to need more than 256 Dalvik registers (the verifier names `v258`), and
+past that limit the compiler moved an object reference with a plain `move`,
+which ART rejects, so the class could not load. The build that crashed was
+unminified: its trace keeps real class names and line numbers. Unminified
+DEX keeps every local alive for the debugger, so the same code needs far more
+registers there than in R8's release output. The big composables
+(`HomeScaffold`, `PlayerSurface`) are now split into small ones.
 
 `tools/dex_registers.py` reads the DEX in a build (a folder, an APK or an
 AAB) and lists the methods with the most registers. It exits 1 if any method
-is over 255:
+of the app's own package is over 255:
 
+    python3 tools/dex_registers.py app/build/outputs/apk/debug/app-arm64-v8a-debug.apk --package com.media.app
     python3 tools/dex_registers.py app/build/outputs/bundle/release/app-release.aab --package com.media.app
 
-The `Release check` GitHub workflow runs the R8 release compile and this
-check on every push.
+The `Release check` GitHub workflow builds both release (R8) and debug on
+every push and runs this check on each. Run by hand (Actions, Release check,
+Run workflow) it takes a commit to build, so any older version can be checked.
 
 ---
 
