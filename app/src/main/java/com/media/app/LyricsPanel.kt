@@ -109,6 +109,8 @@ fun LyricsPanel(
     online: Boolean,
     onSeek: (Long) -> Unit,
     onEnableOnline: () -> Unit,
+    // The cover's accent, so the glow and the SYNCED mark match the song.
+    tint: Color? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -149,6 +151,7 @@ fun LyricsPanel(
             LyricsState.Loading -> Centered("Looking for lyrics…")
             is LyricsState.Synced -> Synced(
                 lines = s.lines, source = s.source, positionMs = positionMs, offsetMs = offset,
+                accent = tint ?: MediaColors.Accent,
                 onSeek = onSeek, onMore = { showActions = true }
             ) { delta ->
                 val next = (offset + delta).coerceIn(-10_000L, 10_000L)
@@ -268,6 +271,7 @@ private fun Synced(
     source: LyricsSource,
     positionMs: Long,
     offsetMs: Long,
+    accent: Color,
     onSeek: (Long) -> Unit,
     onMore: () -> Unit,
     onNudge: (Long) -> Unit
@@ -280,7 +284,6 @@ private fun Synced(
     // tiers pay for it.
     val focusBlur = q.lyricFocus && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val glow = q.lyricGlow
-    val accent = MediaColors.Accent
     var containerPx by remember { mutableIntStateOf(0) }
     // Follow playback, unless the listener is dragging the list right now.
     // The top content padding is a third of the height, so scrolling an item
@@ -344,7 +347,7 @@ private fun Synced(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
-                Text("SYNCED", style = Typo.Micro, color = MediaColors.Accent)
+                Text("SYNCED", style = Typo.Micro, color = accent)
                 Text(source.label, style = Typo.Tertiary, color = MediaColors.CreamFaint, maxLines = 1)
             }
             // One quiet capsule instead of two loose pills and a label.

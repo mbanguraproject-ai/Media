@@ -33,8 +33,10 @@ enum class QualityLevel(val label: String, val goal: String, val features: List<
     ENHANCED(
         "Enhanced", "Your cover lights the room",
         listOf(
-            "Now Playing sits on your cover, blurred into coloured light",
-            "Reactive artwork: the cover pulses and glows on the beat",
+            "Now Playing sits on your cover, blurred into coloured light, all the way to the screen's edge",
+            "Colour from the cover: the waveform, the glow behind the art and its shadow match each song",
+            "Fine grain that stops colour banding on the dark gradients",
+            "Reactive artwork: the cover pulses and its glow swells on the beat",
             "56-bar waveform scrubber"
         )
     ),
@@ -43,6 +45,7 @@ enum class QualityLevel(val label: String, val goal: String, val features: List<
         listOf(
             "Everything in Enhanced",
             "The backdrop slowly drifts, with a real blur on Android 12+",
+            "A light field: three pools of the cover's own colours drift across it",
             "Reactive artwork: shockwave rings, and the backdrop breathes with the bass",
             "Lyrics in focus: lines away from the one being sung go soft",
             "Sharper artwork, 72-bar waveform"
@@ -53,6 +56,7 @@ enum class QualityLevel(val label: String, val goal: String, val features: List<
         listOf(
             "Everything in Premium",
             "Parallax: the cover tilts with your phone and light slides across it",
+            "The backdrop turns, and a fourth pool joins the light field; with Reactive artwork the pools swell on the bass",
             "Reactive artwork: a flash of light sweeps the cover on hard hits",
             "The sung lyric line glows",
             "Your screen's top refresh rate while Now Playing is open",
@@ -227,6 +231,8 @@ data class QualityProfile(
     val backdropDrift: Boolean,      // ...slowly moving
     val backdropTurn: Boolean,       // ...and turning
     val backdropBlur: Dp,            // RenderEffect blur on Android 12+; 0 = the tiny decode alone
+    val lightField: Int,             // drifting pools of the cover's tones (needs drift)
+    val grain: Boolean,              // anti-banding grain over the backdrop
     val reactiveLevel: Int,          // 1 pulse + bloom, 2 + rings + backdrop breath, 3 + light flash
     val parallax: Boolean,           // tilt with the phone, specular sheen
     val lyricFocus: Boolean,         // depth-of-field blur on lyric lines away from the sung one
@@ -245,6 +251,7 @@ fun profileFor(level: QualityLevel): QualityProfile = when (level) {
         // The floor is what a 4 GB phone runs, so it gets the cheapest piece
         // with the biggest effect: one 20px texture, drawn once, no clock.
         livingBackdrop = true, backdropDrift = false, backdropTurn = false, backdropBlur = 0.dp,
+        lightField = 0, grain = true,
         reactiveLevel = 1, parallax = false, lyricFocus = false, lyricGlow = false, topRefresh = false
     )
     QualityLevel.PREMIUM -> QualityProfile(
@@ -255,6 +262,7 @@ fun profileFor(level: QualityLevel): QualityProfile = when (level) {
         motionScale = 1.10f, springMotion = true,
         waveformBars = 72,
         livingBackdrop = true, backdropDrift = true, backdropTurn = false, backdropBlur = 24.dp,
+        lightField = 3, grain = true,
         reactiveLevel = 2, parallax = false, lyricFocus = true, lyricGlow = false, topRefresh = false
     )
     QualityLevel.ULTRA -> QualityProfile(
@@ -265,6 +273,7 @@ fun profileFor(level: QualityLevel): QualityProfile = when (level) {
         motionScale = 1.20f, springMotion = true,
         waveformBars = 96,
         livingBackdrop = true, backdropDrift = true, backdropTurn = true, backdropBlur = 32.dp,
+        lightField = 4, grain = true,
         reactiveLevel = 3, parallax = true, lyricFocus = true, lyricGlow = true, topRefresh = true
     )
 }

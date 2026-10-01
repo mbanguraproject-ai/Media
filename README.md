@@ -26,6 +26,7 @@ It plays them with a proper background service (lock-screen and notification con
 - Editorial now-playing screen: art-forward layout, scrubber with time labels, and shuffle / repeat / playback-speed controls (1x, 1.25x, 1.5x, 2x).
 - Notification and lock-screen artwork tracks the current song (via MediaStore album-art URIs).
 - Synced play/pause state across cards, mini-player, and the full player.
+- The mini-player is near-black glass: a hair off black with a whisper of the cover's colour, a hairline edge and a faint top light. Its progress line has no grey track behind it.
 - Mini-player gestures: swipe left for the next song, right for the previous song, down to stop playback and close it, up (or tap) to open Now Playing. The pill follows the finger, so it shows what letting go will do. Its artwork and play control sit at mirrored insets.
 
 ### Artwork repair (4.0)
@@ -67,9 +68,11 @@ Online lookups (MusicBrainz, Cover Art Archive, Deezer, Apple's iTunes Search, L
 
 ### Display quality (Auto / Enhanced / Premium / Ultra)
 Each tier is a complete design (gutters, artwork resolution, motion) plus a visual engine (`Backdrop.kt`). Auto picks the highest tier the device's RAM, CPU and panel support, and steps down if frames start dropping.
-- **Enhanced:** Now Playing sits on the cover itself, decoded at 20px and drawn full-screen with bilinear filtering (a blur on every Android version, one texture draw). With Reactive artwork on, the cover pulses and glows on the beat.
-- **Premium:** the backdrop slowly drifts, with a real RenderEffect blur on Android 12+; Reactive artwork adds shockwave rings and the backdrop breathes with the bass; lyrics go soft away from the sung line.
-- **Ultra:** the cover tilts with the phone (game rotation vector) and a specular sheen slides across it; the backdrop also turns; Reactive artwork adds a flash of light that sweeps the cover on hard hits; the sung lyric line glows; the window asks for the panel's top refresh rate while Now Playing is open.
+- **Every tier:** colour from the cover. A Palette pass, tuned for a dark room, gives an accent (waveform, rings, lyric glow), a glow colour (a soft light behind the cover and its coloured shadow) and up to four deep tones. Fine grain is overlaid on the backdrop to break 8-bit banding.
+- **Enhanced:** Now Playing sits on the cover itself, decoded at 20px and drawn full-screen with bilinear filtering (a blur on every Android version, one texture draw, no clock). With Reactive artwork on, the cover pulses and its glow swells on the beat.
+- **Premium:** the backdrop slowly drifts, with a real RenderEffect blur on Android 12+, and a light field of three pools of the cover's tones drifts across it on seamless looping paths. Reactive artwork adds shockwave rings and the backdrop breathes with the bass; lyrics go soft away from the sung line.
+- **Ultra:** the cover tilts with the phone (game rotation vector) and a specular sheen slides across it; the backdrop also turns and the light field has four pools that swell on the bass; Reactive artwork adds a flash of light that sweeps the cover on hard hits; the sung lyric line glows; the window asks for the panel's top refresh rate while Now Playing is open.
+- The backdrop's scrim is only as dark as legibility needs and never reaches black, and the app asks for no system scrim behind the navigation bar, so the colour runs to the bottom edge on gesture and 3-button navigation alike.
 - Settings lists what the selected tier gives you.
 
 ### Design and settings

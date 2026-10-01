@@ -1,6 +1,7 @@
 package com.media.app
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -10,6 +11,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.graphics.Brush
@@ -41,7 +43,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -181,6 +185,13 @@ fun PlayerSurface(
     val ambient = rememberAmbientColor(
         if (q.ambientGradient || q.dynamicArtLighting) artItem else null
     )
+    // The cover's own colours (Backdrop.kt): the waveform, the glow behind
+    // the art, its shadow, the rings and the lyric glow follow the song.
+    // Animated, so a skip recolours the room instead of cutting it.
+    val artColors = rememberArtColors(if (state.isVideo) null else (libraryItem ?: artItem))
+    val appAccent = MediaColors.Accent
+    val npAccent by animateColorAsState(artColors?.accent ?: appAccent, tween(Motion.Large), label = "npAccent")
+    val glow by animateColorAsState(artColors?.glow ?: appAccent, tween(Motion.Large), label = "npGlow")
     // NOT read here. beat.level updates 60x/second, so reading it in
     // composition scope recomposed this entire surface every frame - which
     // starved the drag gesture and made the player feel stuck. Every consumer
@@ -199,10 +210,14 @@ fun PlayerSurface(
         val sidePad = lerpDp(PILL_MARGIN.dp, 0.dp, e)
         val botPad = lerpDp(bottomInset, 0.dp, e)
         val corner = lerpDp(28.dp, 0.dp, e)
-        // Elevated, not Floating. Floating is three steps off the floor and
-        // on a true black page it reads as a grey slab left over from the old
-        // palette rather than as the app's own surface lifted a little.
-        val bg = lerpColor(MediaColors.Elevated, MediaColors.Ink, e)
+        // Near-black glass. Elevated (#15151A) still read as a grey slab on
+        // the true-black floor; the pill is now a hair off black with a
+        // whisper of the cover's colour, and its edge comes from a hairline
+        // and a faint top light rather than from being grey.
+        val darkTheme = MediaColors.Ink.luminance() < 0.5f
+        val pillSurface = if (darkTheme) lerpColor(Color(0xFF09090B), ambient, 0.35f) else MediaColors.Elevated
+        val bg = lerpColor(pillSurface, MediaColors.Ink, e)
+        val glass = (1f - e * 3f).coerceIn(0f, 1f)
         val ink = MediaColors.Ink
 
         // ---- shared artwork geometry ----
@@ -399,6 +414,17 @@ fun PlayerSurface(
                 .clip(RoundedCornerShape(corner))
                 .background(bg)
                 .then(
+                    if (darkTheme && glass > 0f) Modifier
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(Color.White.copy(alpha = 0.05f * glass), Color.Transparent),
+                                endY = pillPx * 0.9f
+                            )
+                        )
+                        .border(0.5.dp, Color.White.copy(alpha = 0.10f * glass), RoundedCornerShape(corner))
+                    else Modifier
+                )
+                .then(
                     if (e < 0.02f) Modifier.pressScale(scaleDown = 0.985f) {
                         onExpandedChange(true)
                     } else Modifier
@@ -410,10 +436,13 @@ fun PlayerSurface(
             if (e > 0.01f && q.livingBackdrop && !state.isVideo) {
                 LivingBackdrop(
                     item = libraryItem ?: artItem,
+                    colors = artColors,
                     beat = beat,
                     reactive = q.reactiveLevel >= 2,
                     drift = q.backdropDrift && expanded,
                     turn = q.backdropTurn,
+                    fieldPools = q.lightField,
+                    grain = q.grain,
                     blur = q.backdropBlur,
                     modifier = Modifier.matchParentSize().clearAndSetSemantics { }
                         .graphicsLayer { alpha = e }
@@ -457,7 +486,7 @@ fun PlayerSurface(
                 val r0 = with(density) { (minOf(artW, artH) / 2f).toPx() }
                 BeatRings(
                     beat = beat,
-                    color = ambient,
+                    color = glow,
                     centerPx = Offset(cx, cy),
                     baseRadiusPx = r0,
                     strength = 1f,
@@ -466,24 +495,27 @@ fun PlayerSurface(
             }
             // Every tier glows: one radial gradient a frame is cheap, and it
             // is what makes the cover feel lit rather than merely bouncing.
-            if (e > 0.35f && q.reactiveLevel >= 1) {
+            if (e > 0.35f && q.reactiveLevel >= 1 && !state.isVideo) {
                 // A Canvas, not a Box with a conditional background: `if
                 // (level > 0.01f)` was a COMPOSITION-level branch on a value
                 // that changes 60x/second, so this mounted and unmounted every
                 // frame. Reading beat.level inside the draw scope keeps the
                 // whole effect in the draw phase.
+                //
+                // There is always a little light behind the cover now, in the
+                // cover's own colour; the beat swells it.
                 val cxB = with(density) { (artX + artW / 2f).toPx() }
                 val cyB = with(density) { (artY + artH / 2f).toPx() }
                 val baseB = with(density) { minOf(artW, artH).toPx() }
+                val fade = ((e - 0.35f) / 0.65f).coerceIn(0f, 1f)
                 Canvas(Modifier.matchParentSize().clearAndSetSemantics { }) {
                     val lv = beat.level
-                    if (lv <= 0.01f) return@Canvas
-                    val r = baseB * (0.5f + 0.31f * lv)
+                    val r = baseB * (0.58f + 0.30f * lv)
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                ambient.copy(alpha = 1.0f * lv),
-                                ambient.copy(alpha = 0.42f * lv),
+                                glow.copy(alpha = (0.24f + 0.76f * lv).coerceAtMost(1f) * fade),
+                                glow.copy(alpha = (0.08f + 0.34f * lv) * fade),
                                 Color.Transparent
                             ),
                             center = Offset(cxB, cyB),
@@ -528,8 +560,10 @@ fun PlayerSurface(
                         elevation = lerpDp(Elevation.low, Elevation.high, e),
                         shape = RoundedCornerShape(artCorner),
                         clip = false,
-                        ambientColor = Color.Black,
-                        spotColor = Color.Black
+                        // A coloured shadow reads as light under the cover on
+                        // a dark room; black shadow on black is invisible.
+                        ambientColor = if (state.isVideo) Color.Black else glow,
+                        spotColor = if (state.isVideo) Color.Black else glow
                     )
                     .clip(RoundedCornerShape(artCorner))
                     // Light ON the cover: the parallax sheen, and on Ultra
@@ -642,7 +676,6 @@ fun PlayerSurface(
                 // Read the colours HERE: MediaColors.* are @Composable getters
                 // and the DrawScope lambda is not a composable context.
                 val accent = MediaColors.Accent
-                val track = MediaColors.Fill
                 Canvas(
                     Modifier.fillMaxWidth().height(2.dp)
                         .align(Alignment.BottomCenter)
@@ -650,9 +683,8 @@ fun PlayerSurface(
                         .offset(y = (-3).dp)
                         .alpha(miniAlpha)
                 ) {
+                    // Progress only - no grey track behind it.
                     val y = size.height / 2
-                    drawLine(track, Offset(0f, y), Offset(size.width, y),
-                        strokeWidth = size.height, cap = StrokeCap.Round)
                     if (prog > 0f) drawLine(
                         color = accent,
                         start = Offset(0f, y),
@@ -724,6 +756,11 @@ fun PlayerSurface(
                     )
                 }
 
+                // Text over a coloured backdrop gets a soft shadow so it holds
+                // on a bright cover as well as a dark one.
+                val titleShadow = if (q.livingBackdrop && !state.isVideo)
+                    Shadow(Color.Black.copy(alpha = 0.35f), Offset(0f, 2f), 14f) else null
+
                 // Lyrics, in the space between the top bar and the controls.
                 val lyricsItem = libraryItem ?: artItem
                 if (lyr > 0.01f && lyricsItem != null && !state.isVideo) {
@@ -734,6 +771,7 @@ fun PlayerSurface(
                         online = onlineLookups,
                         onSeek = { vm.seekTo(it) },
                         onEnableOnline = onEnableOnline,
+                        tint = npAccent,
                         modifier = Modifier.fillMaxSize()
                             .padding(top = statusTopL + 56.dp, bottom = with(density) { controlsPx.toDp() })
                             .alpha(fullAlpha * lyr)
@@ -785,9 +823,9 @@ fun PlayerSurface(
                         // thumb is, not up in the top bar.
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
-                                Text(state.currentTitle, style = Typo.Section, color = MediaColors.Cream,
+                                Text(state.currentTitle, style = Typo.Section.copy(shadow = titleShadow), color = MediaColors.Cream,
                                     maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                Text(state.currentArtist, style = Typo.Body, color = MediaColors.CreamDim,
+                                Text(state.currentArtist, style = Typo.Body.copy(shadow = titleShadow), color = MediaColors.CreamDim,
                                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                             // Not over lyrics: the words are the subject there,
@@ -824,7 +862,8 @@ fun PlayerSurface(
                                 durationMs = state.durationMs,
                                 onSeek = { vm.seekTo(it) },
                                 envelope = envelope,
-                                beat = beat
+                                beat = beat,
+                                activeColor = npAccent
                             )
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                 Text(fmtClock(state.positionMs), style = Typo.Tertiary,

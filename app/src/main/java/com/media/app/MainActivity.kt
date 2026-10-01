@@ -14,6 +14,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.result.contract.ActivityResultContracts
@@ -120,7 +121,19 @@ class MainActivity : ComponentActivity() {
         var keep = true
         splash.setKeepOnScreenCondition { keep }
         window.decorView.postDelayed({ keep = false }, 850)
-        enableEdgeToEdge()
+        // Transparent bars with NO system scrim. Plain enableEdgeToEdge()
+        // uses the "auto" style, which on 3-button navigation turns contrast
+        // enforcement back on - overriding the theme - so Android drew its
+        // own dark band behind the buttons, cutting Now Playing's colour off
+        // at the bottom. The dark style with a transparent scrim does not.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+            window.isStatusBarContrastEnforced = false
+        }
         super.onCreate(savedInstanceState)
         Enrichment.init(this)
         setContent {
