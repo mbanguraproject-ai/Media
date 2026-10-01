@@ -73,23 +73,38 @@ object Ads {
         val info = UserMessagingPlatform.getConsentInformation(activity)
         info.requestConsentInfoUpdate(activity, params, {
             UserMessagingPlatform.loadAndShowConsentFormIfRequired(activity) {
-                // Fires whether a form was shown or not. Either way we may now
-                // initialise — and if consent was refused the SDK serves
-                // non-personalised ads rather than nothing.
-                initIfNeeded(activity)
-                onReady()
+                // Fires whether a form was shown or not. Ads are requested
+                // only when UMP says they may be: canRequestAds() was defined
+                // here and never called, so a failed or unanswered form in the
+                // EEA/UK still went on to request ads - the exact case Google
+                // restricts accounts for. A refusal still allows
+                // non-personalised ads, and canRequestAds() says so.
+                if (info.canRequestAds()) initThen(activity, onReady)
             }
         }, {
-            // Consent lookup failed (offline, etc). Don't block the app.
-            initIfNeeded(activity)
-            onReady()
+            // The lookup failed (offline, say). The answer from a previous
+            // launch is still on the device; it decides.
+            if (info.canRequestAds()) initThen(activity, onReady)
         })
     }
 
-    private fun initIfNeeded(context: Context) {
-        if (initialised.compareAndSet(false, true)) {
-            MobileAds.initialize(context) { }
+    /**
+     * Starts the SDK OFF the main thread - Google's own guidance, because
+     * initialisation reads storage and talks to Play services and can stall
+     * the first frames - and reports ready only once it has finished, so the
+     * first banner request never races it.
+     */
+    private fun initThen(activity: Activity, onReady: () -> Unit) {
+        val app = activity.applicationContext
+        if (!initialised.compareAndSet(false, true)) {
+            onReady()
+            return
         }
+        Thread {
+            MobileAds.initialize(app) {
+                activity.runOnUiThread { onReady() }
+            }
+        }.apply { name = "ads-init" }.start()
     }
 
     fun canRequestAds(context: Context): Boolean =
@@ -97,10 +112,9 @@ object Ads {
 }
 
 /**
- * Loads a single native ad and holds it for the composition's lifetime.
- *
- * Returns null while loading, and on any failure — the caller renders nothing
- * rather than a gap, so a failed load costs the user no layout at all.
+ * One adaptive banner, drawn only once it has actually loaded: while loading,
+ * and on any failure, nothing is drawn rather than a gap, so a failed load
+ * costs the user no layout at all.
  */
 @Composable
 fun AuraBanner(ready: Boolean, modifier: Modifier = Modifier) {
@@ -117,7 +131,29 @@ fun AuraBanner(ready: Boolean, modifier: Modifier = Modifier) {
     // height the moment it exists, so "it will collapse on its own" is false.
     // Nothing is drawn until onAdLoaded actually fires.
     var loaded by remember { mutableStateOf(false) }
-    val widthDp = LocalConfiguration.current.screenWidthDp - 64
+    // The width the card actually leaves: the screen less the gutter and the
+    // card's own 8dp padding on both sides. This was screen - 64, which is
+    // only right for the 24dp gutter; on Premium (28dp) and Ultra (32dp) the
+    // AdView came out 8-16dp wider than its card and was cropped - and
+    // cropping an ad is altering it, which AdMob does not allow.
+    val gutter = Space.xl
+    val widthDp = LocalConfiguration.current.screenWidthDp - ((gutter.value + Space.sm.value) * 2).toInt()
+    // Paused with the screen, as the SDK asks, so a banner in a backgrounded
+    // app does not keep refreshing.
+    var adView by remember { mutableStateOf<AdView?>(null) }
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle, adView) {
+        val view = adView
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> view?.pause()
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> view?.resume()
+                else -> Unit
+            }
+        }
+        lifecycle.addObserver(obs)
+        onDispose { lifecycle.removeObserver(obs) }
+    }
 
     Box(
         modifier
@@ -135,9 +171,12 @@ fun AuraBanner(ready: Boolean, modifier: Modifier = Modifier) {
             ),
         contentAlignment = Alignment.Center
     ) {
-        AndroidView(
+        // Keyed on the width: a tier change re-creates the view at the new
+        // size rather than leaving an ad sized for the old card.
+        key(widthDp) { AndroidView(
             factory = { ctx ->
                 val view = AdView(ctx)
+                adView = view
                 // GONE until it has something to show. The request still runs
                 // while hidden; AdMob counts the impression when it becomes
                 // visible, which is exactly when onAdLoaded flips it.
@@ -165,7 +204,7 @@ fun AuraBanner(ready: Boolean, modifier: Modifier = Modifier) {
                 view.loadAd(AdRequest.Builder().build())
                 view
             },
-            onRelease = { it.destroy() }
-        )
+            onRelease = { if (adView === it) adView = null; it.destroy() }
+        ) }
     }
 }

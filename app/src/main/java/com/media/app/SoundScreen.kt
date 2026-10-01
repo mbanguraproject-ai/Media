@@ -38,6 +38,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.runtime.remember
+import kotlin.math.log10
+import kotlin.math.pow
 import kotlin.math.roundToInt
 
 // ============================================================================
@@ -69,7 +78,7 @@ fun SoundScreen(onClose: () -> Unit) {
         }
 
         Section("Equalizer")
-        Toggle("Equalizer", "Ten bands, applied to everything that plays", s.eqEnabled) {
+        Toggle("Equalizer", "Ten sliders shape one smooth curve, applied to everything that plays", s.eqEnabled) {
             update(s.copy(eqEnabled = it))
         }
         Row(
@@ -84,12 +93,15 @@ fun SoundScreen(onClose: () -> Unit) {
             }
             if (s.preset == "Custom") Chip("Custom", selected = s.eqEnabled) {}
         }
+        ResponseCurve(s, status.speaker)
         SoundEngine.BANDS.forEachIndexed { i, hz ->
             val g = s.bands.getOrElse(i) { 0f }
             SliderRow(
                 label = if (hz >= 1000) "${(hz / 1000).roundToInt()} kHz" else "${hz.roundToInt()} Hz",
                 value = g, range = -SoundEngine.BAND_RANGE_DB..SoundEngine.BAND_RANGE_DB,
-                readout = "%+.0f dB".format(java.util.Locale.ROOT, g),
+                // One decimal: the sliders move in half-dB steps, and "+1 dB"
+                // for a +0.5 setting was a readout that lied by half.
+                readout = "%+.1f dB".format(java.util.Locale.ROOT, g),
                 enabled = s.eqEnabled
             ) { v ->
                 val bands = s.bands.toMutableList().also { it[i] = (v * 2).roundToInt() / 2f }
@@ -160,8 +172,10 @@ fun SoundScreen(onClose: () -> Unit) {
         ) { update(s.copy(classic = it)) }
         Note(
             when (status.engine) {
-                "Dynamics" -> "Running on Dynamics Processing: 10 bands, preamp and limiter."
-                "Classic" -> "Running on the classic equaliser: the 10 bands are mapped to the bands this phone provides."
+                "Dynamics" -> if (status.eqBands >= 31)
+                    "Running on Dynamics Processing: the curve rendered at 31 bands (1/3 octave), with preamp and limiter."
+                    else "Running on Dynamics Processing: ${status.eqBands} bands, with preamp and limiter."
+                "Classic" -> "Running on the classic equaliser: the curve is sampled at this phone's ${status.eqBands} bands."
                 else -> "Start playing something to see the engine in use."
             }
         )
@@ -258,5 +272,50 @@ private fun SliderRow(
         Spacer(Modifier.width(Space.sm))
         Text(readout, style = Typo.Tertiary, color = MediaColors.CreamFaint,
             modifier = Modifier.width(56.dp).padding(start = Space.xs))
+    }
+}
+
+/**
+ * The response actually applied right now - the sliders, the bass shelf for
+ * this output, joined by the same smooth curve the engine renders - from 20Hz
+ * to 20kHz on a log scale, +/-15dB.
+ */
+@Composable
+private fun ResponseCurve(s: SoundSettings, speaker: Boolean) {
+    val accent = MediaColors.Accent
+    val grid = MediaColors.Fill
+    val points = remember(s, speaker) { SoundEngine.effectiveBands(s, speaker) }
+    Column(Modifier.fillMaxWidth().padding(horizontal = Space.xl, vertical = Space.sm)) {
+        Canvas(Modifier.fillMaxWidth().height(96.dp)) {
+            val w = size.width
+            val h = size.height
+            val range = 15f
+            val lo = log10(20f)
+            val hi = log10(20000f)
+            fun yOf(db: Float) = h / 2f - (db.coerceIn(-range, range) / range) * (h / 2f)
+            fun xOf(hz: Float) = (log10(hz) - lo) / (hi - lo) * w
+            for (db in listOf(-12f, -6f, 0f, 6f, 12f)) {
+                drawLine(grid, Offset(0f, yOf(db)), Offset(w, yOf(db)), strokeWidth = if (db == 0f) 2f else 1f)
+            }
+            for (f in listOf(100f, 1000f, 10000f)) drawLine(grid, Offset(xOf(f), 0f), Offset(xOf(f), h), strokeWidth = 1f)
+            val path = Path()
+            val steps = 160
+            for (i in 0..steps) {
+                val hz = 10f.pow(lo + (hi - lo) * i / steps)
+                val x = w * i / steps
+                val y = yOf(EqCurve.at(hz, SoundEngine.BANDS, points))
+                if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            }
+            drawPath(path, accent, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+            for ((i, f) in SoundEngine.BANDS.withIndex()) {
+                drawCircle(accent, radius = 2.5.dp.toPx(), center = Offset(xOf(f), yOf(points[i])))
+            }
+        }
+        Row(Modifier.fillMaxWidth().padding(top = Space.xxs), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("20 Hz", style = Typo.Micro, color = MediaColors.CreamFaint)
+            Text(if (speaker) "Tuned for the phone speaker" else "Tuned for headphones",
+                style = Typo.Micro, color = MediaColors.CreamDim)
+            Text("20 kHz", style = Typo.Micro, color = MediaColors.CreamFaint)
+        }
     }
 }

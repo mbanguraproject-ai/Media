@@ -48,6 +48,9 @@ It plays them with a proper background service (lock-screen and notification con
 - Bass is a shelf folded into the EQ and shaped by the output: the full low end on headphones; on the phone speaker the 125–500 Hz range a small speaker can play, with 31 Hz trimmed. It follows headphones and Bluetooth connecting and disconnecting. (Android's BassBoost switches itself off on the speaker, which is why it is no longer used.)
 - Spatial is Android's Virtualizer, which only works on headphones; the Sound screen says so from the live state.
 - Saved Sound settings are loaded when the playback service starts, so the EQ is on from the first song after a restart.
+- The ten sliders and the bass shelf are control points of one smooth curve (monotone cubic in log frequency: passes through every slider, never overshoots between them, flat past the ends; `EqCurve.kt`). Dynamics Processing renders it at 31 bands (1/3 octave) with 40ms frames for music, about 23Hz of resolution at 48kHz, so the 31Hz and 62Hz sliders are genuinely separate; video switches to 10ms frames so lip-sync holds. If a phone refuses that, it falls back to 10 bands, then to the classic Equalizer sampled from the same curve at the phone's own band centres. Only bands that changed are sent to the audio server.
+- The limiter is a near-brickwall ceiling at -1dBFS (20:1, 1ms attack), so a +12dB boost stays under full scale.
+- The Sound screen draws the response actually applied right now, for the current output, and readouts show half-dB steps exactly.
 - Compatibility mode (Sound → Engine) switches from Dynamics Processing to Android's classic equaliser, for phones where Dynamics Processing attaches but does nothing. The screen shows which engine is running.
 - Audio path sheet: source format → decoder → sound chain → Android mixer (with resampling shown) → the actual output device.
 - Now Playing shows the real format under the artist ("FLAC · 24-bit · 96 kHz", marked Hi-Res when it is).
@@ -86,7 +89,7 @@ Each tier is a complete design (gutters, artwork resolution, motion) plus a visu
 - The long-press sheet scrolls, with Edit info as a quick action at the top.
 
 ### Privacy
-No data collected. No accounts, analytics, ads, or tracking. All edits, history, and preferences stay in the app's private storage. Policy: https://bangscc10-dev.github.io/Media/privacy.html
+The app collects nothing itself: no accounts, no analytics. All edits, history, and preferences stay in the app's private storage. The free version shows one adaptive banner in Settings from Google AdMob, requested only after Google's consent flow says ads may be requested (UMP `canRequestAds()`), sized to the card it sits in so it is never cropped, and paused with the app. A one-time purchase removes it. Policy source: `docs/privacy.html`; the app links to https://mebs.app/privacy/aura.
 
 ---
 
