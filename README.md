@@ -32,7 +32,9 @@ It plays them with a proper background service (lock-screen and notification con
 ### Artwork repair (4.0)
 - Every cover is graded: missing, low resolution (under 300px), or a blank placeholder.
 - Bad covers are replaced from Cover Art Archive, matched to the right release through MusicBrainz, then from Deezer and Apple Music (iTunes Search) when that comes up short. Store searches use the cleaned title and lead artist ("Laho (feat. X) [Official Video]" searches as "Laho"). Every candidate is scored against the file's own title, artist, album and length. Only confident matches (80%+) apply on their own, and a confident match with no picture falls through to the next instead of ending the attempt.
-- Per track or album: pick from up to twelve candidate covers (each labelled with its source), use a picture from the gallery, or go back to the file's own cover. A fix applies to the whole album.
+- Per track or album: pick from up to twelve candidate covers (each labelled with its source), use a picture from the gallery, or go back to the file's own cover.
+- A fix spreads to the whole album only when it is a real album (`AlbumCoherence`): a proper name (not a site tag such as "Trendysongz.com"), one lead artist, and real track numbers when it has several tracks. Anything else MediaStore files under one album id is fixed track by track. Automatic fixes that were applied across such mixed "albums" are removed on the next library load; covers picked by hand stay.
+- Every song shows its own picture. MediaStore's album-art uri (one picture per album id) is used only for real albums; other tracks use the file's own thumbnail (Android 10+) or embedded picture, so songs by different artists under one download tag no longer share a cover.
 - "Repair artwork" in Settings works through the whole library in the background.
 - Fixed covers reach the notification and lock screen, because the session's own bitmap loader decodes them in-process. Files are never modified.
 
@@ -84,12 +86,13 @@ Each tier is a complete design (gutters, artwork resolution, motion) plus a visu
 - Theme (Dark / Light / System) and text size (Compact / Default / Large).
 - Edge-to-edge system bars in both themes.
 - In-app About and Terms; hosted Privacy Policy.
+- Google Play In-App Review: the rating card is requested when Now Playing closes, and only after 20 qualifying plays over at least three days, at most every 120 days (Play applies its own quota too). Settings → About → "Rate Aura" opens the Play listing rather than the in-app flow, as Google requires for buttons.
 - Settings order: Appearance, Library (storage, rescan), Display quality, Playback, Sound, Artwork & lyrics, About.
 - Dialogs that take text (new playlist, paste lyrics) are real dialog windows: above the mini-player and nav bar, Back closes only them, and they stay clear of the keyboard.
 - The long-press sheet scrolls, with Edit info as a quick action at the top.
 
 ### Privacy
-The app collects nothing itself: no accounts, no analytics. All edits, history, and preferences stay in the app's private storage. The free version shows one adaptive banner in Settings from Google AdMob, requested only after Google's consent flow says ads may be requested (UMP `canRequestAds()`), sized to the card it sits in so it is never cropped, and paused with the app. A one-time purchase removes it. Policy source: `docs/privacy.html`; the app links to https://mebs.app/privacy/aura.
+The app collects nothing itself: no accounts, no analytics. Settings → Privacy has "Ad privacy choices" wherever Google's consent SDK says the law requires it (EEA, UK, Switzerland, and the US states configured in AdMob): Google's own form, to change or withdraw consent or opt out of sale/sharing. It also links to Android's advertising-ID settings and the privacy policy. All edits, history, and preferences stay in the app's private storage. The free version shows one adaptive banner in Settings from Google AdMob, requested only after Google's consent flow says ads may be requested (UMP `canRequestAds()`), sized to the card it sits in so it is never cropped, and paused with the app. A one-time purchase removes it. Policy source: `docs/privacy.html`; the app links to https://mebs.app/privacy/aura.
 
 ---
 

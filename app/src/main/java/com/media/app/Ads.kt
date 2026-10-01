@@ -20,6 +20,7 @@ import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
+import com.google.android.ump.ConsentInformation
 import com.google.android.ump.ConsentRequestParameters
 import com.google.android.ump.UserMessagingPlatform
 import java.util.concurrent.atomic.AtomicBoolean
@@ -36,8 +37,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 //  A player is used with the screen off; permanent chrome would be in the
 //  way far longer than it would ever be seen.
 //
-//  IDs below are GOOGLE'S OFFICIAL TEST IDS. They must stay until you swap in
-//  your own from the AdMob console. Loading live ads in a debug build, or
+//  Debug builds always request Google's official TEST unit; only release
+//  builds request the live banner. Loading live ads in a debug build, or
 //  tapping your own live ads, gets accounts suspended — this is the single
 //  most common way people lose their AdMob account.
 // ============================================================================
@@ -45,17 +46,13 @@ import java.util.concurrent.atomic.AtomicBoolean
 object Ads {
 
     /**
-     * LIVE unit. In debug builds this falls back to Google's test unit - never
-     * request live ads from a development build, and never tap your own live
-     * ads. Both are the fastest routes to an AdMob suspension.
+     * The live BANNER unit (the earlier native unit is a different format and
+     * can never fill a banner slot). Release builds only: debug builds use
+     * Google's test unit, because requesting live ads from a development
+     * build, or tapping your own live ads, is the fastest route to an AdMob
+     * suspension.
      */
-    /**
-     * PASTE YOUR LIVE BANNER UNIT HERE. A banner needs its own unit from the
-     * AdMob console - the old native unit is a different format and will never
-     * fill a banner slot. While this is empty the app simply shows no ad,
-     * which is the correct behaviour for a release with nothing to serve.
-     */
-    private const val LIVE_BANNER_UNIT = ""
+    private const val LIVE_BANNER_UNIT = "ca-app-pub-9121922395304175/2583208911"
 
     val BANNER_UNIT_ID: String
         get() = if (BuildConfig.DEBUG) "ca-app-pub-3940256099942544/6300978111"
@@ -109,6 +106,38 @@ object Ads {
 
     fun canRequestAds(context: Context): Boolean =
         UserMessagingPlatform.getConsentInformation(context).canRequestAds()
+
+    /**
+     * True where the law requires a way to change or withdraw consent: the
+     * EEA, the UK and Switzerland, and the US states whose message is set up
+     * in AdMob. UMP decides from the user's location; the answer is known
+     * once the consent check at startup has run.
+     */
+    fun privacyChoicesRequired(context: Context): Boolean =
+        UserMessagingPlatform.getConsentInformation(context).privacyOptionsRequirementStatus ==
+            ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED
+
+    /**
+     * Google's own privacy-options form: change or withdraw consent for
+     * personalised ads (GDPR), or opt out of the sale or sharing of personal
+     * information (US state laws). [onDone] gets an error message when the
+     * form could not be shown.
+     */
+    fun showPrivacyChoices(activity: Activity, onDone: (String?) -> Unit) {
+        UserMessagingPlatform.showPrivacyOptionsForm(activity) { error -> onDone(error?.message) }
+    }
+
+    /** Android's device-wide ad settings: reset or delete the advertising ID. */
+    fun openDeviceAdSettings(context: Context) {
+        val intents = listOf(
+            android.content.Intent("com.google.android.gms.settings.ADS_PRIVACY"),
+            android.content.Intent(android.provider.Settings.ACTION_PRIVACY_SETTINGS)
+        )
+        for (i in intents) {
+            i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (runCatching { context.startActivity(i) }.isSuccess) return
+        }
+    }
 }
 
 /**

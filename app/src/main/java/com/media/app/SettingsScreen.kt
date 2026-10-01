@@ -209,12 +209,45 @@ fun SettingsScreen(
             }
         }
 
+        // The privacy policy promises that consent "can be changed later in
+        // the app's settings". This is that place. The consent row appears
+        // where the law requires it (EEA, UK, Switzerland, and the US states
+        // set up in AdMob) - UMP decides from the user's location - and opens
+        // Google's own form, which both withdraws GDPR consent and carries
+        // the US "do not sell or share" opt-out.
+        SectionLabel("Privacy")
+        var privacyNote by remember { mutableStateOf<String?>(null) }
+        if (Ads.privacyChoicesRequired(context)) {
+            SettingRow(
+                Icons.Outlined.PrivacyTip, "Ad privacy choices", null,
+                subtitle = "Change or withdraw consent for personalised ads, or opt out of the sale or sharing of your data"
+            ) {
+                (context as? android.app.Activity)?.let { act ->
+                    Ads.showPrivacyChoices(act) { err ->
+                        privacyNote = err?.let { "Couldn't open the privacy form. Check the connection and try again." }
+                    }
+                }
+            }
+        }
+        SettingRow(
+            Icons.Outlined.PermIdentity, "Advertising ID", null,
+            subtitle = "Reset or delete it in Android's ad settings; it applies to every app"
+        ) { Ads.openDeviceAdSettings(context) }
+        SettingRow(Icons.Outlined.Shield, "Privacy Policy", null) {
+            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(privacyUrl))) }
+        }
+        privacyNote?.let {
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = MediaColors.Warning,
+                modifier = Modifier.padding(Space.xl, 0.dp, Space.xl, Space.sm))
+        }
+
         SectionLabel("About")
         SettingRow(Icons.Outlined.Info, "About " + stringResource(R.string.app_name), null) { onOpenAbout() }
+        SettingRow(
+            Icons.Outlined.StarOutline, "Rate " + stringResource(R.string.app_name), null,
+            subtitle = "On Google Play"
+        ) { InAppReview.openListing(context) }
         SettingRow(Icons.Outlined.Description, "Terms of Use", null) { onOpenTerms() }
-        SettingRow(Icons.Outlined.Shield, "Privacy Policy", null) {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(privacyUrl)))
-        }
         SettingRow(Icons.Outlined.Info, "Version", BuildConfig.VERSION_NAME, navigates = false) {}
 
         Spacer(Modifier.height(40.dp))

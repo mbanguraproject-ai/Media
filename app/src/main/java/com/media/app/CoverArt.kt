@@ -135,11 +135,25 @@ internal fun loadArt(context: Context, item: AppMediaItem, target: Int): ImageBi
     ArtworkStore.fileFor(item.id)?.let { f ->
         runCatching { decodeSampled(f, target) }.getOrNull()?.let { return it.asImageBitmap() }
     }
-    // 1. Audio: the MediaStore album-art URI. Far cheaper than opening the file.
+    // 1. Audio. MediaStore's album-art uri is ONE picture per album id, so it
+    //    is only right for a real album (AlbumCoherence). Under a download
+    //    site's tag or a folder of singles it is some other song's cover -
+    //    which is how "Cruel Summer" came to wear Katy Perry's PRISM. Those
+    //    tracks get their own file's picture: on Android 10+ the system
+    //    thumbnail of the FILE (pre-sized, cached by the platform); below
+    //    that, step 3 reads it out of the file.
     if (item.type == MediaType.AUDIO) {
-        item.artworkUri?.let { uri ->
-            runCatching { decodeSampled(context, uri, target) }.getOrNull()
-                ?.let { return it.asImageBitmap() }
+        val realAlbum = AlbumCoherence.isCoherent(item.albumId)
+        if (realAlbum) {
+            item.artworkUri?.let { uri ->
+                runCatching { decodeSampled(context, uri, target) }.getOrNull()
+                    ?.let { return it.asImageBitmap() }
+            }
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            runCatching {
+                context.contentResolver.loadThumbnail(item.uri, Size(target, target), null)
+            }.getOrNull()?.let { return it.asImageBitmap() }
         }
     }
     // 2. Video on API 29+: the system thumbnail is pre-sized and already cached

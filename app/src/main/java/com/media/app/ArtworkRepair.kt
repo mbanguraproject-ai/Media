@@ -82,10 +82,41 @@ object ArtworkStore {
         }
     }
 
-    /** One cover per album where the album is real, per track otherwise. */
+    /**
+     * One cover per album only where the album is REAL (AlbumCoherence);
+     * per track otherwise. "Has an album name" was the old test, and a
+     * download site's tag ("Trendysongz.com") or a folder of singles is an
+     * album name too: one fix then painted every song in it with one cover,
+     * whoever the artist.
+     */
     fun groupKey(item: AppMediaItem): String =
-        if (item.albumId != 0L && item.album.isUsable() && item.album != UNKNOWN_ALBUM) "album-${item.albumId}"
+        if (AlbumCoherence.isCoherent(item.albumId)) "album-${item.albumId}"
         else "track-${item.id}"
+
+    /**
+     * Undoes album-wide fixes on albums that are not real albums. Automatic
+     * and searched covers are removed, so those tracks go back to their own
+     * pictures and the next repair works per track; a cover the listener
+     * picked by hand is left where they put it.
+     */
+    fun reconcile() {
+        if (!ready || !AlbumCoherence.known) return
+        var changed = false
+        synchronized(this) {
+            val bad = entries.filter { (k, e) ->
+                k.startsWith("album-") && e.source != "custom" &&
+                    !AlbumCoherence.isCoherent(k.removePrefix("album-").toLongOrNull() ?: 0L)
+            }.keys
+            if (bad.isNotEmpty()) {
+                trackToKey.entries.removeAll { it.value in bad }
+                bad.forEach { k -> entries.remove(k); File(dir, "$k.jpg").delete() }
+                misses.keys.removeAll { it in bad }
+                persist()
+                changed = true
+            }
+        }
+        if (changed) _version.value++
+    }
 
     @Synchronized fun entryFor(trackId: Long): ArtEntry? {
         if (!ready) return null
@@ -235,6 +266,52 @@ object ArtworkStore {
     }
 }
 
+/**
+ * Which albums are real albums: one artist's numbered tracks under a proper
+ * name. Everything else that MediaStore files under one album id - a
+ * download site's tag, "Unknown album", a folder of singles by different
+ * artists - shares a name, not a cover. Those tracks show their own picture
+ * and are repaired one at a time.
+ *
+ * Strict on purpose. Getting it wrong one way costs a few extra lookups;
+ * getting it wrong the other way paints the wrong cover on songs.
+ */
+object AlbumCoherence {
+    @Volatile private var coherent: Set<Long> = emptySet()
+    @Volatile var known = false
+        private set
+
+    // A domain or a "free download" tag is a site, not an album.
+    private val SITE = Regex(
+        """(www\.|https?:|\b[\w-]+\.(com|net|org|ng|co|info|xyz|me|io|live|top|site|online|tv|fm|cc|biz|app)\b|download|mp3)""",
+        RegexOption.IGNORE_CASE
+    )
+
+    fun update(items: List<AppMediaItem>) {
+        coherent = items.asSequence()
+            .filter { it.type == MediaType.AUDIO && it.albumId != 0L }
+            .groupBy { it.albumId }
+            .filter { (_, tracks) -> isRealAlbum(tracks) }
+            .keys
+        known = true
+    }
+
+    fun isCoherent(albumId: Long): Boolean = albumId != 0L && albumId in coherent
+
+    internal fun isRealAlbum(tracks: List<AppMediaItem>): Boolean {
+        val name = tracks.first().album
+        if (!name.isUsable() || name == UNKNOWN_ALBUM || SITE.containsMatchIn(name)) return false
+        // One lead artist. An unknown artist counts as its own value, so
+        // "Unknown artist" beside "Taylor Swift" is two artists, not one.
+        val artists = tracks.map { Matching.normalize(Matching.primaryArtist(it.artist)) }.toSet()
+        if (artists.size > 1) return false
+        // A single track is trivially its own album. Several need real track
+        // numbers: singles from one artist dumped in one folder have none.
+        if (tracks.size == 1) return true
+        return tracks.map { it.trackNo }.filter { it > 0 }.distinct().size >= 2
+    }
+}
+
 /** What a track's cover looks like right now, and why it might need fixing. */
 data class ArtStatus(val issue: ArtIssue, val width: Int, val height: Int, val fixed: ArtEntry?)
 
@@ -284,9 +361,11 @@ object ArtworkRepair {
     /** Reads the cover [item] would show and grades it. Blocking; call on IO. */
     fun inspect(context: Context, item: AppMediaItem): ArtStatus {
         ArtworkStore.entryFor(item.id)?.let { e -> return ArtStatus(ArtIssue.NONE, e.width, e.height, e) }
-        // Same order CoverArt loads in: the MediaStore album art first, then
-        // the picture inside the file.
-        item.artworkUri?.let { uri -> gradeUri(context, uri)?.let { return it } }
+        // Same order CoverArt loads in: the album's picture only for a real
+        // album (otherwise it is another song's cover), then this file's own.
+        if (AlbumCoherence.isCoherent(item.albumId)) {
+            item.artworkUri?.let { uri -> gradeUri(context, uri)?.let { return it } }
+        }
         val r = MediaMetadataRetriever()
         val bytes = try {
             r.setDataSource(context, item.uri)

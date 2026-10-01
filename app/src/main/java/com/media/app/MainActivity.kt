@@ -472,6 +472,18 @@ fun HomeScaffold(vm: PlayerViewModel) {
             scope.launch {
                 db.historyDao().record(mediaId, System.currentTimeMillis())
             }
+            InAppReview.recordPlay(context)
+        }
+    }
+    // The review card, if it is due, at a natural pause: Now Playing just
+    // closed. Never while something is being looked at or adjusted.
+    var playerWasOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(showPlayer) {
+        if (showPlayer) { playerWasOpen = true; return@LaunchedEffect }
+        if (playerWasOpen) {
+            playerWasOpen = false
+            kotlinx.coroutines.delay(600)   // let the collapse finish first
+            (context as? android.app.Activity)?.let { InAppReview.maybeAsk(it) }
         }
     }
     val overrides by remember {

@@ -140,6 +140,9 @@ fun TermsScreen(onClose: () -> Unit) {
             "use your device's advertising identifier to choose them. In the " +
             "UK and the EEA you are asked for consent the first time the app " +
             "runs; if you decline, ads still appear but are not personalised. " +
+            "You can change or withdraw that choice at any time in Settings, " +
+            "Privacy, Ad privacy choices, which in the US states that require " +
+            "it also lets you opt out of the sale or sharing of your data. " +
             "You can reset or delete the advertising identifier at any time in " +
             "Android's settings. Google's own privacy terms govern what it " +
             "collects, and the privacy policy linked in Settings says more."
