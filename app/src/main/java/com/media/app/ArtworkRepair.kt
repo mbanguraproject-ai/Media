@@ -29,9 +29,12 @@ import com.media.app.Matching.isUsable
 //              names what is wrong with it: missing, low resolution, or a
 //              flat placeholder square.
 //    2. FIX    candidates() asks MusicBrainz which release this is and Cover
-//              Art Archive for that release's front cover. Every candidate is
-//              scored against the file's own tags; only a confident match is
-//              ever applied without the listener choosing it.
+//              Art Archive for that release's front cover, then Deezer and
+//              Apple Music's catalogues when that comes up short. Every
+//              candidate is scored against the file's own tags; only a
+//              confident match is ever applied without the listener choosing
+//              it, and a confident match with no picture falls through to the
+//              next one instead of ending the attempt.
 //    3. SHOW   a fixed cover is a JPEG in the app's own storage. CoverArt
 //              reads it before anything else, and so does the session's
 //              bitmap loader - which is what the notification and lock screen
@@ -43,7 +46,7 @@ import com.media.app.Matching.isUsable
 //  "Use the file's own cover" removes it.
 // ============================================================================
 
-/** One applied cover. [source] is "caa" (Cover Art Archive) or "custom". */
+/** One applied cover. [source] is "caa" (Cover Art Archive), "deezer", "itunes" or "custom". */
 data class ArtEntry(
     val key: String,
     val source: String,
@@ -200,13 +203,17 @@ object ArtworkStore {
                     )
                 }
             }
-            o.optJSONObject("misses")?.let { m -> m.keys().forEach { k -> misses[k] = m.getLong(k) } }
+            // Misses from before the store fallbacks existed are forgotten:
+            // "MusicBrainz had nothing" is no longer "nothing can be found".
+            if (o.optInt("v", 1) >= 2) {
+                o.optJSONObject("misses")?.let { m -> m.keys().forEach { k -> misses[k] = m.getLong(k) } }
+            }
         }
     }
 
     private fun persist() {
         val o = JSONObject()
-        o.put("v", 1)
+        o.put("v", 2)
         o.put("tracks", JSONObject().apply { trackToKey.forEach { (k, v) -> put(k.toString(), v) } })
         o.put("entries", JSONObject().apply {
             entries.forEach { (k, e) ->
@@ -231,16 +238,31 @@ object ArtworkStore {
 /** What a track's cover looks like right now, and why it might need fixing. */
 data class ArtStatus(val issue: ArtIssue, val width: Int, val height: Int, val fixed: ArtEntry?)
 
-/** One cover the listener can pick. */
+/**
+ * One cover the listener can pick. A MusicBrainz candidate names a release
+ * and its picture comes from Cover Art Archive; a store candidate carries
+ * its own image urls.
+ */
 data class ArtCandidate(
     val releaseId: String?,
     val releaseGroupId: String?,
     val title: String,
     val artist: String,
     val year: String?,
-    val score: Float
+    val score: Float,
+    val provider: String = "caa",
+    val imageUrl: String? = null,
+    val thumbUrl: String? = null
 ) {
-    val key: String get() = releaseGroupId ?: releaseId ?: title
+    val key: String get() = releaseGroupId ?: releaseId ?: imageUrl ?: title
+    val providerLabel: String get() = providerName(provider)
+}
+
+fun providerName(source: String): String = when (source) {
+    "deezer" -> "Deezer"
+    "itunes" -> "Apple Music"
+    "custom" -> "Your own"
+    else -> "Cover Art Archive"
 }
 
 data class RepairProgress(
@@ -321,13 +343,22 @@ object ArtworkRepair {
         primary?.takeIf { it.isUsable() } ?: fallback?.takeIf { it.isUsable() }
 
     /**
-     * Covers that could be this track's, best first. Null when MusicBrainz
-     * could not be reached; empty when it was and knew nothing.
+     * Covers that could be this track's, best first. Null when no service
+     * could be reached; empty when they were and knew nothing.
+     *
+     * MusicBrainz first, because a release it knows is exact. Then the
+     * stores: Cover Art Archive has no picture for a large share of the
+     * releases MusicBrainz knows, and regional releases, singles and new
+     * music are often not in MusicBrainz at all. One miss used to be the
+     * end of it; now Deezer and Apple Music are asked too, each answer is
+     * scored against the file the same way, and [thorough] (the picker)
+     * asks every service so there is something to choose from.
      */
-    suspend fun candidates(item: AppMediaItem, tags: FileTags?): List<ArtCandidate>? {
+    suspend fun candidates(item: AppMediaItem, tags: FileTags?, thorough: Boolean = false): List<ArtCandidate>? {
         val title = pick(item.title, tags?.title)
         val artist = pick(item.artist, tags?.albumArtist ?: tags?.artist)
         val album = pick(item.album, tags?.album)
+        val durationMs = item.durationMs.takeIf { it > 0 } ?: tags?.durationMs
         val found = LinkedHashMap<String, ArtCandidate>()
         var reached = false
 
@@ -335,6 +366,9 @@ object ArtworkRepair {
             val prev = found[c.key]
             if (prev == null || prev.score < c.score) found[c.key] = c
         }
+        fun best() = found.values.maxOfOrNull { it.score } ?: 0f
+        /** Confident answers that do not depend on Cover Art Archive having a picture. */
+        fun confidentStore() = found.values.count { it.imageUrl != null && it.score >= Matching.CONFIDENT }
 
         // The file already knows its release: that is the answer.
         if (tags != null && (tags.mbReleaseId != null || tags.mbReleaseGroupId != null)) {
@@ -353,13 +387,12 @@ object ArtworkRepair {
             }
         }
 
-        val best = found.values.maxOfOrNull { it.score } ?: 0f
-        if (title != null && (best < Matching.CONFIDENT || found.size < 3)) {
+        if (title != null && (best() < Matching.CONFIDENT || found.size < 3)) {
             val recs = MusicBrainz.searchRecordings(title, artist)
             if (recs != null) reached = true
             recs.orEmpty().forEach { rec ->
                 val s = Matching.score(
-                    Matching.Query(title, artist, album, item.durationMs.takeIf { it > 0 }),
+                    Matching.Query(title, artist, album, durationMs),
                     Matching.Candidate(rec.title, rec.artist, null, rec.lengthMs)
                 )
                 if (s < Matching.PLAUSIBLE) return@forEach
@@ -377,27 +410,74 @@ object ArtworkRepair {
             }
         }
 
+        // ---- the stores ----
+        fun offerStore(list: List<StoreCover>?) {
+            if (list == null) return
+            reached = true
+            list.forEach { c ->
+                val s = if (c.trackTitle == null) {
+                    // An album hit: judged on the album and its artist.
+                    if (album == null) return@forEach
+                    val a = Matching.similarity(album, c.title)
+                    if (artist != null) 0.6f * a + 0.4f * Matching.similarity(artist, c.artist) else a * 0.9f
+                } else {
+                    // A song hit: the song must match, and a known album that
+                    // disagrees costs it, exactly as for MusicBrainz.
+                    val song = Matching.score(
+                        Matching.Query(title, artist, album, durationMs),
+                        Matching.Candidate(c.trackTitle, c.artist, null, c.durationMs)
+                    )
+                    val albumFit = if (album != null) Matching.similarity(album, c.title) else 1f
+                    song * (0.8f + 0.2f * albumFit)
+                }
+                if (s < Matching.PLAUSIBLE - 0.1f) return@forEach
+                offer(ArtCandidate(null, null, c.title, c.artist, c.year, s.coerceIn(0f, 1f),
+                    provider = c.provider, imageUrl = c.imageUrl, thumbUrl = c.thumbUrl))
+            }
+        }
+        // Store searches do better on the plain title and the lead artist:
+        // "Laho (feat. X) [Official Video]" finds nothing; "Laho" does.
+        val qTitle = title?.let { Matching.searchTitle(it) }
+        val qArtist = artist?.let { Matching.primaryArtist(it) }
+
+        if (album != null) offerStore(Deezer.albums(album, qArtist))
+        if (qTitle != null && (thorough || confidentStore() == 0)) offerStore(Deezer.tracks(qTitle, qArtist))
+        // Apple's limit is strict (about 20 a minute), so it is asked only
+        // when nothing confident has turned up yet, or when choosing by hand.
+        if (thorough || confidentStore() == 0) {
+            if (album != null) offerStore(ITunes.albums(album, qArtist))
+            if (qTitle != null && (thorough || confidentStore() == 0)) offerStore(ITunes.songs(qTitle, qArtist))
+        }
+
         if (!reached && found.isEmpty()) return null
-        return found.values.sortedByDescending { it.score }.take(9)
+        return found.values.sortedByDescending { it.score }.take(12)
     }
 
-    private val thumbs = LruCache<String, ByteArray>(24)
+    private val thumbs = LruCache<String, ByteArray>(32)
 
-    /** A small preview of a candidate, or null when the archive has none. */
+    /** A small preview of a candidate, or null when the service has none. */
     suspend fun thumbnail(c: ArtCandidate): ByteArray? {
         thumbs.get(c.key)?.let { return it }
-        val bytes = CoverArtArchive.fetchFront(c.releaseGroupId, c.releaseId, sizes = listOf(250)) ?: return null
+        val bytes = if (c.thumbUrl != null) image(c.thumbUrl)
+            else CoverArtArchive.fetchFront(c.releaseGroupId, c.releaseId, sizes = listOf(250))
+        bytes ?: return null
         thumbs.put(c.key, bytes)
         return bytes
     }
 
+    private suspend fun image(url: String): ByteArray? =
+        (Net.get(url, maxBytes = 12 * 1024 * 1024, accept = "image/*") as? NetResult.Ok)
+            ?.body?.takeIf { it.size > 64 }
+
     // --------------------------------------------------------------- applying
 
     suspend fun apply(item: AppMediaItem, scope: Collection<Long>, c: ArtCandidate): Boolean {
-        val bytes = CoverArtArchive.fetchFront(c.releaseGroupId, c.releaseId) ?: return false
+        val bytes = if (c.imageUrl != null) image(c.imageUrl)
+            else CoverArtArchive.fetchFront(c.releaseGroupId, c.releaseId)
+        bytes ?: return false
         return withContext(Dispatchers.IO) {
             ArtworkStore.save(
-                ArtworkStore.groupKey(item), scope, bytes, "caa", c.score,
+                ArtworkStore.groupKey(item), scope, bytes, c.provider, c.score,
                 c.releaseId, c.releaseGroupId, c.title
             )
         }
@@ -411,12 +491,16 @@ object ArtworkRepair {
             ArtworkStore.save(ArtworkStore.groupKey(item), scope, bytes, "custom", 1f)
         }
 
-    /** Applies the best candidate only when it is a confident match. */
+    /**
+     * Applies the best confident candidate. A MusicBrainz match whose
+     * release has no picture in Cover Art Archive no longer ends the attempt:
+     * the next confident candidate - very often a store's - is tried.
+     */
     suspend fun autoFix(context: Context, item: AppMediaItem, scope: Collection<Long>): AutoFix {
         val key = ArtworkStore.groupKey(item)
         val tags = withContext(Dispatchers.IO) { readTags(context, item.uri) }
         val list = candidates(item, tags) ?: return AutoFix.OFFLINE
-        for (c in list.filter { it.score >= Matching.CONFIDENT }.take(3)) {
+        for (c in list.filter { it.score >= Matching.CONFIDENT }.take(6)) {
             if (apply(item, scope, c)) return AutoFix.FIXED
         }
         ArtworkStore.markMiss(key)

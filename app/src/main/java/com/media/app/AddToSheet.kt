@@ -4,8 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import android.content.Intent
@@ -61,16 +61,28 @@ fun AddToSheet(
     onArtwork: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
+    // The sheet never scrolled. Header, four quick actions, the moods, every
+    // playlist and eight action rows were one fixed Column, so on a phone
+    // the height of a Redmi 10C the last rows - "Edit details" among them -
+    // were simply below the bottom of the screen. Edit is a quick action now,
+    // and everything under the header scrolls.
+    val maxSheet = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp * 0.86f).dp
     Box(
         Modifier.fillMaxSize().background(MediaColors.Scrim).clickable(onClick = onDismiss),
         contentAlignment = Alignment.BottomCenter
     ) {
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
+            Modifier.fillMaxWidth().heightIn(max = maxSheet)
+                .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
                 .background(MediaColors.Modal).border(1.dp, G_BORDER, RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
-                .clickable(enabled = false) {}
+                // Swallows taps so they do not fall through to the scrim. A
+                // disabled clickable does not consume, so it never did.
+                .clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null
+                ) {}
                 .navigationBarsPadding()
-                .padding(Space.xl, Space.lg, Space.xl, Space.xl)
+                .padding(Space.xl, Space.lg, Space.xl, Space.md)
         ) {
             // grabber
             Box(Modifier.align(Alignment.CenterHorizontally).width(38.dp).height(4.dp)
@@ -100,6 +112,9 @@ fun AddToSheet(
                 QuickAction(Icons.AutoMirrored.Filled.QueueMusic, "Add to queue", Modifier.weight(1f)) {
                     onAddToQueue(); onDismiss()
                 }
+                QuickAction(Icons.Filled.Edit, "Edit info", Modifier.weight(1f)) {
+                    onEditDetails()
+                }
                 QuickAction(Icons.Filled.Share, "Share", Modifier.weight(1f)) {
                     runCatching {
                         context.startActivity(Intent.createChooser(
@@ -115,13 +130,14 @@ fun AddToSheet(
             }
             Spacer(Modifier.height(Space.lg))
 
-            LazyColumn(Modifier.heightIn(max = 420.dp)) {
+            Column(
+                Modifier.fillMaxWidth().weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState())
+            ) {
                 // Moods (song-holding only)
-                item {
-                    Text("MOODS", style = Typo.Micro,
-                        color = MediaColors.CreamFaint, modifier = Modifier.padding(bottom = Space.sm))
-                }
-                items(Mood.values().filter { it.holdsSongs }) { mood ->
+                Text("MOODS", style = Typo.Micro,
+                    color = MediaColors.CreamFaint, modifier = Modifier.padding(bottom = Space.sm))
+                Mood.values().filter { it.holdsSongs }.forEach { mood ->
                     val inList = memberMoods.contains(mood.key)
                     val icon = when (mood) {
                         Mood.LATE_NIGHT -> Icons.Filled.Bedtime
@@ -133,64 +149,49 @@ fun AddToSheet(
                 }
 
                 if (playlists.isNotEmpty()) {
-                    item {
-                        Text("PLAYLISTS", style = Typo.Micro,
-                            color = MediaColors.CreamFaint,
-                            modifier = Modifier.padding(top = Space.md, bottom = Space.sm))
-                    }
-                    items(playlists) { pl ->
+                    Text("PLAYLISTS", style = Typo.Micro,
+                        color = MediaColors.CreamFaint,
+                        modifier = Modifier.padding(top = Space.md, bottom = Space.sm))
+                    playlists.forEach { pl ->
                         val inList = memberPlaylists.contains(pl.id)
                         ToggleRow(Icons.AutoMirrored.Filled.QueueMusic, pl.name, MediaColors.Accent, inList) {
                             onTogglePlaylist(pl, !inList)
                         }
                     }
                 }
-            }
 
-            // Divider + navigation / edit actions.
-            Spacer(Modifier.height(Space.md))
-            Box(Modifier.fillMaxWidth().height(1.dp).background(G_BORDER))
-            Spacer(Modifier.height(Space.sm))
-            if (onViewAlbum != null) {
-                ActionRow(Icons.Filled.Album, "View album") { onViewAlbum(); onDismiss() }
-            }
-            if (onViewArtist != null) {
-                ActionRow(Icons.Filled.Person, "View artist") { onViewArtist(); onDismiss() }
-            }
-            if (onArtwork != null) {
-                ActionRow(Icons.Filled.Image, "Fix artwork") { onArtwork(); onDismiss() }
-            }
-            if (onDetails != null) {
-                ActionRow(Icons.Filled.Info, "Track details") { onDetails(); onDismiss() }
-            }
-            // Last, and the only red thing on the sheet. A destructive row
-            // that looks like every other row is a mis-tap waiting to happen.
-            ActionRow(
-                Icons.Filled.DeleteOutline, "Delete from device",
-                tint = MediaColors.Danger
-            ) { onDelete(); onDismiss() }
-            ActionRow(Icons.AutoMirrored.Filled.OpenInNew, "Open file") {
-                runCatching {
-                    context.startActivity(Intent(Intent.ACTION_VIEW).apply {
-                        setDataAndType(item.uri, item.mimeType.ifBlank { "*/*" })
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    })
+                // Divider + navigation / edit actions.
+                Spacer(Modifier.height(Space.md))
+                Box(Modifier.fillMaxWidth().height(1.dp).background(G_BORDER))
+                Spacer(Modifier.height(Space.sm))
+                if (onViewAlbum != null) {
+                    ActionRow(Icons.Filled.Album, "View album") { onViewAlbum(); onDismiss() }
                 }
-                onDismiss()
-            }
-            Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                    .clickable(onClick = onEditDetails).padding(vertical = 12.dp, horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    Modifier.size(38.dp).clip(RoundedCornerShape(10.dp)).background(MediaColors.FillStrong),
-                    contentAlignment = Alignment.Center
-                ) { Icon(Icons.Filled.Edit, null, tint = MediaColors.Cream, modifier = Modifier.size(19.dp)) }
-                Spacer(Modifier.width(Space.md))
-                Text("Edit details", style = Typo.Primary,
-                    color = MediaColors.Cream, modifier = Modifier.weight(1f))
-                Icon(Icons.Filled.ChevronRight, null, tint = MediaColors.CreamFaint, modifier = Modifier.size(22.dp))
+                if (onViewArtist != null) {
+                    ActionRow(Icons.Filled.Person, "View artist") { onViewArtist(); onDismiss() }
+                }
+                ActionRow(Icons.Filled.Edit, "Edit details") { onEditDetails() }
+                if (onArtwork != null) {
+                    ActionRow(Icons.Filled.Image, "Fix artwork") { onArtwork(); onDismiss() }
+                }
+                if (onDetails != null) {
+                    ActionRow(Icons.Filled.Info, "Track details") { onDetails(); onDismiss() }
+                }
+                ActionRow(Icons.AutoMirrored.Filled.OpenInNew, "Open file") {
+                    runCatching {
+                        context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(item.uri, item.mimeType.ifBlank { "*/*" })
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        })
+                    }
+                    onDismiss()
+                }
+                // Last, and the only red thing on the sheet. A destructive row
+                // that looks like every other row is a mis-tap waiting to happen.
+                ActionRow(
+                    Icons.Filled.DeleteOutline, "Delete from device",
+                    tint = MediaColors.Danger
+                ) { onDelete(); onDismiss() }
             }
         }
     }

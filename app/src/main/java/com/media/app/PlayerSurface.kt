@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
@@ -72,8 +73,13 @@ import kotlin.math.abs
 // ============================================================================
 
 private const val MINI_HEIGHT = 60
-private const val PILL_MARGIN = 20
+private const val PILL_MARGIN = 12
 private const val MINI_ART = 44
+// (MINI_HEIGHT - MINI_ART) / 2: the art is inset this far on every side, so
+// the trailing control mirrors it.
+private const val MINI_INSET = 8
+// How long the Ultra light flash takes to cross the cover.
+private const val FLASH_NS = 420_000_000L
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
@@ -101,6 +107,8 @@ fun PlayerSurface(
     // win the surface outright.
     videoSurface: Boolean = true,
     onExpandedChange: (Boolean) -> Unit,
+    // Swipe the pill down: playback stops and the pill leaves.
+    onDismiss: () -> Unit = {},
     // The full library row for what is playing: lyrics lookups need the
     // album and folder, which the session's own metadata does not carry.
     libraryItem: AppMediaItem? = null,
@@ -149,6 +157,11 @@ fun PlayerSurface(
     }
     var showQueue by remember { mutableStateOf(false) }
     val queue by vm.queue.collectAsState()
+
+    // Ultra: the phone's motion tilts the cover, and the panel runs at its
+    // top refresh rate - both only while Now Playing is actually open.
+    val tilt = rememberTilt(enabled = q.parallax && expanded && !state.isVideo && !reduced)
+    TopRefreshRate(enabled = q.topRefresh && expanded)
 
     // External toggles (tap, back press) animate; drag drives it directly.
     LaunchedEffect(expanded) {
@@ -230,7 +243,29 @@ fun PlayerSurface(
         val miniAlpha = (1f - e * 2.2f).coerceIn(0f, 1f)
         val fullAlpha = ((e - 0.45f) / 0.55f).coerceIn(0f, 1f)
 
-        var dragX by remember { mutableStateOf(0f) }
+        // ---- pill gestures ----
+        //
+        // The old handler decided direction PER EVENT and let any expansion
+        // above zero claim the rest of the drag. A sideways swipe that began
+        // with the faintest upward drift lifted expansion to 0.002, every
+        // later event went to the vertical branch, and the skip never fired.
+        // A swipe down did nothing at all, and a drag that closed Now Playing
+        // all the way never told the scaffold, so showPlayer stayed true
+        // behind a collapsed pill.
+        //
+        // Now the axis is locked ONCE from the drag's own direction, the pill
+        // follows the finger so it shows what letting go will do, and every
+        // vertical drag settles AND reports where it landed.
+        val widthPx = with(density) { maxWidth.toPx() }
+        val pillPx = with(density) { MINI_HEIGHT.dp.toPx() }
+        val lockPx = with(density) { 6.dp.toPx() }
+        val flingPx = with(density) { 900.dp.toPx() }      // per second
+        val dismissPx = with(density) { 44.dp.toPx() }
+        val pillX = remember { Animatable(0f) }
+        val pillY = remember { Animatable(0f) }
+        val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+        val latestExpanded by rememberUpdatedState(onExpandedChange)
+        val latestDismiss by rememberUpdatedState(onDismiss)
 
         Box(
             Modifier
@@ -240,45 +275,150 @@ fun PlayerSurface(
                 // insets the painted/interactive area down to the pill at e=0.
                 .fillMaxSize()
                 .padding(start = sidePad, end = sidePad, top = topPad, bottom = botPad)
-                .clip(RoundedCornerShape(corner))
-                .background(bg)
-                .pointerInput(Unit) {
+                // BEFORE the layer that moves the pill: a gesture read inside a
+                // layer it is translating sees its own movement subtracted from
+                // every delta, and the pill stutters behind the finger.
+                .pointerInput(heightPx, widthPx) {
+                    var axis = 0            // 0 undecided, 1 sideways, 2 vertical
+                    var startedOpen = false
+                    var totalX = 0f
+                    var totalY = 0f
+                    val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
                     detectDragGestures(
+                        onDragStart = {
+                            axis = 0; totalX = 0f; totalY = 0f
+                            startedOpen = expansion.value > 0.001f
+                            tracker.resetTracking()
+                        },
                         onDrag = { change, delta ->
                             change.consume()
-                            // Vertical drives expansion; horizontal is only a
-                            // skip gesture while collapsed (§36).
-                            if (abs(delta.y) >= abs(delta.x) || expansion.value > 0f) {
-                                scope.launch {
+                            tracker.addPosition(change.uptimeMillis, change.position)
+                            totalX += delta.x
+                            totalY += delta.y
+                            if (axis == 0) {
+                                axis = when {
+                                    startedOpen -> 2
+                                    abs(totalX) < lockPx && abs(totalY) < lockPx -> 0
+                                    abs(totalX) > abs(totalY) -> 1
+                                    else -> 2
+                                }
+                            }
+                            when {
+                                axis == 1 -> scope.launch { pillX.snapTo(totalX) }
+                                // Pulling the docked pill down: it follows, and
+                                // far enough lets it go.
+                                axis == 2 && !startedOpen && totalY > 0f && expansion.value <= 0f ->
+                                    scope.launch { pillY.snapTo(totalY) }
+                                axis == 2 -> scope.launch {
+                                    if (pillY.value != 0f) pillY.snapTo(0f)
                                     expansion.snapTo(
-                                        (expansion.value - delta.y / heightPx * 1.6f)
-                                            .coerceIn(0f, 1f)
+                                        (expansion.value - delta.y / heightPx * 1.6f).coerceIn(0f, 1f)
                                     )
                                 }
-                            } else {
-                                dragX += delta.x
                             }
                         },
-                        onDragEnd = {
-                            when {
-                                expansion.value in 0.001f..0.999f -> {
-                                    val target = if (expansion.value > 0.4f) 1f else 0f
-                                    scope.launch { expansion.animateTo(target, Motion.spatial()) }
-                                    onExpandedChange(target == 1f)
-                                }
-                                dragX <= -swipePx -> vm.next()
-                                dragX >= swipePx -> vm.previous()
+                        onDragCancel = {
+                            scope.launch { pillX.animateTo(0f, Motion.spatial()) }
+                            scope.launch { pillY.animateTo(0f, Motion.spatial()) }
+                            if (axis == 2) {
+                                val target = if (expansion.value > 0.4f) 1f else 0f
+                                scope.launch { expansion.animateTo(target, Motion.spatial()) }
+                                latestExpanded(target == 1f)
                             }
-                            dragX = 0f
+                            axis = 0
+                        },
+                        onDragEnd = {
+                            val v = tracker.calculateVelocity()
+                            when {
+                                axis == 1 -> {
+                                    val flung = abs(v.x) > flingPx && (v.x > 0f) == (totalX > 0f)
+                                    if (abs(totalX) > swipePx || flung) {
+                                        // Right is the previous SONG, left the
+                                        // next. Never a restart: that is what
+                                        // the Previous button is for.
+                                        val dir = if (totalX > 0f) 1f else -1f
+                                        haptics.performHapticFeedback(
+                                            androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress
+                                        )
+                                        scope.launch {
+                                            pillX.animateTo(dir * widthPx * 0.45f, tween(Motion.Fast))
+                                            if (dir > 0f) vm.previousTrack() else vm.next()
+                                            // The new track arrives from the
+                                            // other side.
+                                            pillX.snapTo(-dir * widthPx * 0.22f)
+                                            pillX.animateTo(0f, Motion.spatial())
+                                        }
+                                    } else {
+                                        scope.launch { pillX.animateTo(0f, Motion.spatial()) }
+                                    }
+                                }
+                                !startedOpen && pillY.value > 0f -> {
+                                    if (pillY.value > dismissPx || v.y > flingPx) {
+                                        haptics.performHapticFeedback(
+                                            androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress
+                                        )
+                                        scope.launch {
+                                            pillY.animateTo(pillPx * 2.5f, tween(Motion.Fast))
+                                            latestDismiss()
+                                            // If nothing was playing to stop,
+                                            // the pill must not stay parked
+                                            // off-screen.
+                                            kotlinx.coroutines.delay(700)
+                                            pillY.snapTo(0f)
+                                        }
+                                    } else {
+                                        scope.launch { pillY.animateTo(0f, Motion.spatial()) }
+                                    }
+                                }
+                                axis == 2 -> {
+                                    // Always settle AND report - including a
+                                    // drag that ended exactly closed.
+                                    val target = when {
+                                        v.y < -flingPx -> 1f
+                                        v.y > flingPx -> 0f
+                                        expansion.value > 0.4f -> 1f
+                                        else -> 0f
+                                    }
+                                    scope.launch { expansion.animateTo(target, Motion.spatial()) }
+                                    latestExpanded(target == 1f)
+                                }
+                            }
+                            axis = 0
                         }
                     )
                 }
+                .graphicsLayer {
+                    // Only the docked pill moves with the finger; Now Playing
+                    // never slides sideways.
+                    translationX = pillX.value
+                    translationY = pillY.value
+                    val fadeX = abs(pillX.value) / (widthPx * 0.5f)
+                    val fadeY = pillY.value / (pillPx * 2f)
+                    alpha = (1f - maxOf(fadeX, fadeY)).coerceIn(0f, 1f)
+                }
+                .clip(RoundedCornerShape(corner))
+                .background(bg)
                 .then(
                     if (e < 0.02f) Modifier.pressScale(scaleDown = 0.985f) {
                         onExpandedChange(true)
                     } else Modifier
                 )
         ) {
+            // The living backdrop: the cover itself, blurred into light,
+            // under everything. Fades in with expansion like the wash; how
+            // much it moves is the tier's call (Backdrop.kt).
+            if (e > 0.01f && q.livingBackdrop && !state.isVideo) {
+                LivingBackdrop(
+                    item = libraryItem ?: artItem,
+                    beat = beat,
+                    reactive = q.reactiveLevel >= 2,
+                    drift = q.backdropDrift && expanded,
+                    turn = q.backdropTurn,
+                    blur = q.backdropBlur,
+                    modifier = Modifier.matchParentSize().clearAndSetSemantics { }
+                        .graphicsLayer { alpha = e }
+                )
+            }
             // §12/§4: ambient wash, strongest behind the artwork and gone by
             // mid-screen. Fades in with expansion so the collapsed pill keeps
             // its flat surface. Sits UNDER everything else.
@@ -287,8 +427,10 @@ fun PlayerSurface(
                     Modifier.matchParentSize().clearAndSetSemantics { }.background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                ambient.copy(alpha = 0.85f * e),
-                                ambient.copy(alpha = 0.30f * e),
+                                // Lighter over the living backdrop: it is
+                                // already coloured light, the wash only tints.
+                                ambient.copy(alpha = (if (q.livingBackdrop && !state.isVideo) 0.45f else 0.85f) * e),
+                                ambient.copy(alpha = (if (q.livingBackdrop && !state.isVideo) 0.12f else 0.30f) * e),
                                 ink.copy(alpha = 0f)
                             ),
                             // heightPx, not maxHeight: BoxWithConstraintsScope
@@ -305,7 +447,7 @@ fun PlayerSurface(
             // behind it rather than a ring stuck on top.
             // Shockwave rings ride outside the bloom and are always mounted
             // while expanded — they animate off their own birth timestamps.
-            if (e > 0.5f && q.dynamicArtLighting) {
+            if (e > 0.5f && q.reactiveLevel >= 2) {
                 // Full-size layer, centre computed from the artwork rather than
                 // from the Canvas. The old version sized its box to ~1.5x the
                 // screen and offset it negative, so Compose clamped it and the
@@ -322,7 +464,9 @@ fun PlayerSurface(
                     modifier = Modifier.matchParentSize().clearAndSetSemantics { }
                 )
             }
-            if (e > 0.35f && q.dynamicArtLighting) {
+            // Every tier glows: one radial gradient a frame is cheap, and it
+            // is what makes the cover feel lit rather than merely bouncing.
+            if (e > 0.35f && q.reactiveLevel >= 1) {
                 // A Canvas, not a Box with a conditional background: `if
                 // (level > 0.01f)` was a COMPOSITION-level branch on a value
                 // that changes 60x/second, so this mounted and unmounted every
@@ -352,6 +496,9 @@ fun PlayerSurface(
             }
 
             // ---------------- shared artwork ----------------
+            // Outside the layer lambda: in there `density` would be the
+            // layer scope's own.
+            val tiltCamera = 14f * density.density
             Box(
                 Modifier.offset(x = artX, y = artY).size(width = artW, height = artH)
                     // 10% at full level. With the punch curve the value sits
@@ -366,6 +513,14 @@ fun PlayerSurface(
                         scaleX = s; scaleY = s
                         // Gives way to the lyrics; the pill keeps its cover.
                         alpha = 1f - lyr * e
+                        // Ultra: the cover tilts with the phone, a few
+                        // degrees, only once it is the hero.
+                        if (q.parallax) {
+                            val k = ((e - 0.5f) * 2f).coerceIn(0f, 1f)
+                            rotationY = tilt.x * 7f * k
+                            rotationX = -tilt.y * 7f * k
+                            cameraDistance = tiltCamera
+                        }
                     }
                     // Depth grows as it expands: a pill needs almost none, the
                     // hero cover is the strongest thing on the screen.
@@ -377,6 +532,27 @@ fun PlayerSurface(
                         spotColor = Color.Black
                     )
                     .clip(RoundedCornerShape(artCorner))
+                    // Light ON the cover: the parallax sheen, and on Ultra
+                    // with Reactive artwork a flash that sweeps it on a hard
+                    // hit. Drawn after the content, inside the clip.
+                    .drawWithContent {
+                        drawContent()
+                        if (e > 0.5f && !state.isVideo && (q.parallax || q.reactiveLevel >= 3)) {
+                            val hit = beat.lastHitNanos
+                            val since = beat.frameNanos - hit
+                            val flash = if (q.reactiveLevel >= 3 && hit != 0L && since in 0..FLASH_NS) {
+                                val f = 1f - since / FLASH_NS.toFloat()
+                                f * f * beat.lastHitPower
+                            } else 0f
+                            val k = ((e - 0.5f) * 2f).coerceIn(0f, 1f)
+                            drawCoverLight(
+                                tiltX = tilt.x * k, tiltY = tilt.y * k,
+                                sheen = q.parallax,
+                                flash = flash * k,
+                                flashPos = (since / FLASH_NS.toFloat()).coerceIn(0f, 1f)
+                            )
+                        }
+                    }
             ) {
                 // §12: track changes cross-dissolve with a scale drift. Artwork
                 // is never abruptly swapped.
@@ -423,9 +599,16 @@ fun PlayerSurface(
 
             // ---------------- collapsed chrome ----------------
             if (miniAlpha > 0.01f) {
+                // Mirror-symmetric. The artwork sits 8dp in from the left; the
+                // play control's centre now sits exactly as far in from the
+                // right as the artwork's does from the left. Before, the 26dp
+                // icon was padded 16dp AND grown to a 48dp touch box, so its
+                // visible edge stood ~27dp in against the art's 8dp and the
+                // whole pill read as shifted left.
+                val inset = MINI_INSET.dp
                 Row(
                     Modifier.fillMaxWidth().height(MINI_HEIGHT.dp)
-                        .padding(start = (MINI_ART + 16).dp, end = Space.lg)
+                        .padding(start = (MINI_INSET + MINI_ART + 12).dp, end = inset - 2.dp)
                         .alpha(miniAlpha),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -435,26 +618,45 @@ fun PlayerSurface(
                         Text(state.currentArtist, style = Typo.Secondary, color = MediaColors.CreamDim,
                             maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    PlayPauseIcon(
-                        playing = state.isPlaying, tint = MediaColors.Cream,
-                        contentDescription = "Play/Pause",
-                        modifier = Modifier.size(26.dp).pressScale(haptic = true) { vm.togglePlayPause() }
-                    )
+                    Spacer(Modifier.width(Space.sm))
+                    // 48dp box (the minimum touch size) with end padding of
+                    // inset - 2dp: centre = inset + 24dp - 2dp = inset + 22dp,
+                    // the same as the artwork's centre from the left edge.
+                    Box(
+                        Modifier.size(48.dp).clip(CircleShape)
+                            .pressScale(haptic = true) { vm.togglePlayPause() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        PlayPauseIcon(
+                            playing = state.isPlaying, tint = MediaColors.Cream,
+                            contentDescription = "Play/Pause",
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
                 }
-                // §11: a thin progress indicator along the bottom edge.
+                // §11: a thin progress line along the bottom edge, inset to
+                // where the capsule's curve allows it. Edge to edge, the round
+                // ends clipped it to a stub that started off-centre.
                 val prog = if (state.durationMs > 0)
                     (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f) else 0f
-                // Read the accent HERE: MediaColors.* are @Composable getters
+                // Read the colours HERE: MediaColors.* are @Composable getters
                 // and the DrawScope lambda is not a composable context.
                 val accent = MediaColors.Accent
+                val track = MediaColors.Fill
                 Canvas(
                     Modifier.fillMaxWidth().height(2.dp)
-                        .align(Alignment.BottomCenter).alpha(miniAlpha)
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 22.dp)
+                        .offset(y = (-3).dp)
+                        .alpha(miniAlpha)
                 ) {
-                    drawLine(
+                    val y = size.height / 2
+                    drawLine(track, Offset(0f, y), Offset(size.width, y),
+                        strokeWidth = size.height, cap = StrokeCap.Round)
+                    if (prog > 0f) drawLine(
                         color = accent,
-                        start = Offset(0f, size.height / 2),
-                        end = Offset(size.width * prog, size.height / 2),
+                        start = Offset(0f, y),
+                        end = Offset(size.width * prog, y),
                         strokeWidth = size.height, cap = StrokeCap.Round
                     )
                 }
@@ -539,9 +741,13 @@ fun PlayerSurface(
                 }
 
                 Column(
+                    // Measured BEFORE the nav-bar padding. Measured after it,
+                    // controlsPx left out the nav bar's height, the lyrics
+                    // panel ran that far too low, and its Synced / offset row
+                    // sat on top of the title and the heart.
                     Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                        .navigationBarsPadding().alpha(fullAlpha)
                         .onSizeChanged { controlsPx = it.height }
+                        .navigationBarsPadding().alpha(fullAlpha)
                 ) {
                     // The line being sung, under the artwork, the way Spotify
                     // shows it. Only for real synced lyrics, and hidden while
@@ -584,7 +790,9 @@ fun PlayerSurface(
                                 Text(state.currentArtist, style = Typo.Body, color = MediaColors.CreamDim,
                                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
-                            if (!state.isVideo) {
+                            // Not over lyrics: the words are the subject there,
+                            // and a heart beside them is clutter.
+                            if (!state.isVideo && !showLyrics) {
                                 Spacer(Modifier.width(Space.md))
                                 FavoriteButton(isFavorite, Modifier.size(28.dp), onToggleFavorite)
                             }

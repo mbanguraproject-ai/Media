@@ -131,11 +131,40 @@ fun SoundScreen(onClose: () -> Unit) {
             label = "Bass", value = s.bass / 10f, range = 0f..100f,
             readout = "${s.bass / 10}%", enabled = true
         ) { update(s.copy(bass = (it * 10).roundToInt())) }
+        // Said plainly, from what the chain is doing right now.
+        Note(
+            if (status.speaker)
+                "Tuned for the phone speaker: lifts the punch range it can actually play, and trims the deep sub-bass it can't."
+            else
+                "Tuned for headphones: the full low end, down to 31 Hz."
+        )
         SliderRow(
             label = "Spatial", value = s.spatial / 10f, range = 0f..100f,
             readout = "${s.spatial / 10}%", enabled = true
         ) { update(s.copy(spatial = (it * 10).roundToInt())) }
-        Note("Bass and Spatial depend on what this phone's audio hardware supports; on some devices they only work with headphones.")
+        Note(
+            when {
+                !status.spatial -> "This phone has no virtualiser, so Spatial can't run here."
+                status.speaker -> "Spatial needs headphones. Android switches it off on the phone speaker, which plays in mono."
+                s.spatial > 0 && status.spatialActive -> "Spatial is on."
+                s.spatial > 0 -> "Spatial is set, but Android isn't virtualising on this output."
+                else -> "Widens the stereo image on headphones."
+            }
+        )
+
+        Section("Engine")
+        Toggle(
+            "Compatibility mode",
+            "Use Android's classic equaliser. Try this if the EQ makes no difference on your phone.",
+            s.classic
+        ) { update(s.copy(classic = it)) }
+        Note(
+            when (status.engine) {
+                "Dynamics" -> "Running on Dynamics Processing: 10 bands, preamp and limiter."
+                "Classic" -> "Running on the classic equaliser: the 10 bands are mapped to the bands this phone provides."
+                else -> "Start playing something to see the engine in use."
+            }
+        )
 
         Box(Modifier.fillMaxWidth().padding(Space.xl, Space.lg), contentAlignment = Alignment.CenterStart) {
             Text("Reset to flat", style = Typo.Label, color = MediaColors.CreamDim,

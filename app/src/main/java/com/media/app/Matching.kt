@@ -141,6 +141,30 @@ object Matching {
         "various", "va", "audio", "none", "null"
     )
 
+    private val DASH_ASIDE = Regex(
+        """\s+[-–—]\s+.*\b(remaster(ed)?|remix|mix|edit|version|live|mono|stereo|acoustic|instrumental|demo|radio)\b.*$""",
+        RegexOption.IGNORE_CASE
+    )
+    private val ARTIST_SPLIT = Regex("""\s*(,|;|/|&|\+|\s+x\s+|\s+feat\.?\s+|\s+ft\.?\s+|\s+featuring\s+|\s+with\s+|\s+and\s+)\s*""",
+        RegexOption.IGNORE_CASE)
+
+    /**
+     * A title as a search box wants it: "Laho (feat. Burna Boy) [Official
+     * Video]" and "Laho - 2024 Remaster" both become "Laho". Case and accents
+     * are kept - this is sent to a service, not compared.
+     */
+    fun searchTitle(s: String): String {
+        var t = BRACKETS.replace(s, " ")
+        t = FEAT.replace(t, "")
+        t = DASH_ASIDE.replace(t, "")
+        t = t.replace(Regex("""\s+"""), " ").trim()
+        return t.ifEmpty { s.trim() }
+    }
+
+    /** The first credited artist: "Shallipopi, Odumodublvck & Zerrydl" -> "Shallipopi". */
+    fun primaryArtist(s: String): String =
+        s.split(ARTIST_SPLIT).firstOrNull { it.isNotBlank() }?.trim() ?: s.trim()
+
     /** Lucene syntax MusicBrainz' search would otherwise read as operators. */
     fun luceneEscape(s: String): String {
         val special = "+-&|!(){}[]^\"~*?:\\/"

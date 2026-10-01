@@ -401,7 +401,7 @@ private fun PermissionGate(
 // small gap above this — both derive from BottomBarHeight so they never drift.
 // 64dp: 58 left the icon+label pair touching both edges of the bar.
 private val BottomBarHeight = 64.dp
-private val MiniPlayerGap = 8.dp
+private val MiniPlayerGap = 12.dp
 
 @UnstableApi
 @Composable
@@ -1128,6 +1128,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
             videoSurface = !feedOwnsVideo,
             bottomInset = navBottom + BottomBarHeight + MiniPlayerGap,
             onExpandedChange = { showPlayer = it },
+            onDismiss = { showPlayer = false; vm.dismiss() },
             libraryItem = libraryPlaying,
             onlineLookups = onlineLookups,
             onEnableOnline = { scope.launch { SettingsStore.setOnline(context, true) } },

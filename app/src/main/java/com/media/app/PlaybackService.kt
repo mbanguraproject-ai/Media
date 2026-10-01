@@ -25,6 +25,11 @@ class PlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         Enrichment.init(this)
+        // The saved Sound settings, BEFORE anything is attached. The service
+        // used to start on the defaults - EQ off, no bass - and only picked up
+        // what was saved once the Sound screen happened to be opened, so after
+        // every app start the EQ silently was not there.
+        SoundEngine.load(this)
         // FLOAT OUTPUT, for the files that have more than 16 bits to give.
         //
         // The default sink converts everything to 16-bit integer, so a 24-bit
@@ -55,7 +60,10 @@ class PlaybackService : MediaSessionService() {
         // The Sound chain rides on the player's audio session. A new session
         // id (rare: a device route change can cause one) rebuilds it.
         val fx = SoundEffects(this).also { effects = it }
+        fx.speaker = onSpeaker()
         fx.attach(player.audioSessionId)
+        // Headphones in or out, Bluetooth on or off: the bass shape follows.
+        audioManager().registerAudioDeviceCallback(routeWatch, main)
         player.addListener(object : Player.Listener {
             override fun onAudioSessionIdChanged(audioSessionId: Int) {
                 fx.attach(audioSessionId)
@@ -66,12 +74,31 @@ class PlaybackService : MediaSessionService() {
         })
         soundListener = SoundEngine.listen(this) {
             SoundEngine.load(this)
+            fx.rebuildIfEngineChanged()
             fx.apply()
             // Switching ReplayGain on, or between track and album, changes
             // the gain for what is already playing.
             loadGain(player, player.currentMediaItem)
         }
         loadGain(player, player.currentMediaItem)
+    }
+
+    private fun audioManager() = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+
+    private fun onSpeaker(): Boolean =
+        runCatching { AudioInfo.output(this).kind.let { it == "Phone speaker" || it == "Earpiece" } }
+            .getOrDefault(true)
+
+    // A device shows up a moment before media is actually routed to it, so
+    // look again shortly after as well.
+    private fun recheckRoute() {
+        effects?.speaker = onSpeaker()
+        main.postDelayed({ effects?.speaker = onSpeaker() }, 700)
+    }
+
+    private val routeWatch = object : android.media.AudioDeviceCallback() {
+        override fun onAudioDevicesAdded(added: Array<out android.media.AudioDeviceInfo>?) = recheckRoute()
+        override fun onAudioDevicesRemoved(removed: Array<out android.media.AudioDeviceInfo>?) = recheckRoute()
     }
 
     private fun loadGain(player: Player, item: MediaItem?) {
@@ -101,6 +128,8 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        runCatching { audioManager().unregisterAudioDeviceCallback(routeWatch) }
+        main.removeCallbacksAndMessages(null)
         soundListener?.let { SoundEngine.unlisten(this, it) }
         soundListener = null
         effects?.release()

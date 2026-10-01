@@ -563,6 +563,17 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun seekTo(ms: Long) { controller?.seekTo(ms) }
     fun next() { controller?.seekToNext() }
     fun previous() { controller?.seekToPrevious() }
+
+    /**
+     * The previous SONG. seekToPrevious() restarts the current track once it
+     * is more than 3s in, which is right for the Previous button and wrong
+     * for a swipe: a deliberate swipe back means "the one before", and a
+     * restart from it read as the app jumping back on its own.
+     */
+    fun previousTrack() {
+        val c = controller ?: return
+        if (c.hasPreviousMediaItem()) c.seekToPreviousMediaItem() else c.seekTo(0L)
+    }
     fun dismiss() {
         // Save any resume position first, then stop and clear so the mini-player
         // (shown only when hasItem) disappears.

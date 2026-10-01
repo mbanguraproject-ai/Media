@@ -53,7 +53,12 @@ object Net {
     private val limits = mapOf(
         "musicbrainz.org" to RateLimiter(1100),
         "coverartarchive.org" to RateLimiter(250),
-        "lrclib.net" to RateLimiter(300)
+        "lrclib.net" to RateLimiter(300),
+        // Apple asks for about 20 searches a minute; Deezer allows 50 per 5s.
+        "itunes.apple.com" to RateLimiter(3100),
+        "api.deezer.com" to RateLimiter(150),
+        "music.163.com" to RateLimiter(400),
+        "api.lyrics.ovh" to RateLimiter(400)
     )
     private val fallback = RateLimiter(100)
 
@@ -69,7 +74,8 @@ object Net {
     suspend fun get(
         url: String,
         maxBytes: Int = 2 * 1024 * 1024,
-        accept: String = "application/json"
+        accept: String = "application/json",
+        headers: Map<String, String> = emptyMap()
     ): NetResult = withContext(Dispatchers.IO) {
         val host = runCatching { java.net.URI(url).host }.getOrDefault("")
         val limiter = limits.entries.firstOrNull { host.endsWith(it.key) }?.value ?: fallback
@@ -85,6 +91,7 @@ object Net {
                 conn.instanceFollowRedirects = true
                 conn.setRequestProperty("User-Agent", userAgent)
                 conn.setRequestProperty("Accept", accept)
+                headers.forEach { (k, v) -> conn.setRequestProperty(k, v) }
                 val code = conn.responseCode
                 lastCode = code
                 when {

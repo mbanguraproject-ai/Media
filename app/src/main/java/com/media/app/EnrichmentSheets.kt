@@ -146,7 +146,7 @@ private fun issueText(s: ArtStatus?): String = when {
     s == null -> "Checking the cover…"
     s.fixed != null -> when (s.fixed.source) {
         "custom" -> "Your own cover"
-        else -> "Fixed from Cover Art Archive · ${(s.fixed.confidence * 100).toInt()}% match"
+        else -> "Fixed from ${providerName(s.fixed.source)} · ${(s.fixed.confidence * 100).toInt()}% match"
     }
     s.issue == ArtIssue.MISSING -> "No cover in this file"
     s.issue == ArtIssue.LOW_RES -> "Low resolution · ${s.width}×${s.height}"
@@ -183,7 +183,7 @@ fun ArtworkSheet(
         searching = true; failed = false; message = null
         launch.launch {
             val tags = withContext(Dispatchers.IO) { readTags(context, item.uri) }
-            val found = ArtworkRepair.candidates(item, tags)
+            val found = ArtworkRepair.candidates(item, tags, thorough = true)
             searching = false; searched = true
             if (found == null) failed = true else candidates = found
         }
@@ -225,15 +225,15 @@ fun ArtworkSheet(
         Spacer(Modifier.height(Space.md))
         Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
             when {
-                searching -> Text("Asking MusicBrainz…", style = Typo.Secondary, color = MediaColors.CreamFaint,
+                searching -> Text("Searching MusicBrainz, Deezer and Apple Music…", style = Typo.Secondary, color = MediaColors.CreamFaint,
                     modifier = Modifier.padding(vertical = Space.md))
-                failed -> Text("Couldn't reach MusicBrainz. Check the connection and search again.",
+                failed -> Text("Couldn't reach any cover service. Check the connection and search again.",
                     style = Typo.Secondary, color = MediaColors.CreamFaint, modifier = Modifier.padding(vertical = Space.md))
                 searched && candidates.isEmpty() -> Text(
                     "No covers found. Correct the title, artist or album in Edit details and search again, or pick one from your gallery.",
                     style = Typo.Secondary, color = MediaColors.CreamFaint, modifier = Modifier.padding(vertical = Space.md))
                 candidates.isNotEmpty() -> {
-                    Label("Covers from Cover Art Archive", top = false)
+                    Label("Covers found", top = false)
                     candidates.chunked(3).forEach { row ->
                         Row(horizontalArrangement = Arrangement.spacedBy(Space.sm),
                             modifier = Modifier.padding(bottom = Space.sm)) {
@@ -244,7 +244,7 @@ fun ArtworkSheet(
                                     launch.launch {
                                         val ok = ArtworkRepair.apply(item, ids, c)
                                         applying = null
-                                        message = if (ok) "Cover updated" else "That release has no full-size cover. Try another."
+                                        message = if (ok) "Cover updated" else "That one has no full-size cover. Try another."
                                     }
                                 }
                             }
@@ -286,7 +286,7 @@ private fun CandidateTile(c: ArtCandidate, busy: Boolean, modifier: Modifier, on
         Spacer(Modifier.height(Space.xs))
         Text(c.title, style = Typo.Tertiary, color = MediaColors.Cream, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(
-            listOfNotNull(c.year, "${(c.score * 100).toInt()}%").joinToString(" · "),
+            listOfNotNull(c.providerLabel, c.year, "${(c.score * 100).toInt()}%").joinToString(" · "),
             style = Typo.Tertiary, color = if (confident) MediaColors.Accent else MediaColors.CreamFaint, maxLines = 1
         )
     }

@@ -55,15 +55,24 @@ class BeatState {
     internal val power = FloatArray(RINGS)
     private var next = 0
 
+    /** The latest transient, for the Ultra light flash. 0 = none yet. */
+    var lastHitNanos = 0L
+        private set
+    var lastHitPower = 0f
+        private set
+
     internal fun fire(now: Long, p: Float) {
         born[next] = now
         power[next] = p
         next = (next + 1) % RINGS
+        lastHitNanos = now
+        lastHitPower = p
     }
 
     internal fun reset() {
         level = 0f
         for (i in 0 until RINGS) born[i] = 0L
+        lastHitNanos = 0L
     }
 }
 

@@ -21,8 +21,8 @@ android {
         applicationId = "app.devbangs.media"
         minSdk = 24
         targetSdk = 36
-        versionCode = 16
-        versionName = "4.1"
+        versionCode = 17
+        versionName = "4.2"
     }
 
     signingConfigs {
