@@ -21,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -312,18 +313,28 @@ fun EmptyBlock(icon: ImageVector, title: String, subtitle: String, cta: String?,
     }
 }
 
-// ---------------- create-playlist sheet ----------------
+// ---------------- create-playlist dialog ----------------
+// A real Dialog window, not a Box inside the Playlists screen. The Box was
+// drawn BEFORE the scaffold's persistent chrome, so the mini-player and the
+// nav bar sat on top of it, bright and live: a sideways swipe meant to wave
+// the box away landed on the pill and skipped or restarted the song. It also
+// had no Back handling (Back closed the whole Playlists screen) and nothing
+// kept it above the keyboard. Its own window fixes all three: it is above
+// everything, Back dismisses only it, and the window manager keeps it clear
+// of the keyboard.
 @Composable
 private fun CreatePlaylistSheet(onCreate: (String) -> Unit, onDismiss: () -> Unit) {
     var name by remember { mutableStateOf("") }
-    Box(
-        Modifier.fillMaxSize().background(MediaColors.Scrim).clickable(onClick = onDismiss),
-        contentAlignment = Alignment.Center
+    val focus = remember { androidx.compose.ui.focus.FocusRequester() }
+    fun submit() { if (name.isNotBlank()) onCreate(name.trim()) }
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Column(
-            Modifier.fillMaxWidth(0.86f).clip(RoundedCornerShape(20.dp))
+            Modifier.fillMaxWidth(0.88f).clip(RoundedCornerShape(20.dp))
                 .background(MediaColors.Modal).border(1.dp, G_BORDER, RoundedCornerShape(20.dp))
-                .clickable(enabled = false) {}.padding(Space.xl),
+                .padding(Space.xl),
         ) {
             Text("New playlist", style = Typo.Section, color = MediaColors.Cream)
             Spacer(Modifier.height(Space.lg))
@@ -338,7 +349,12 @@ private fun CreatePlaylistSheet(onCreate: (String) -> Unit, onDismiss: () -> Uni
                     singleLine = true,
                     textStyle = Typo.Body.copy(color = MediaColors.Cream),
                     cursorBrush = SolidColor(MediaColors.Accent),
-                    modifier = Modifier.fillMaxWidth()
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences,
+                        imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                    ),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { submit() }),
+                    modifier = Modifier.fillMaxWidth().focusRequester(focus)
                 )
             }
             Spacer(Modifier.height(Space.lg))
@@ -351,10 +367,16 @@ private fun CreatePlaylistSheet(onCreate: (String) -> Unit, onDismiss: () -> Uni
                 Box(
                     Modifier.clip(RoundedCornerShape(18.dp))
                         .background(if (name.isBlank()) MediaColors.Accent.copy(alpha = 0.4f) else MediaColors.Accent)
-                        .clickable(enabled = name.isNotBlank()) { onCreate(name.trim()) }
+                        .clickable(enabled = name.isNotBlank()) { submit() }
                         .padding(horizontal = Space.lg, vertical = 10.dp)
                 ) { Text("Create", style = Typo.Label, color = Color.White) }
             }
+        }
+        // Straight to typing: the keyboard comes up with the box. Inside the
+        // dialog's own composition, once its window exists.
+        LaunchedEffect(Unit) {
+            kotlinx.coroutines.delay(60)
+            runCatching { focus.requestFocus() }
         }
     }
 }

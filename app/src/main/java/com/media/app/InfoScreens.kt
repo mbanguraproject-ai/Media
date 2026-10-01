@@ -61,7 +61,7 @@ fun AboutScreen(version: String, onClose: () -> Unit) {
         Para("Everything plays locally, straight from your device. There are no accounts to make and nothing to sign in to. Your library, your listening history and your edits never leave your phone. The one exception is yours to switch on: looking up missing artwork and lyrics online, which sends only a track's title, artist, album and length.")
 
         Heading("Covers and lyrics, repaired")
-        Para("Missing, blurry or blank covers are found and replaced from Cover Art Archive, matched to the right release through MusicBrainz, and you can always choose another or use a picture of your own. Synced lyrics follow the song line by line in Now Playing, from the file itself, a .lrc file beside it, or LRCLIB. Nothing is ever written back into your files.")
+        Para("Missing, blurry or blank covers are found and replaced: matched to the right release through MusicBrainz and Cover Art Archive first, then Deezer and Apple Music when that comes up short. You can always choose another or use a picture of your own. Synced lyrics follow the song line by line in Now Playing, from the file itself, a .lrc file beside it, your lyrics folder, LRCLIB or NetEase, and you can add your own from a file or by pasting. Nothing is ever written back into your files.")
 
         Heading("Sound, shown honestly")
         Para("A ten-band equalizer, preamp, ReplayGain, a limiter, bass and spatial sound. The audio path shows exactly what happens between the file and your headphones: the real format, whether it is lossless or hi-res, what the chain changes, and where the phone resamples.")
@@ -109,7 +109,8 @@ fun TermsScreen(onClose: () -> Unit) {
         Para(
             "If you turn on online lookups in Settings, or ask for a cover or " +
             "lyrics by hand, Aura sends that track's title, artist, album and " +
-            "length to MusicBrainz, Cover Art Archive and LRCLIB, and saves " +
+            "length to MusicBrainz, Cover Art Archive, Deezer, Apple's iTunes " +
+            "Search, LRCLIB, NetEase and lyrics.ovh, and saves " +
             "what comes back on this device. Nothing else about you or your " +
             "library is sent, and nothing is written into your files. Those " +
             "services' own terms apply to what they receive."
@@ -139,6 +140,9 @@ fun TermsScreen(onClose: () -> Unit) {
             "use your device's advertising identifier to choose them. In the " +
             "UK and the EEA you are asked for consent the first time the app " +
             "runs; if you decline, ads still appear but are not personalised. " +
+            "You can change or withdraw that choice at any time in Settings, " +
+            "Privacy, Ad privacy choices, which in the US states that require " +
+            "it also lets you opt out of the sale or sharing of your data. " +
             "You can reset or delete the advertising identifier at any time in " +
             "Android's settings. Google's own privacy terms govern what it " +
             "collects, and the privacy policy linked in Settings says more."

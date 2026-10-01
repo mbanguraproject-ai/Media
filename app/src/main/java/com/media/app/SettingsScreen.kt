@@ -93,6 +93,12 @@ fun SettingsScreen(
         val bannerHidden by Billing.adFree.collectAsState()
         if (!bannerHidden) AuraBanner(ready = adsReady)
 
+        // Library first: Storage and Rescan are what people come to Settings
+        // for. They were below Sound and Artwork, a long scroll down.
+        SectionLabel("Library")
+        SettingRow(Icons.Outlined.Storage, "Storage", "$audioCount + $videoCount items", navigates = false) {}
+        RescanRow(onRescan)
+
         DisplayQualitySection(
             current = settings.qualityMode,
             onPick = { mode ->
@@ -107,7 +113,7 @@ fun SettingsScreen(
         ToggleRow(
             icon = Icons.Outlined.GraphicEq,
             title = "Reactive artwork",
-            subtitle = "Cover art responds to the music as it plays",
+            subtitle = "Cover art responds to the music as it plays. What it does grows with Display quality.",
             checked = reactiveArt,
             onChange = { on -> settingsScope.launch { SettingsStore.setReactiveArt(context, on) } }
         )
@@ -125,7 +131,7 @@ fun SettingsScreen(
         ToggleRow(
             icon = Icons.Outlined.Language,
             title = "Find artwork and lyrics online",
-            subtitle = "Asks MusicBrainz, Cover Art Archive and LRCLIB. Only a track's title, artist, album and length are sent.",
+            subtitle = "Covers from MusicBrainz, Cover Art Archive, Deezer and Apple Music; lyrics from LRCLIB, NetEase and lyrics.ovh. Only a track's title, artist, album and length are sent.",
             checked = online,
             onChange = { on -> settingsScope.launch { SettingsStore.setOnline(context, on) } }
         )
@@ -142,7 +148,7 @@ fun SettingsScreen(
             },
             subtitle = when {
                 repair.running -> "Checking ${repair.current ?: "your library"}\u2026"
-                repair.offline -> "Stopped: couldn't reach MusicBrainz"
+                repair.offline -> "Stopped: couldn't reach the cover services"
                 repair.total > 0 && !repair.running -> "Last run fixed ${repair.fixed} of ${repair.total} albums with bad covers"
                 online -> "Finds missing, blurry and blank covers and replaces them"
                 else -> "Turn on online lookups above to use this"
@@ -150,9 +156,34 @@ fun SettingsScreen(
             navigates = online || repair.running
         ) { if (repair.running) ArtworkRepair.cancel() else onRepairArtwork() }
 
-        SectionLabel("Library")
-        SettingRow(Icons.Outlined.Storage, "Storage", "$audioCount + $videoCount items", navigates = false) {}
-        RescanRow(onRescan)
+        // Android hides other apps' .lrc files from a plain scan, so a lyrics
+        // collection on the phone is only reachable through a folder the
+        // listener grants once.
+        var lyricsFolder by remember { mutableStateOf(LyricsFolder.label(context)) }
+        var lyricsCount by remember { mutableStateOf<Int?>(null) }
+        LaunchedEffect(lyricsFolder) {
+            lyricsCount = if (lyricsFolder == null) null
+                else withContext(Dispatchers.IO) { LyricsFolder.count(context) }
+        }
+        val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { tree ->
+            if (tree != null) {
+                LyricsFolder.set(context, tree)
+                lyricsFolder = LyricsFolder.label(context)
+            }
+        }
+        SettingRow(
+            Icons.Outlined.Lyrics,
+            "Lyrics folder",
+            lyricsCount?.let { if (it == 1) "1 file" else "$it files" },
+            subtitle = lyricsFolder?.let { "$it \u00b7 tap to choose another folder" }
+                ?: "Pick the folder where you keep .lrc files and they are matched to your songs"
+        ) { runCatching { folderPicker.launch(null) } }
+        if (lyricsFolder != null) {
+            SettingRow(Icons.Outlined.LinkOff, "Stop using the lyrics folder", null, navigates = true) {
+                LyricsFolder.clear(context)
+                lyricsFolder = null
+            }
+        }
 
         // Price comes from Play, never hardcoded - it is localised and can
         // change without a release.
@@ -178,12 +209,45 @@ fun SettingsScreen(
             }
         }
 
+        // The privacy policy promises that consent "can be changed later in
+        // the app's settings". This is that place. The consent row appears
+        // where the law requires it (EEA, UK, Switzerland, and the US states
+        // set up in AdMob) - UMP decides from the user's location - and opens
+        // Google's own form, which both withdraws GDPR consent and carries
+        // the US "do not sell or share" opt-out.
+        SectionLabel("Privacy")
+        var privacyNote by remember { mutableStateOf<String?>(null) }
+        if (Ads.privacyChoicesRequired(context)) {
+            SettingRow(
+                Icons.Outlined.PrivacyTip, "Ad privacy choices", null,
+                subtitle = "Change or withdraw consent for personalised ads, or opt out of the sale or sharing of your data"
+            ) {
+                (context as? android.app.Activity)?.let { act ->
+                    Ads.showPrivacyChoices(act) { err ->
+                        privacyNote = err?.let { "Couldn't open the privacy form. Check the connection and try again." }
+                    }
+                }
+            }
+        }
+        SettingRow(
+            Icons.Outlined.PermIdentity, "Advertising ID", null,
+            subtitle = "Reset or delete it in Android's ad settings; it applies to every app"
+        ) { Ads.openDeviceAdSettings(context) }
+        SettingRow(Icons.Outlined.Shield, "Privacy Policy", null) {
+            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(privacyUrl))) }
+        }
+        privacyNote?.let {
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = MediaColors.Warning,
+                modifier = Modifier.padding(Space.xl, 0.dp, Space.xl, Space.sm))
+        }
+
         SectionLabel("About")
         SettingRow(Icons.Outlined.Info, "About " + stringResource(R.string.app_name), null) { onOpenAbout() }
+        SettingRow(
+            Icons.Outlined.StarOutline, "Rate " + stringResource(R.string.app_name), null,
+            subtitle = "On Google Play"
+        ) { InAppReview.openListing(context) }
         SettingRow(Icons.Outlined.Description, "Terms of Use", null) { onOpenTerms() }
-        SettingRow(Icons.Outlined.Shield, "Privacy Policy", null) {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(privacyUrl)))
-        }
         SettingRow(Icons.Outlined.Info, "Version", BuildConfig.VERSION_NAME, navigates = false) {}
 
         Spacer(Modifier.height(40.dp))
@@ -254,6 +318,24 @@ private fun DisplayQualitySection(current: QualityMode, onPick: (QualityMode) ->
             warn = above,
             onClick = { onPick(mode) }
         )
+    }
+
+    // What the tier actually draws, in plain words. A level whose effect you
+    // cannot name is a level nobody can choose between.
+    Column(Modifier.padding(Space.xl, Space.md, Space.xl, 0.dp)) {
+        Text(
+            "${active.label} gives you",
+            style = MaterialTheme.typography.labelMedium,
+            color = MediaColors.CreamDim
+        )
+        Spacer(Modifier.height(Space.xs))
+        active.features.forEach { f ->
+            Row(Modifier.padding(vertical = 2.dp)) {
+                Text("\u2022", style = MaterialTheme.typography.bodyMedium, color = MediaColors.Accent,
+                    modifier = Modifier.width(16.dp))
+                Text(f, style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamFaint)
+            }
+        }
     }
 
     if (overReach) {

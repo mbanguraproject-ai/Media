@@ -21,8 +21,8 @@ android {
         applicationId = "app.devbangs.media"
         minSdk = 24
         targetSdk = 36
-        versionCode = 16
-        versionName = "4.1"
+        versionCode = 20
+        versionName = "4.5"
     }
 
     signingConfigs {
@@ -104,6 +104,8 @@ dependencies {
     // Kotlin 2.3 metadata and this project is on 2.0.20. We use only the
     // callback API, so the extensions buy us nothing anyway.
     implementation("com.android.billingclient:billing:9.1.0")
+    // Google Play In-App Review: the rating card shown inside the app.
+    implementation("com.google.android.play:review:2.0.2")
 
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")

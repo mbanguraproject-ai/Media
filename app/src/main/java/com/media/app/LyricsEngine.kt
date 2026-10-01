@@ -14,14 +14,20 @@ import com.media.app.Matching.isUsable
 // ============================================================================
 //  LYRICS
 //
-//  In the order the blueprint sets, first hit wins:
+//  First hit wins:
+//      lyrics you added yourself (a file you picked, or text you pasted)
 //      embedded synced (SYLT, or LRC text in the lyrics tag)
 //      a .lrc file beside the track
+//      a .lrc in the lyrics folder you chose in Settings
 //      cached synced
-//      online synced (LRCLIB)
+//      online synced: LRCLIB exact, LRCLIB search, LRCLIB search on the
+//                     cleaned title and lead artist, then NetEase
 //      embedded plain
 //      cached plain
-//      online plain
+//      online plain: LRCLIB, then lyrics.ovh
+//
+//  One online miss used to be the end; now each source gets its turn, and a
+//  plain answer found early is held while the others are asked for synced.
 //
 //  An online answer is checked against the file - title, artist, album and
 //  length - before it is kept, and one that fails is not attached, however
@@ -35,7 +41,11 @@ import com.media.app.Matching.isUsable
 enum class LyricsSource(val label: String) {
     EMBEDDED("Embedded in the file"),
     LRC_FILE("From a .lrc file"),
-    LRCLIB("From LRCLIB")
+    FOLDER("From your lyrics folder"),
+    LRCLIB("From LRCLIB"),
+    NETEASE("From NetEase"),
+    LYRICS_OVH("From lyrics.ovh"),
+    USER("Added by you")
 }
 
 sealed interface LyricsState {
@@ -150,8 +160,19 @@ object LyricsEngine {
         online: Boolean,
         force: Boolean = false
     ): LyricsState = withContext(Dispatchers.IO) {
-        val tags = readTags(context, item.uri)
         val offset = LyricsStore.offset(item.id)
+
+        // 0. The listener's own lyrics outrank everything.
+        LyricsStore.get(item.id)?.takeIf { it.source == LyricsSource.USER && !it.miss }?.let { u ->
+            if (u.synced) {
+                val p = Lrc.parse(u.text)
+                if (p.synced) return@withContext LyricsState.Synced(p.lines, LyricsSource.USER, offset, 1f)
+            }
+            val plain = Lrc.plain(u.text).ifBlank { u.text }
+            if (plain.isNotBlank()) return@withContext LyricsState.Plain(plain, LyricsSource.USER)
+        }
+
+        val tags = readTags(context, item.uri)
 
         // 1. Embedded synced.
         tags?.syncedLyrics?.takeIf { it.size >= 3 }?.let {
@@ -166,6 +187,14 @@ object LyricsEngine {
         sidecar(context, item)?.let { text ->
             val p = Lrc.parse(text)
             if (p.synced) return@withContext LyricsState.Synced(p.lines, LyricsSource.LRC_FILE, offset)
+        }
+
+        // 2b. The lyrics folder the listener pointed us at.
+        LyricsFolder.find(context, item, tags)?.let { text ->
+            val p = Lrc.parse(text)
+            if (p.synced) return@withContext LyricsState.Synced(p.lines, LyricsSource.FOLDER, offset)
+            val plain = Lrc.plain(text)
+            if (plain.isNotBlank()) return@withContext LyricsState.Plain(plain, LyricsSource.FOLDER)
         }
 
         // 3. Cached synced (and an instrumental verdict).
@@ -194,7 +223,7 @@ object LyricsEngine {
                     if (r.record.synced) {
                         val p = Lrc.parse(r.record.text)
                         if (p.synced) {
-                            return@withContext LyricsState.Synced(p.lines, LyricsSource.LRCLIB, offset, r.record.confidence)
+                            return@withContext LyricsState.Synced(p.lines, r.record.source, offset, r.record.confidence)
                         }
                     }
                 }
@@ -226,6 +255,35 @@ object LyricsEngine {
         _revision.value++
     }
 
+    /**
+     * Lyrics the listener supplied: a .lrc or .txt they picked, or text they
+     * pasted. Timed LRC stays synced; anything else is kept as plain text.
+     * False when there is nothing usable in it.
+     */
+    fun setUserLyrics(trackId: Long, text: String): Boolean {
+        val t = text.removePrefix("\uFEFF").replace("\r\n", "\n").trim()
+        if (t.isEmpty()) return false
+        val synced = Lrc.looksSynced(t) && Lrc.parse(t).synced
+        if (!synced && Lrc.plain(t).isBlank()) return false
+        LyricsStore.put(trackId, LyricsRecord(LyricsSource.USER, synced, t, 1f, false, false, System.currentTimeMillis()))
+        _revision.value++
+        return true
+    }
+
+    /** Drops the listener's lyrics; the normal search order takes over again. */
+    fun clearUserLyrics(trackId: Long) {
+        LyricsStore.forget(trackId)
+        _revision.value++
+    }
+
+    /** Reads a picked file as text: UTF-8, BOM stripped, capped at 512KB. */
+    fun readText(context: Context, uri: android.net.Uri): String? = runCatching {
+        context.contentResolver.openInputStream(uri)?.use { s ->
+            val bytes = s.readBytes()
+            if (bytes.size > 512 * 1024) null else String(bytes, Charsets.UTF_8).removePrefix("\uFEFF")
+        }
+    }.getOrNull()
+
     // ------------------------------------------------------------ the fetch
 
     private sealed interface Fetch {
@@ -244,23 +302,75 @@ object LyricsEngine {
         val album = pick(item.album, tags?.album)
         val durationMs = item.durationMs.takeIf { it > 0 } ?: tags?.durationMs
         val query = Matching.Query(title, artist, album, durationMs)
+        var reached = false
+        // A plain answer is held, not returned: a later source may have synced.
+        var plain: LyricsRecord? = null
+        var instrumental: LyricsRecord? = null
 
-        val (res, exact) = LrcLib.get(title, artist, album, durationMs?.let { (it + 500) / 1000 })
-        if (exact != null) {
-            val s = scoreOf(query, exact)
-            if (s >= GET_MIN) return Fetch.Found(recordOf(exact, s))
-        } else if (res is NetResult.Failed) {
-            return Fetch.Offline
+        fun consider(r: LrcLibRecord, s: Float): LyricsRecord? {
+            val rec = recordOf(r, s)
+            return when {
+                rec.synced -> rec
+                rec.instrumental -> { if (instrumental == null) instrumental = rec; null }
+                rec.text.isNotBlank() -> { if (plain == null) plain = rec; null }
+                else -> null
+            }
         }
 
-        val found = LrcLib.search(title, artist) ?: return Fetch.Offline
-        val best = found
-            .map { it to scoreOf(query, it) }
-            .filter { (r, s) -> s >= Matching.CONFIDENT && (r.syncedLyrics != null || r.plainLyrics != null || r.instrumental) }
-            // Prefer synced when two candidates are equally good.
-            .maxWithOrNull(compareBy<Pair<LrcLibRecord, Float>> { it.second }.thenBy { it.first.syncedLyrics != null })
-            ?: return Fetch.Missing
-        return Fetch.Found(recordOf(best.first, best.second))
+        // 1. LRCLIB's exact signature lookup.
+        val (res, exact) = LrcLib.get(title, artist, album, durationMs?.let { (it + 500) / 1000 })
+        if (res !is NetResult.Failed) reached = true
+        if (exact != null) {
+            val s = scoreOf(query, exact)
+            if (s >= GET_MIN) consider(exact, s)?.let { return Fetch.Found(it) }
+        }
+
+        // 2. LRCLIB search: as tagged, then on the cleaned title and the lead
+        //    artist ("Laho (feat. X) - Remix" by "A, B & C" -> "Laho" by "A").
+        val cleanTitle = Matching.searchTitle(title)
+        val leadArtist = Matching.primaryArtist(artist)
+        val tries = linkedSetOf(title to artist, cleanTitle to artist, cleanTitle to leadArtist)
+        for ((t, a) in tries) {
+            val found = LrcLib.search(t, a) ?: continue
+            reached = true
+            val best = found
+                .map { it to scoreOf(query, it) }
+                .filter { (r, s) -> s >= Matching.CONFIDENT && (r.syncedLyrics != null || r.plainLyrics != null || r.instrumental) }
+                .sortedWith(compareByDescending<Pair<LrcLibRecord, Float>> { it.first.syncedLyrics != null }.thenByDescending { it.second })
+            for ((r, s) in best) consider(r, s)?.let { return Fetch.Found(it) }
+        }
+
+        // 3. NetEase, for synced lyrics LRCLIB does not have - strong on
+        //    Asian and African catalogues. Its song must match the file.
+        NetEase.search(cleanTitle, leadArtist)?.let { songs ->
+            reached = true
+            val ranked = songs
+                .map { it to Matching.score(query, Matching.Candidate(it.title, it.artist, it.album, it.durationMs)) }
+                .filter { it.second >= Matching.CONFIDENT }
+                .sortedByDescending { it.second }
+                .take(2)
+            for ((song, score) in ranked) {
+                val lrc = NetEase.lyric(song.id) ?: continue
+                if (Lrc.looksSynced(lrc) && Lrc.parse(lrc).synced) {
+                    return Fetch.Found(LyricsRecord(LyricsSource.NETEASE, true, lrc, score, false, false, System.currentTimeMillis()))
+                }
+                if (plain == null) {
+                    val text = Lrc.plain(lrc)
+                    if (text.isNotBlank()) plain = LyricsRecord(LyricsSource.NETEASE, false, text, score, false, false, System.currentTimeMillis())
+                }
+            }
+        }
+
+        // Nothing synced anywhere: an instrumental verdict, then plain text.
+        instrumental?.let { return Fetch.Found(it) }
+        plain?.let { return Fetch.Found(it) }
+
+        // 4. lyrics.ovh: plain only, looked up by artist and title directly.
+        LyricsOvh.get(leadArtist, cleanTitle)?.let { text ->
+            return Fetch.Found(LyricsRecord(LyricsSource.LYRICS_OVH, false, text, null, false, false, System.currentTimeMillis()))
+        }
+
+        return if (reached) Fetch.Missing else Fetch.Offline
     }
 
     private fun scoreOf(q: Matching.Query, r: LrcLibRecord): Float =
@@ -289,7 +399,26 @@ object LyricsEngine {
      * Android 13+ this usually finds nothing, and that is fine: it is one
      * source of seven.
      */
-    private fun sidecar(context: Context, item: AppMediaItem): String? = runCatching {
+    private fun sidecar(context: Context, item: AppMediaItem): String? =
+        sidecarIndexed(context, item) ?: sidecarFile(context, item)
+
+    /**
+     * The same file read by path. MediaStore does not index .lrc files on
+     * many devices at all, while the file is right there beside the track;
+     * direct reads work on Android 10 and below, and on some later devices.
+     */
+    @Suppress("DEPRECATION")   // DATA is the only way to the path, and a miss is fine
+    private fun sidecarFile(context: Context, item: AppMediaItem): String? = runCatching {
+        val path = context.contentResolver.query(item.uri, arrayOf(MediaStore.MediaColumns.DATA), null, null, null)
+            ?.use { if (it.moveToFirst()) it.getString(0) else null } ?: return null
+        val track = File(path)
+        val base = track.nameWithoutExtension
+        val dir = track.parentFile ?: return null
+        listOf("$base.lrc", "$base.LRC").map { File(dir, it) }.firstOrNull { it.isFile && it.canRead() }
+            ?.takeIf { it.length() < 512 * 1024 }?.readText()?.removePrefix("\uFEFF")
+    }.getOrNull()
+
+    private fun sidecarIndexed(context: Context, item: AppMediaItem): String? = runCatching {
         val cr = context.contentResolver
         val name = cr.query(item.uri, arrayOf(MediaStore.MediaColumns.DISPLAY_NAME), null, null, null)?.use {
             if (it.moveToFirst()) it.getString(0) else null

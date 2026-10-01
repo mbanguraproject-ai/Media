@@ -14,6 +14,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.result.contract.ActivityResultContracts
@@ -120,7 +121,19 @@ class MainActivity : ComponentActivity() {
         var keep = true
         splash.setKeepOnScreenCondition { keep }
         window.decorView.postDelayed({ keep = false }, 850)
-        enableEdgeToEdge()
+        // Transparent bars with NO system scrim. Plain enableEdgeToEdge()
+        // uses the "auto" style, which on 3-button navigation turns contrast
+        // enforcement back on - overriding the theme - so Android drew its
+        // own dark band behind the buttons, cutting Now Playing's colour off
+        // at the bottom. The dark style with a transparent scrim does not.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+            window.isStatusBarContrastEnforced = false
+        }
         super.onCreate(savedInstanceState)
         Enrichment.init(this)
         setContent {
@@ -401,7 +414,7 @@ private fun PermissionGate(
 // small gap above this — both derive from BottomBarHeight so they never drift.
 // 64dp: 58 left the icon+label pair touching both edges of the bar.
 private val BottomBarHeight = 64.dp
-private val MiniPlayerGap = 8.dp
+private val MiniPlayerGap = 12.dp
 
 @UnstableApi
 @Composable
@@ -459,6 +472,18 @@ fun HomeScaffold(vm: PlayerViewModel) {
             scope.launch {
                 db.historyDao().record(mediaId, System.currentTimeMillis())
             }
+            InAppReview.recordPlay(context)
+        }
+    }
+    // The review card, if it is due, at a natural pause: Now Playing just
+    // closed. Never while something is being looked at or adjusted.
+    var playerWasOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(showPlayer) {
+        if (showPlayer) { playerWasOpen = true; return@LaunchedEffect }
+        if (playerWasOpen) {
+            playerWasOpen = false
+            kotlinx.coroutines.delay(600)   // let the collapse finish first
+            (context as? android.app.Activity)?.let { InAppReview.maybeAsk(it) }
         }
     }
     val overrides by remember {
@@ -1128,6 +1153,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
             videoSurface = !feedOwnsVideo,
             bottomInset = navBottom + BottomBarHeight + MiniPlayerGap,
             onExpandedChange = { showPlayer = it },
+            onDismiss = { showPlayer = false; vm.dismiss() },
             libraryItem = libraryPlaying,
             onlineLookups = onlineLookups,
             onEnableOnline = { scope.launch { SettingsStore.setOnline(context, true) } },

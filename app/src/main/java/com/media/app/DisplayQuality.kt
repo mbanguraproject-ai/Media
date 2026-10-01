@@ -29,10 +29,40 @@ import androidx.compose.ui.unit.dp
 // tier you would not ship as the whole app is not a tier, it is a penalty, so
 // the floor is Enhanced and the work of protecting a slow phone is left to
 // the frame monitor, which measures instead of guessing.
-enum class QualityLevel(val label: String, val goal: String) {
-    ENHANCED("Enhanced", "Richer visuals with moderate effects"),
-    PREMIUM("Premium", "High-end visuals and smooth motion"),
-    ULTRA("Ultra", "Maximum visual fidelity and effects")
+enum class QualityLevel(val label: String, val goal: String, val features: List<String>) {
+    ENHANCED(
+        "Enhanced", "Your cover lights the room",
+        listOf(
+            "Now Playing sits on your cover, blurred into coloured light, all the way to the screen's edge",
+            "Colour from the cover: the waveform, the glow behind the art and its shadow match each song",
+            "Fine grain that stops colour banding on the dark gradients",
+            "Reactive artwork: the cover pulses and its glow swells on the beat",
+            "56-bar waveform scrubber"
+        )
+    ),
+    PREMIUM(
+        "Premium", "A living backdrop that moves with the music",
+        listOf(
+            "Everything in Enhanced",
+            "The backdrop slowly drifts, with a real blur on Android 12+",
+            "A light field: three pools of the cover's own colours drift across it",
+            "Reactive artwork: shockwave rings, and the backdrop breathes with the bass",
+            "Lyrics in focus: lines away from the one being sung go soft",
+            "Sharper artwork, 72-bar waveform"
+        )
+    ),
+    ULTRA(
+        "Ultra", "Artwork you can tilt, light that follows the beat",
+        listOf(
+            "Everything in Premium",
+            "Parallax: the cover tilts with your phone and light slides across it",
+            "The backdrop turns, and a fourth pool joins the light field; with Reactive artwork the pools swell on the bass",
+            "Reactive artwork: a flash of light sweeps the cover on hard hits",
+            "The sung lyric line glows",
+            "Your screen's top refresh rate while Now Playing is open",
+            "Full-resolution artwork, 96-bar waveform"
+        )
+    )
 }
 
 /** What the user picked. AUTO follows the detected ceiling. */
@@ -193,7 +223,21 @@ data class QualityProfile(
     val springMotion: Boolean,
 
     // signature visuals
-    val waveformBars: Int
+    val waveformBars: Int,
+
+    // The visual engine (Backdrop.kt). Each of these is implemented, and
+    // each costs something, which is why they are per tier.
+    val livingBackdrop: Boolean,     // the cover, blurred, behind Now Playing
+    val backdropDrift: Boolean,      // ...slowly moving
+    val backdropTurn: Boolean,       // ...and turning
+    val backdropBlur: Dp,            // RenderEffect blur on Android 12+; 0 = the tiny decode alone
+    val lightField: Int,             // drifting pools of the cover's tones (needs drift)
+    val grain: Boolean,              // anti-banding grain over the backdrop
+    val reactiveLevel: Int,          // 1 pulse + bloom, 2 + rings + backdrop breath, 3 + light flash
+    val parallax: Boolean,           // tilt with the phone, specular sheen
+    val lyricFocus: Boolean,         // depth-of-field blur on lyric lines away from the sung one
+    val lyricGlow: Boolean,          // accent glow on the sung line
+    val topRefresh: Boolean          // ask for the panel's top refresh rate in Now Playing
 )
 
 fun profileFor(level: QualityLevel): QualityProfile = when (level) {
@@ -203,7 +247,12 @@ fun profileFor(level: QualityLevel): QualityProfile = when (level) {
         ambientGradient = true, dynamicArtLighting = false,
         gutter = 24.dp, rowPadV = 10.dp, rowArt = 52.dp, rowArtCorner = 12,
         motionScale = 1.0f, springMotion = true,
-        waveformBars = 56
+        waveformBars = 56,
+        // The floor is what a 4 GB phone runs, so it gets the cheapest piece
+        // with the biggest effect: one 20px texture, drawn once, no clock.
+        livingBackdrop = true, backdropDrift = false, backdropTurn = false, backdropBlur = 0.dp,
+        lightField = 0, grain = true,
+        reactiveLevel = 1, parallax = false, lyricFocus = false, lyricGlow = false, topRefresh = false
     )
     QualityLevel.PREMIUM -> QualityProfile(
         level = level,
@@ -211,7 +260,10 @@ fun profileFor(level: QualityLevel): QualityProfile = when (level) {
         ambientGradient = true, dynamicArtLighting = true,
         gutter = 28.dp, rowPadV = 12.dp, rowArt = 56.dp, rowArtCorner = 14,
         motionScale = 1.10f, springMotion = true,
-        waveformBars = 72
+        waveformBars = 72,
+        livingBackdrop = true, backdropDrift = true, backdropTurn = false, backdropBlur = 24.dp,
+        lightField = 3, grain = true,
+        reactiveLevel = 2, parallax = false, lyricFocus = true, lyricGlow = false, topRefresh = false
     )
     QualityLevel.ULTRA -> QualityProfile(
         level = level,
@@ -219,7 +271,10 @@ fun profileFor(level: QualityLevel): QualityProfile = when (level) {
         ambientGradient = true, dynamicArtLighting = true,
         gutter = 32.dp, rowPadV = 14.dp, rowArt = 60.dp, rowArtCorner = 16,
         motionScale = 1.20f, springMotion = true,
-        waveformBars = 96
+        waveformBars = 96,
+        livingBackdrop = true, backdropDrift = true, backdropTurn = true, backdropBlur = 32.dp,
+        lightField = 4, grain = true,
+        reactiveLevel = 3, parallax = true, lyricFocus = true, lyricGlow = true, topRefresh = true
     )
 }
 

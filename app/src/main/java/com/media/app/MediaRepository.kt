@@ -308,7 +308,12 @@ object MediaRepository {
                 )
             }
         }
-        return repairDurations(context, items)
+        return repairDurations(context, items).also {
+            // Which album ids are real albums decides whose picture a track
+            // may show and how wide a cover fix may spread.
+            AlbumCoherence.update(it)
+            ArtworkStore.reconcile()
+        }
     }
 
     /**
