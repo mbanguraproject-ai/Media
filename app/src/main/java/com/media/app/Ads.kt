@@ -66,6 +66,11 @@ object Ads {
      * once consent has been resolved — never before.
      */
     fun startConsentThenInit(activity: Activity, onReady: () -> Unit) {
+        // Ads are optional: a consent or SDK failure must never crash the app.
+        runCatching { requestConsent(activity, onReady) }
+    }
+
+    private fun requestConsent(activity: Activity, onReady: () -> Unit) {
         val params = ConsentRequestParameters.Builder().build()
         val info = UserMessagingPlatform.getConsentInformation(activity)
         info.requestConsentInfoUpdate(activity, params, {
@@ -76,12 +81,12 @@ object Ads {
                 // EEA/UK still went on to request ads - the exact case Google
                 // restricts accounts for. A refusal still allows
                 // non-personalised ads, and canRequestAds() says so.
-                if (info.canRequestAds()) initThen(activity, onReady)
+                runCatching { if (info.canRequestAds()) initThen(activity, onReady) }
             }
         }, {
             // The lookup failed (offline, say). The answer from a previous
             // launch is still on the device; it decides.
-            if (info.canRequestAds()) initThen(activity, onReady)
+            runCatching { if (info.canRequestAds()) initThen(activity, onReady) }
         })
     }
 
@@ -97,9 +102,17 @@ object Ads {
             onReady()
             return
         }
+        // NOTHING may escape this thread: an exception on a background
+        // thread kills the whole process, so an SDK that objects to being
+        // started here would crash the app at launch. Any failure falls back
+        // to starting it on the main thread, inside a guard, and the worst
+        // case is no ad - never a crash.
         Thread {
-            MobileAds.initialize(app) {
-                activity.runOnUiThread { onReady() }
+            val started = runCatching {
+                MobileAds.initialize(app) { activity.runOnUiThread { onReady() } }
+            }.isSuccess
+            if (!started) activity.runOnUiThread {
+                runCatching { MobileAds.initialize(app) { onReady() } }
             }
         }.apply { name = "ads-init" }.start()
     }

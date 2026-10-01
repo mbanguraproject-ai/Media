@@ -60,25 +60,30 @@ class PlaybackService : MediaSessionService() {
         // The Sound chain rides on the player's audio session. A new session
         // id (rare: a device route change can cause one) rebuilds it.
         val fx = SoundEffects(this).also { effects = it }
-        fx.speaker = onSpeaker()
-        fx.attach(player.audioSessionId)
+        // The sound chain is an enhancement: nothing in it may stop the
+        // service starting, because the service starts with the app.
+        runCatching {
+            fx.speaker = onSpeaker()
+            fx.attach(player.audioSessionId)
+        }
         // Headphones in or out, Bluetooth on or off: the bass shape follows.
-        audioManager().registerAudioDeviceCallback(routeWatch, main)
+        runCatching { audioManager().registerAudioDeviceCallback(routeWatch, main) }
         player.addListener(object : Player.Listener {
             override fun onAudioSessionIdChanged(audioSessionId: Int) {
-                fx.attach(audioSessionId)
+                runCatching { fx.attach(audioSessionId) }
             }
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 // Video gets the short processing frame so lip-sync holds;
                 // music gets the long one for low-frequency precision.
-                fx.lowLatency = mediaItem?.localConfiguration?.uri?.toString()?.contains("/video/") == true
+                runCatching {
+                    fx.lowLatency = mediaItem?.localConfiguration?.uri?.toString()?.contains("/video/") == true
+                }
                 loadGain(player, mediaItem)
             }
         })
         soundListener = SoundEngine.listen(this) {
             SoundEngine.load(this)
-            fx.rebuildIfEngineChanged()
-            fx.apply()
+            runCatching { fx.rebuildIfEngineChanged(); fx.apply() }
             // Switching ReplayGain on, or between track and album, changes
             // the gain for what is already playing.
             loadGain(player, player.currentMediaItem)
