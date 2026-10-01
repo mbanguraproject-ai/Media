@@ -653,19 +653,35 @@ fun PlayerSurface(
                             maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Spacer(Modifier.width(Space.sm))
-                    // 48dp box (the minimum touch size) with end padding of
-                    // inset - 2dp: centre = inset + 24dp - 2dp = inset + 22dp,
-                    // the same as the artwork's centre from the left edge.
+                    // Matching CENTRES was not enough. Measured on a Redmi
+                    // 10C the outer margins were equal to the pixel, but the
+                    // artwork is a solid 44dp block 8dp from the left edge and
+                    // a bare pause glyph is ~12dp wide with ~22dp of air to its
+                    // right - the eye reads visible edges, so the pill looked
+                    // tight on the left and loose on the right. The control now
+                    // has a visible 44dp disc, the artwork's exact size, whose
+                    // edge sits the same 8dp from the right: a true mirror.
+                    // The 48dp touch box with end padding inset - 2dp puts the
+                    // 44dp disc's edge at exactly `inset`.
                     Box(
                         Modifier.size(48.dp).clip(CircleShape)
                             .pressScale(haptic = true) { vm.togglePlayPause() },
                         contentAlignment = Alignment.Center
                     ) {
-                        PlayPauseIcon(
-                            playing = state.isPlaying, tint = MediaColors.Cream,
-                            contentDescription = "Play/Pause",
-                            modifier = Modifier.size(26.dp)
-                        )
+                        Box(
+                            Modifier.size(MINI_ART.dp).clip(CircleShape)
+                                .background(
+                                    if (darkTheme) Color.White.copy(alpha = 0.09f)
+                                    else Color.Black.copy(alpha = 0.06f)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            PlayPauseIcon(
+                                playing = state.isPlaying, tint = MediaColors.Cream,
+                                contentDescription = "Play/Pause",
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
                 }
                 // §11: a thin progress line along the bottom edge, inset to
