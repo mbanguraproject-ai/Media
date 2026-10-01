@@ -7,16 +7,17 @@ Media 4.5 crashed at launch with
     copy-cat1 v0<-v258 type=Reference: com.media.app.AppMediaItem
 
 HomeScaffold had grown into one method needing more than 256 Dalvik
-registers. In that range R8 wrote a plain `move` for an object reference,
-ART's verifier rejected the class, and the app could not start. Debug builds
-do not go through R8, so they never showed it.
+registers (the verifier names v258). Above 256, most instructions cannot
+reach their operands directly and the compiler has to shuttle values through
+the low registers; here it moved an object reference with a plain `move`,
+ART's verifier rejected the class, and the app could not start.
 
-This reads the DEX files R8 produced and lists the methods with the most
-registers. It exits 1 if any method is over the limit (255 by default), so a
-release that could hit that failure is caught before it ships.
+This reads the DEX files in a build and lists the methods with the most
+registers. It exits 1 if any method of the app's package is over the limit
+(255 by default), so a build that could hit that failure is caught first.
 
-    python3 tools/dex_registers.py app/build/intermediates/dex/release
-    python3 tools/dex_registers.py app/build/outputs/bundle/release/app-release.aab
+    python3 tools/dex_registers.py app/build/intermediates/dex/release --package com.media.app
+    python3 tools/dex_registers.py app/build/outputs/apk/debug/app-arm64-v8a-debug.apk --package com.media.app
 
 Takes .dex files, folders (searched recursively), and .apk / .aab / .zip
 files (every .dex inside). No dependencies beyond Python 3.
@@ -153,7 +154,9 @@ def main():
                     help="fail if any method needs more registers than this (default 255)")
     ap.add_argument("--top", type=int, default=15, help="how many of the largest methods to list")
     ap.add_argument("--package", default="",
-                    help="list the largest methods of this package too, e.g. com.media.app")
+                    help="the app's own package, e.g. com.media.app: its largest methods are "
+                         "listed, and only its methods count against --limit. Library code "
+                         "is reported but cannot be split from here")
     args = ap.parse_args()
 
     found = []
@@ -181,12 +184,25 @@ def main():
         show(own[:args.top])
 
     over = [m for m in found if m[0] > args.limit]
+    if args.package:
+        ours = [m for m in over if m[3].startswith(args.package + ".")]
+        libs = [m for m in over if m not in ours]
+        if libs:
+            print(f"\nNote: {len(libs)} library method(s) over {args.limit} registers. "
+                  f"They ship in every app that uses that library; not ours to split.")
+            show(libs)
+        over = ours
+        scope = f"{args.package} method"
+        largest = max((m[0] for m in found if m[3].startswith(args.package + ".")), default=0)
+    else:
+        scope = "method"
+        largest = found[0][0] if found else 0
     if over:
-        print(f"\nFAIL: {len(over)} method(s) over {args.limit} registers. These are where "
-              f"R8 can emit code ART rejects (4.5's launch crash). Split them.")
+        print(f"\nFAIL: {len(over)} {scope}(s) over {args.limit} registers. A method this "
+              f"large is what 4.5's launch VerifyError came from. Split it.")
         show(over)
         return 1
-    print(f"\nOK: no method over {args.limit} registers (largest: {found[0][0] if found else 0}).")
+    print(f"\nOK: no {scope} over {args.limit} registers (largest: {largest}).")
     return 0
 
 
