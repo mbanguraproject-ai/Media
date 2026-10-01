@@ -3,6 +3,7 @@ package com.media.app
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -43,6 +44,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.luminance
@@ -58,6 +60,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp as lerpDp
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -145,7 +148,7 @@ fun PlayerSurface(
     LaunchedEffect(sourceItem?.uri, state.isVideo) {
         source = if (sourceItem != null && !state.isVideo) AudioInfo.source(ctxForSource, sourceItem).first else null
     }
-    var controlsPx by remember { mutableStateOf(0) }
+    val controlsPx = remember { mutableStateOf(0) }
     // Lyrics for the under-artwork line. Same engine and cache as the full
     // view, so opening it afterwards costs nothing.
     val lyricsRevision by LyricsEngine.revision.collectAsState()
@@ -218,7 +221,6 @@ fun PlayerSurface(
         val pillSurface = if (darkTheme) lerpColor(Color(0xFF09090B), ambient, 0.35f) else MediaColors.Elevated
         val bg = lerpColor(pillSurface, MediaColors.Ink, e)
         val glass = (1f - e * 3f).coerceIn(0f, 1f)
-        val ink = MediaColors.Ink
 
         // ---- shared artwork geometry ----
         // Width AND height, not one square value. Video letterboxed inside a
@@ -279,8 +281,10 @@ fun PlayerSurface(
         val pillX = remember { Animatable(0f) }
         val pillY = remember { Animatable(0f) }
         val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
-        val latestExpanded by rememberUpdatedState(onExpandedChange)
-        val latestDismiss by rememberUpdatedState(onDismiss)
+        // State, not values: the gesture coroutine outlives recompositions
+        // and must call whatever the newest callbacks are.
+        val latestExpanded = rememberUpdatedState(onExpandedChange)
+        val latestDismiss = rememberUpdatedState(onDismiss)
 
         Box(
             Modifier
@@ -293,115 +297,13 @@ fun PlayerSurface(
                 // BEFORE the layer that moves the pill: a gesture read inside a
                 // layer it is translating sees its own movement subtracted from
                 // every delta, and the pill stutters behind the finger.
-                .pointerInput(heightPx, widthPx) {
-                    var axis = 0            // 0 undecided, 1 sideways, 2 vertical
-                    var startedOpen = false
-                    var totalX = 0f
-                    var totalY = 0f
-                    val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
-                    detectDragGestures(
-                        onDragStart = {
-                            axis = 0; totalX = 0f; totalY = 0f
-                            startedOpen = expansion.value > 0.001f
-                            tracker.resetTracking()
-                        },
-                        onDrag = { change, delta ->
-                            change.consume()
-                            tracker.addPosition(change.uptimeMillis, change.position)
-                            totalX += delta.x
-                            totalY += delta.y
-                            if (axis == 0) {
-                                axis = when {
-                                    startedOpen -> 2
-                                    abs(totalX) < lockPx && abs(totalY) < lockPx -> 0
-                                    abs(totalX) > abs(totalY) -> 1
-                                    else -> 2
-                                }
-                            }
-                            when {
-                                axis == 1 -> scope.launch { pillX.snapTo(totalX) }
-                                // Pulling the docked pill down: it follows, and
-                                // far enough lets it go.
-                                axis == 2 && !startedOpen && totalY > 0f && expansion.value <= 0f ->
-                                    scope.launch { pillY.snapTo(totalY) }
-                                axis == 2 -> scope.launch {
-                                    if (pillY.value != 0f) pillY.snapTo(0f)
-                                    expansion.snapTo(
-                                        (expansion.value - delta.y / heightPx * 1.6f).coerceIn(0f, 1f)
-                                    )
-                                }
-                            }
-                        },
-                        onDragCancel = {
-                            scope.launch { pillX.animateTo(0f, Motion.spatial()) }
-                            scope.launch { pillY.animateTo(0f, Motion.spatial()) }
-                            if (axis == 2) {
-                                val target = if (expansion.value > 0.4f) 1f else 0f
-                                scope.launch { expansion.animateTo(target, Motion.spatial()) }
-                                latestExpanded(target == 1f)
-                            }
-                            axis = 0
-                        },
-                        onDragEnd = {
-                            val v = tracker.calculateVelocity()
-                            when {
-                                axis == 1 -> {
-                                    val flung = abs(v.x) > flingPx && (v.x > 0f) == (totalX > 0f)
-                                    if (abs(totalX) > swipePx || flung) {
-                                        // Right is the previous SONG, left the
-                                        // next. Never a restart: that is what
-                                        // the Previous button is for.
-                                        val dir = if (totalX > 0f) 1f else -1f
-                                        haptics.performHapticFeedback(
-                                            androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress
-                                        )
-                                        scope.launch {
-                                            pillX.animateTo(dir * widthPx * 0.45f, tween(Motion.Fast))
-                                            if (dir > 0f) vm.previousTrack() else vm.next()
-                                            // The new track arrives from the
-                                            // other side.
-                                            pillX.snapTo(-dir * widthPx * 0.22f)
-                                            pillX.animateTo(0f, Motion.spatial())
-                                        }
-                                    } else {
-                                        scope.launch { pillX.animateTo(0f, Motion.spatial()) }
-                                    }
-                                }
-                                !startedOpen && pillY.value > 0f -> {
-                                    if (pillY.value > dismissPx || v.y > flingPx) {
-                                        haptics.performHapticFeedback(
-                                            androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress
-                                        )
-                                        scope.launch {
-                                            pillY.animateTo(pillPx * 2.5f, tween(Motion.Fast))
-                                            latestDismiss()
-                                            // If nothing was playing to stop,
-                                            // the pill must not stay parked
-                                            // off-screen.
-                                            kotlinx.coroutines.delay(700)
-                                            pillY.snapTo(0f)
-                                        }
-                                    } else {
-                                        scope.launch { pillY.animateTo(0f, Motion.spatial()) }
-                                    }
-                                }
-                                axis == 2 -> {
-                                    // Always settle AND report - including a
-                                    // drag that ended exactly closed.
-                                    val target = when {
-                                        v.y < -flingPx -> 1f
-                                        v.y > flingPx -> 0f
-                                        expansion.value > 0.4f -> 1f
-                                        else -> 0f
-                                    }
-                                    scope.launch { expansion.animateTo(target, Motion.spatial()) }
-                                    latestExpanded(target == 1f)
-                                }
-                            }
-                            axis = 0
-                        }
-                    )
-                }
+                .pillGestures(
+                    heightPx = heightPx, widthPx = widthPx, swipePx = swipePx,
+                    pillPx = pillPx, lockPx = lockPx, flingPx = flingPx, dismissPx = dismissPx,
+                    expansion = expansion, pillX = pillX, pillY = pillY,
+                    scope = scope, haptics = haptics, vm = vm,
+                    latestExpanded = latestExpanded, latestDismiss = latestDismiss
+                )
                 .graphicsLayer {
                     // Only the docked pill moves with the finger; Now Playing
                     // never slides sideways.
@@ -430,347 +332,35 @@ fun PlayerSurface(
                     } else Modifier
                 )
         ) {
-            // The living backdrop: the cover itself, blurred into light,
-            // under everything. Fades in with expansion like the wash; how
-            // much it moves is the tier's call (Backdrop.kt).
-            if (e > 0.01f && q.livingBackdrop && !state.isVideo) {
-                LivingBackdrop(
-                    item = libraryItem ?: artItem,
-                    colors = artColors,
-                    beat = beat,
-                    reactive = q.reactiveLevel >= 2,
-                    drift = q.backdropDrift && expanded,
-                    turn = q.backdropTurn,
-                    fieldPools = q.lightField,
-                    grain = q.grain,
-                    blur = q.backdropBlur,
-                    modifier = Modifier.matchParentSize().clearAndSetSemantics { }
-                        .graphicsLayer { alpha = e }
-                )
-            }
-            // §12/§4: ambient wash, strongest behind the artwork and gone by
-            // mid-screen. Fades in with expansion so the collapsed pill keeps
-            // its flat surface. Sits UNDER everything else.
-            if (e > 0.01f && q.ambientGradient) {
-                Box(
-                    Modifier.matchParentSize().clearAndSetSemantics { }.background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                // Lighter over the living backdrop: it is
-                                // already coloured light, the wash only tints.
-                                ambient.copy(alpha = (if (q.livingBackdrop && !state.isVideo) 0.45f else 0.85f) * e),
-                                ambient.copy(alpha = (if (q.livingBackdrop && !state.isVideo) 0.12f else 0.30f) * e),
-                                ink.copy(alpha = 0f)
-                            ),
-                            // heightPx, not maxHeight: BoxWithConstraintsScope
-                            // isn't reachable as an implicit receiver from
-                            // inside the inner Box's BoxScope.
-                            endY = heightPx * 0.62f
-                        )
-                    )
-                )
-            }
+            PlayerLight(
+                e = e, q = q, isVideo = state.isVideo, expanded = expanded,
+                backdropItem = libraryItem ?: artItem, artColors = artColors,
+                beat = beat, ambient = ambient, glow = glow, heightPx = heightPx,
+                artX = artX, artY = artY, artW = artW, artH = artH
+            )
 
-            // Bloom behind the artwork — grows and brightens on the beat.
-            // Drawn before the art so it reads as light spilling out from
-            // behind it rather than a ring stuck on top.
-            // Shockwave rings ride outside the bloom and are always mounted
-            // while expanded — they animate off their own birth timestamps.
-            if (e > 0.5f && q.reactiveLevel >= 2) {
-                // Full-size layer, centre computed from the artwork rather than
-                // from the Canvas. The old version sized its box to ~1.5x the
-                // screen and offset it negative, so Compose clamped it and the
-                // rings visibly originated from the right instead of the cover.
-                val cx = with(density) { (artX + artW / 2f).toPx() }
-                val cy = with(density) { (artY + artH / 2f).toPx() }
-                val r0 = with(density) { (minOf(artW, artH) / 2f).toPx() }
-                BeatRings(
-                    beat = beat,
-                    color = glow,
-                    centerPx = Offset(cx, cy),
-                    baseRadiusPx = r0,
-                    strength = 1f,
-                    modifier = Modifier.matchParentSize().clearAndSetSemantics { }
-                )
-            }
-            // Every tier glows: one radial gradient a frame is cheap, and it
-            // is what makes the cover feel lit rather than merely bouncing.
-            if (e > 0.35f && q.reactiveLevel >= 1 && !state.isVideo) {
-                // A Canvas, not a Box with a conditional background: `if
-                // (level > 0.01f)` was a COMPOSITION-level branch on a value
-                // that changes 60x/second, so this mounted and unmounted every
-                // frame. Reading beat.level inside the draw scope keeps the
-                // whole effect in the draw phase.
-                //
-                // There is always a little light behind the cover now, in the
-                // cover's own colour; the beat swells it.
-                val cxB = with(density) { (artX + artW / 2f).toPx() }
-                val cyB = with(density) { (artY + artH / 2f).toPx() }
-                val baseB = with(density) { minOf(artW, artH).toPx() }
-                val fade = ((e - 0.35f) / 0.65f).coerceIn(0f, 1f)
-                Canvas(Modifier.matchParentSize().clearAndSetSemantics { }) {
-                    val lv = beat.level
-                    val r = baseB * (0.58f + 0.30f * lv)
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                glow.copy(alpha = (0.24f + 0.76f * lv).coerceAtMost(1f) * fade),
-                                glow.copy(alpha = (0.08f + 0.34f * lv) * fade),
-                                Color.Transparent
-                            ),
-                            center = Offset(cxB, cyB),
-                            radius = r
-                        ),
-                        radius = r,
-                        center = Offset(cxB, cyB)
-                    )
-                }
-            }
-
-            // ---------------- shared artwork ----------------
-            // Outside the layer lambda: in there `density` would be the
-            // layer scope's own.
-            val tiltCamera = 14f * density.density
-            Box(
-                Modifier.offset(x = artX, y = artY).size(width = artW, height = artH)
-                    // 10% at full level. With the punch curve the value sits
-                    // near zero between hits, so this reads as a strike rather
-                    // than a constant wobble.
-                    .graphicsLayer {
-                        // beat.level read HERE, inside the layer lambda: this
-                        // re-runs on the draw pass only, never recomposing.
-                        // 3%, not 10% - artwork that visibly grows reads as a
-                        // bounce; the bloom and rings carry the beat.
-                        val s = 1f + beat.level * 0.03f
-                        scaleX = s; scaleY = s
-                        // Gives way to the lyrics; the pill keeps its cover.
-                        alpha = 1f - lyr * e
-                        // Ultra: the cover tilts with the phone, a few
-                        // degrees, only once it is the hero.
-                        if (q.parallax) {
-                            val k = ((e - 0.5f) * 2f).coerceIn(0f, 1f)
-                            rotationY = tilt.x * 7f * k
-                            rotationX = -tilt.y * 7f * k
-                            cameraDistance = tiltCamera
-                        }
-                    }
-                    // Depth grows as it expands: a pill needs almost none, the
-                    // hero cover is the strongest thing on the screen.
-                    .shadow(
-                        elevation = lerpDp(Elevation.low, Elevation.high, e),
-                        shape = RoundedCornerShape(artCorner),
-                        clip = false,
-                        // A coloured shadow reads as light under the cover on
-                        // a dark room; black shadow on black is invisible.
-                        ambientColor = if (state.isVideo) Color.Black else glow,
-                        spotColor = if (state.isVideo) Color.Black else glow
-                    )
-                    .clip(RoundedCornerShape(artCorner))
-                    // Light ON the cover: the parallax sheen, and on Ultra
-                    // with Reactive artwork a flash that sweeps it on a hard
-                    // hit. Drawn after the content, inside the clip.
-                    .drawWithContent {
-                        drawContent()
-                        if (e > 0.5f && !state.isVideo && (q.parallax || q.reactiveLevel >= 3)) {
-                            val hit = beat.lastHitNanos
-                            val since = beat.frameNanos - hit
-                            val flash = if (q.reactiveLevel >= 3 && hit != 0L && since in 0..FLASH_NS) {
-                                val f = 1f - since / FLASH_NS.toFloat()
-                                f * f * beat.lastHitPower
-                            } else 0f
-                            val k = ((e - 0.5f) * 2f).coerceIn(0f, 1f)
-                            drawCoverLight(
-                                tiltX = tilt.x * k, tiltY = tilt.y * k,
-                                sheen = q.parallax,
-                                flash = flash * k,
-                                flashPos = (since / FLASH_NS.toFloat()).coerceIn(0f, 1f)
-                            )
-                        }
-                    }
-            ) {
-                // §12: track changes cross-dissolve with a scale drift. Artwork
-                // is never abruptly swapped.
-                AnimatedContent(
-                    targetState = artItem,
-                    transitionSpec = {
-                        if (reduced) {
-                            fadeIn(tween(0)) togetherWith fadeOut(tween(0))
-                        } else {
-                            (fadeIn(tween(Motion.Standard)) +
-                                scaleIn(initialScale = 1.08f, animationSpec = tween(Motion.Standard))) togetherWith
-                                (fadeOut(tween(Motion.Standard)) +
-                                    scaleOut(targetScale = 0.94f, animationSpec = tween(Motion.Standard)))
-                        }
-                    },
-                    label = "artwork"
-                ) { item ->
-                    when {
-                        // Video renders INSIDE the morphing box, so it scales
-                        // and travels with everything else. factory runs once,
-                        // so the surface is never recreated mid-animation.
-                        state.isVideo && videoSurface -> AndroidView(
-                            factory = { ctx ->
-                                PlayerView(ctx).apply {
-                                    useController = false
-                                    setBackgroundColor(android.graphics.Color.BLACK)
-                                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                                }
-                            },
-                            update = { it.player = vm.boundPlayer() },
-                            // Hand the surface back explicitly instead of
-                            // letting surfaceDestroyed null the output.
-                            onRelease = { it.player = null },
-                            modifier = Modifier.fillMaxSize()
-                        )
-                        item != null -> CoverArt(
-                            item, Modifier.fillMaxSize(), corner = 0,
-                            targetPx = if (e > 0.5f) 768 else 144
-                        )
-                        else -> Box(Modifier.fillMaxSize().background(MediaColors.Ink))
-                    }
-                }
-            }
+            PlayerArtwork(
+                e = e, q = q, isVideo = state.isVideo, lyr = lyr,
+                beat = beat, tilt = tilt, glow = glow,
+                artX = artX, artY = artY, artW = artW, artH = artH, artCorner = artCorner,
+                artItem = artItem, reduced = reduced, videoSurface = videoSurface, vm = vm
+            )
 
             // ---------------- collapsed chrome ----------------
             if (miniAlpha > 0.01f) {
-                // Mirror-symmetric. The artwork sits 8dp in from the left; the
-                // play control's centre now sits exactly as far in from the
-                // right as the artwork's does from the left. Before, the 26dp
-                // icon was padded 16dp AND grown to a 48dp touch box, so its
-                // visible edge stood ~27dp in against the art's 8dp and the
-                // whole pill read as shifted left.
-                val inset = MINI_INSET.dp
-                Row(
-                    Modifier.fillMaxWidth().height(MINI_HEIGHT.dp)
-                        .padding(start = (MINI_INSET + MINI_ART + 12).dp, end = inset - 2.dp)
-                        .alpha(miniAlpha),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(state.currentTitle, style = Typo.Primary, color = MediaColors.Cream,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(state.currentArtist, style = Typo.Secondary, color = MediaColors.CreamDim,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                    Spacer(Modifier.width(Space.sm))
-                    // Matching CENTRES was not enough. Measured on a Redmi
-                    // 10C the outer margins were equal to the pixel, but the
-                    // artwork is a solid 44dp block 8dp from the left edge and
-                    // a bare pause glyph is ~12dp wide with ~22dp of air to its
-                    // right - the eye reads visible edges, so the pill looked
-                    // tight on the left and loose on the right. The control now
-                    // has a visible 44dp disc, the artwork's exact size, whose
-                    // edge sits the same 8dp from the right: a true mirror.
-                    // The 48dp touch box with end padding inset - 2dp puts the
-                    // 44dp disc's edge at exactly `inset`.
-                    Box(
-                        Modifier.size(48.dp).clip(CircleShape)
-                            .pressScale(haptic = true) { vm.togglePlayPause() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Box(
-                            Modifier.size(MINI_ART.dp).clip(CircleShape)
-                                .background(
-                                    if (darkTheme) Color.White.copy(alpha = 0.09f)
-                                    else Color.Black.copy(alpha = 0.06f)
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            PlayPauseIcon(
-                                playing = state.isPlaying, tint = MediaColors.Cream,
-                                contentDescription = "Play/Pause",
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                    }
-                }
-                // §11: a thin progress line along the bottom edge, inset to
-                // where the capsule's curve allows it. Edge to edge, the round
-                // ends clipped it to a stub that started off-centre.
-                val prog = if (state.durationMs > 0)
-                    (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f) else 0f
-                // Read the colours HERE: MediaColors.* are @Composable getters
-                // and the DrawScope lambda is not a composable context.
-                val accent = MediaColors.Accent
-                Canvas(
-                    Modifier.fillMaxWidth().height(2.dp)
-                        .align(Alignment.BottomCenter)
-                        .padding(horizontal = 22.dp)
-                        .offset(y = (-3).dp)
-                        .alpha(miniAlpha)
-                ) {
-                    // Progress only - no grey track behind it.
-                    val y = size.height / 2
-                    if (prog > 0f) drawLine(
-                        color = accent,
-                        start = Offset(0f, y),
-                        end = Offset(size.width * prog, y),
-                        strokeWidth = size.height, cap = StrokeCap.Round
-                    )
-                }
+                MiniChrome(miniAlpha = miniAlpha, state = state, darkTheme = darkTheme, vm = vm)
             }
 
             // ---------------- expanded chrome ----------------
             if (fullAlpha > 0.01f) {
-                Row(
-                    Modifier.fillMaxWidth().statusBarsPadding()
-                        .padding(Space.sm, Space.sm).alpha(fullAlpha),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Filled.KeyboardArrowDown, "Collapse", tint = MediaColors.Cream,
-                        modifier = Modifier.size(28.dp).pressScale { onExpandedChange(false) }
-                    )
-                    Spacer(Modifier.weight(1f))
-                    Text("Now playing", style = Typo.Tertiary, color = MediaColors.CreamDim)
-                    Spacer(Modifier.weight(1f))
-                    // PiP only exists for video, and only where the device
-                    // supports it - no dead button on an audio track.
-                    val ctx = androidx.compose.ui.platform.LocalContext.current
-                    if (state.isVideo) {
-                        Icon(
-                            Icons.Filled.Fullscreen, "Fullscreen", tint = MediaColors.Cream,
-                            modifier = Modifier.size(26.dp)
-                                .pressScale(haptic = true, onClick = onFullscreen)
-                        )
-                        Spacer(Modifier.width(Space.md))
-                    }
-                    if (state.isVideo && Pip.isSupported(ctx)) {
-                        Icon(
-                            Icons.Filled.PictureInPictureAlt, "Picture in picture",
-                            tint = MediaColors.Cream,
-                            modifier = Modifier.size(26.dp).pressScale(haptic = true) {
-                                (ctx as? android.app.Activity)?.let {
-                                    Pip.enter(it, state.videoWidth, state.videoHeight)
-                                }
-                            }
-                        )
-                        Spacer(Modifier.width(Space.md))
-                    }
-                    // Video has no favourites concept here and the row is
-                    // already carrying fullscreen + PiP.
-                    if (!state.isVideo) {
-                        Icon(
-                            Icons.Filled.Lyrics, if (showLyrics) "Hide lyrics" else "Lyrics",
-                            tint = if (showLyrics) MediaColors.Accent else MediaColors.Cream,
-                            modifier = Modifier.size(24.dp).pressScale(haptic = true) { showLyrics = !showLyrics }
-                        )
-                        Spacer(Modifier.width(Space.md))
-                        // The Sound screen, one tap from what is playing.
-                        // Accent while the EQ is on, like shuffle and repeat.
-                        val eqOn = SoundEngine.settings.collectAsState().value.eqEnabled
-                        Icon(
-                            Icons.Filled.Equalizer, "Equalizer",
-                            tint = if (eqOn) MediaColors.Accent else MediaColors.Cream,
-                            modifier = Modifier.size(24.dp).pressScale(haptic = true, onClick = onOpenSound)
-                        )
-                        Spacer(Modifier.width(Space.md))
-                    }
-                    Icon(
-                        Icons.AutoMirrored.Filled.QueueMusic, "Queue", tint = MediaColors.Cream,
-                        modifier = Modifier.size(28.dp).pressScale(haptic = true) { showQueue = true }
-                    )
-                }
+                NowPlayingTopBar(
+                    state = state, fullAlpha = fullAlpha, showLyrics = showLyrics,
+                    onCollapse = { onExpandedChange(false) },
+                    onFullscreen = onFullscreen,
+                    onToggleLyrics = { showLyrics = !showLyrics },
+                    onOpenSound = onOpenSound,
+                    onOpenQueue = { showQueue = true }
+                )
 
                 // Text over a coloured backdrop gets a soft shadow so it holds
                 // on a bright cover as well as a dark one.
@@ -789,156 +379,21 @@ fun PlayerSurface(
                         onEnableOnline = onEnableOnline,
                         tint = npAccent,
                         modifier = Modifier.fillMaxSize()
-                            .padding(top = statusTopL + 56.dp, bottom = with(density) { controlsPx.toDp() })
+                            .padding(top = statusTopL + 56.dp, bottom = with(density) { controlsPx.value.toDp() })
                             .alpha(fullAlpha * lyr)
                     )
                 }
 
-                Column(
-                    // Measured BEFORE the nav-bar padding. Measured after it,
-                    // controlsPx left out the nav bar's height, the lyrics
-                    // panel ran that far too low, and its Synced / offset row
-                    // sat on top of the title and the heart.
-                    Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                        .onSizeChanged { controlsPx = it.height }
-                        .navigationBarsPadding().alpha(fullAlpha)
-                ) {
-                    // The line being sung, under the artwork, the way Spotify
-                    // shows it. Only for real synced lyrics, and hidden while
-                    // the full lyrics are open. Tap opens them.
-                    val nowLine = remember(previewLyrics, state.positionMs, previewOffset) {
-                        (previewLyrics as? LyricsState.Synced)?.lines?.let { lines ->
-                            Lrc.activeIndex(lines, state.positionMs, previewOffset)
-                                .takeIf { it >= 0 }?.let { lines[it].text }
-                        }
-                    }
-                    if (!state.isVideo && !showLyrics && previewLyrics is LyricsState.Synced) {
-                        androidx.compose.animation.AnimatedContent(
-                            targetState = nowLine.orEmpty(),
-                            transitionSpec = {
-                                (fadeIn(tween(Motion.Standard)) togetherWith fadeOut(tween(Motion.Fast)))
-                            },
-                            label = "lyricLine",
-                            modifier = Modifier.fillMaxWidth()
-                                .padding(start = Space.xl, end = Space.xl, bottom = Space.md)
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null
-                                ) { showLyrics = true }
-                        ) { line ->
-                            Text(
-                                line.ifBlank { "\u266A" },
-                                style = Typo.Primary.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
-                                color = MediaColors.Cream,
-                                maxLines = 2, overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-                    Column(Modifier.fillMaxWidth().padding(Space.xl, 0.dp, Space.xl, Space.md)) {
-                        // Heart beside the title, under the art: where the
-                        // thumb is, not up in the top bar.
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(state.currentTitle, style = Typo.Section.copy(shadow = titleShadow), color = MediaColors.Cream,
-                                    maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                Text(state.currentArtist, style = Typo.Body.copy(shadow = titleShadow), color = MediaColors.CreamDim,
-                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                            // Not over lyrics: the words are the subject there,
-                            // and a heart beside them is clutter.
-                            if (!state.isVideo && !showLyrics) {
-                                Spacer(Modifier.width(Space.md))
-                                FavoriteButton(isFavorite, Modifier.size(28.dp), onToggleFavorite)
-                            }
-                        }
-                        // What the file really is, quietly. Tap for the whole
-                        // path from file to headphones.
-                        source?.badge?.let { badge ->
-                            Text(
-                                if (source?.hiRes == true) "Hi-Res \u00b7 $badge" else badge,
-                                style = Typo.Tertiary,
-                                color = if (source?.hiRes == true) MediaColors.Accent else MediaColors.CreamFaint,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                // Plain click: pressScale's 48dp minimum would
-                                // push the transport down by a whole row.
-                                modifier = Modifier.padding(top = Space.xxs)
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = onOpenAudioPath
-                                    )
-                            )
-                        }
-                    }
-
-                    if (state.durationMs > 0) {
-                        Column(Modifier.fillMaxWidth().padding(horizontal = Space.xl)) {
-                            Scrubber(
-                                positionMs = state.positionMs,
-                                durationMs = state.durationMs,
-                                onSeek = { vm.seekTo(it) },
-                                envelope = envelope,
-                                beat = beat,
-                                activeColor = npAccent
-                            )
-                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                                Text(fmtClock(state.positionMs), style = Typo.Tertiary,
-                                    color = MediaColors.CreamFaint)
-                                Text(fmtClock(state.durationMs), style = Typo.Tertiary,
-                                    color = MediaColors.CreamFaint)
-                            }
-                        }
-                    }
-
-                    Row(
-                        Modifier.fillMaxWidth().padding(Space.xl, Space.md),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Filled.SkipPrevious, "Previous", tint = MediaColors.Cream,
-                            modifier = Modifier.size(34.dp).pressScale(haptic = true) { vm.previous() })
-                        Box(
-                            Modifier.size(64.dp).clip(CircleShape).background(MediaColors.Cream)
-                                .pressScale(scaleDown = 0.92f, haptic = true) { vm.togglePlayPause() },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            PlayPauseIcon(state.isPlaying, MediaColors.OnInverse,
-                                Modifier.size(34.dp), "Play/Pause")
-                        }
-                        Icon(Icons.Filled.SkipNext, "Next", tint = MediaColors.Cream,
-                            modifier = Modifier.size(34.dp).pressScale(haptic = true) { vm.next() })
-                    }
-
-                    Row(
-                        Modifier.fillMaxWidth().padding(Space.xl, 0.dp, Space.xl, Space.xl),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Filled.Shuffle, "Shuffle",
-                            tint = if (state.shuffle) MediaColors.Accent else MediaColors.CreamDim,
-                            modifier = Modifier.size(IconSize.lg).pressScale(haptic = true) { vm.toggleShuffle() })
-                        Icon(
-                            if (state.repeatMode == 1) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
-                            "Repeat",
-                            tint = if (state.repeatMode != 0) MediaColors.Accent else MediaColors.CreamDim,
-                            modifier = Modifier.size(IconSize.lg).pressScale(haptic = true) { vm.cycleRepeat() }
-                        )
-                        Text(
-                            "${state.speed}x".replace(".0x", "x"), style = Typo.Primary,
-                            color = if (state.speed != 1.0f) MediaColors.Accent else MediaColors.CreamDim,
-                            modifier = Modifier.pressScale(haptic = true) { vm.cycleSpeed() }
-                        )
-                        if (state.sleepActive && !state.sleepEndOfTrack) {
-                            Text(fmtClock(state.sleepRemainingMs), style = Typo.Primary,
-                                color = MediaColors.Accent,
-                                modifier = Modifier.pressScale { showSleepSheet = true })
-                        } else {
-                            Icon(Icons.Filled.Bedtime, "Sleep timer",
-                                tint = if (state.sleepActive) MediaColors.Accent else MediaColors.CreamDim,
-                                modifier = Modifier.size(IconSize.lg).pressScale { showSleepSheet = true })
-                        }
-                    }
-                }
+                NowPlayingControls(
+                    fullAlpha = fullAlpha, state = state, vm = vm, controlsPx = controlsPx,
+                    previewLyrics = previewLyrics, previewOffset = previewOffset,
+                    showLyrics = showLyrics, onOpenLyrics = { showLyrics = true },
+                    titleShadow = titleShadow, source = source,
+                    isFavorite = isFavorite, onToggleFavorite = onToggleFavorite,
+                    onOpenAudioPath = onOpenAudioPath,
+                    envelope = envelope, beat = beat, npAccent = npAccent,
+                    onOpenSleep = { showSleepSheet = true }
+                )
             }
         }
     }
@@ -964,6 +419,748 @@ fun PlayerSurface(
             onCancelTimer = { vm.cancelSleepTimer(); showSleepSheet = false },
             onDismiss = { showSleepSheet = false }
         )
+    }
+}
+
+// ----------------------------------------------------------------------------
+//  The pieces of the surface, each its own function.
+//
+//  This was one lambda of ~750 lines, which compiles to one method. In 4.5
+//  HomeScaffold, grown the same way, needed more than 256 Dalvik registers
+//  (the verifier named v258); in that range R8 wrote a plain `move` for an
+//  object reference, ART rejected the whole class, and the release build
+//  crashed at launch. Debug builds do not go through R8 and never showed it.
+//  Small functions keep every method far below that range.
+// ----------------------------------------------------------------------------
+
+/**
+ * The pill's drag handling. The axis is locked once per drag; sideways skips,
+ * down on the docked pill dismisses it, vertical opens and closes Now Playing.
+ * Keyed on the surface size only, as before: the running gesture keeps the
+ * values it started with, and reads the callbacks through [latestExpanded] and
+ * [latestDismiss] so it always calls the newest ones.
+ */
+private fun Modifier.pillGestures(
+    heightPx: Float,
+    widthPx: Float,
+    swipePx: Float,
+    pillPx: Float,
+    lockPx: Float,
+    flingPx: Float,
+    dismissPx: Float,
+    expansion: Animatable<Float, AnimationVector1D>,
+    pillX: Animatable<Float, AnimationVector1D>,
+    pillY: Animatable<Float, AnimationVector1D>,
+    scope: CoroutineScope,
+    haptics: HapticFeedback,
+    vm: PlayerViewModel,
+    latestExpanded: State<(Boolean) -> Unit>,
+    latestDismiss: State<() -> Unit>
+): Modifier = pointerInput(heightPx, widthPx) {
+    var axis = 0            // 0 undecided, 1 sideways, 2 vertical
+    var startedOpen = false
+    var totalX = 0f
+    var totalY = 0f
+    val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
+    detectDragGestures(
+        onDragStart = {
+            axis = 0; totalX = 0f; totalY = 0f
+            startedOpen = expansion.value > 0.001f
+            tracker.resetTracking()
+        },
+        onDrag = { change, delta ->
+            change.consume()
+            tracker.addPosition(change.uptimeMillis, change.position)
+            totalX += delta.x
+            totalY += delta.y
+            if (axis == 0) {
+                axis = when {
+                    startedOpen -> 2
+                    abs(totalX) < lockPx && abs(totalY) < lockPx -> 0
+                    abs(totalX) > abs(totalY) -> 1
+                    else -> 2
+                }
+            }
+            when {
+                axis == 1 -> scope.launch { pillX.snapTo(totalX) }
+                // Pulling the docked pill down: it follows, and
+                // far enough lets it go.
+                axis == 2 && !startedOpen && totalY > 0f && expansion.value <= 0f ->
+                    scope.launch { pillY.snapTo(totalY) }
+                axis == 2 -> scope.launch {
+                    if (pillY.value != 0f) pillY.snapTo(0f)
+                    expansion.snapTo(
+                        (expansion.value - delta.y / heightPx * 1.6f).coerceIn(0f, 1f)
+                    )
+                }
+            }
+        },
+        onDragCancel = {
+            scope.launch { pillX.animateTo(0f, Motion.spatial()) }
+            scope.launch { pillY.animateTo(0f, Motion.spatial()) }
+            if (axis == 2) {
+                val target = if (expansion.value > 0.4f) 1f else 0f
+                scope.launch { expansion.animateTo(target, Motion.spatial()) }
+                latestExpanded.value(target == 1f)
+            }
+            axis = 0
+        },
+        onDragEnd = {
+            val v = tracker.calculateVelocity()
+            when {
+                axis == 1 -> {
+                    val flung = abs(v.x) > flingPx && (v.x > 0f) == (totalX > 0f)
+                    if (abs(totalX) > swipePx || flung) {
+                        // Right is the previous SONG, left the
+                        // next. Never a restart: that is what
+                        // the Previous button is for.
+                        val dir = if (totalX > 0f) 1f else -1f
+                        haptics.performHapticFeedback(
+                            androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress
+                        )
+                        scope.launch {
+                            pillX.animateTo(dir * widthPx * 0.45f, tween(Motion.Fast))
+                            if (dir > 0f) vm.previousTrack() else vm.next()
+                            // The new track arrives from the
+                            // other side.
+                            pillX.snapTo(-dir * widthPx * 0.22f)
+                            pillX.animateTo(0f, Motion.spatial())
+                        }
+                    } else {
+                        scope.launch { pillX.animateTo(0f, Motion.spatial()) }
+                    }
+                }
+                !startedOpen && pillY.value > 0f -> {
+                    if (pillY.value > dismissPx || v.y > flingPx) {
+                        haptics.performHapticFeedback(
+                            androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress
+                        )
+                        scope.launch {
+                            pillY.animateTo(pillPx * 2.5f, tween(Motion.Fast))
+                            latestDismiss.value()
+                            // If nothing was playing to stop,
+                            // the pill must not stay parked
+                            // off-screen.
+                            kotlinx.coroutines.delay(700)
+                            pillY.snapTo(0f)
+                        }
+                    } else {
+                        scope.launch { pillY.animateTo(0f, Motion.spatial()) }
+                    }
+                }
+                axis == 2 -> {
+                    // Always settle AND report - including a
+                    // drag that ended exactly closed.
+                    val target = when {
+                        v.y < -flingPx -> 1f
+                        v.y > flingPx -> 0f
+                        expansion.value > 0.4f -> 1f
+                        else -> 0f
+                    }
+                    scope.launch { expansion.animateTo(target, Motion.spatial()) }
+                    latestExpanded.value(target == 1f)
+                }
+            }
+            axis = 0
+        }
+    )
+}
+
+/** The light under the cover: living backdrop, ambient wash, beat rings, glow. */
+@Composable
+private fun BoxScope.PlayerLight(
+    e: Float,
+    q: QualityProfile,
+    isVideo: Boolean,
+    expanded: Boolean,
+    backdropItem: AppMediaItem?,
+    artColors: ArtColors?,
+    beat: BeatState,
+    ambient: Color,
+    glow: Color,
+    heightPx: Float,
+    artX: androidx.compose.ui.unit.Dp,
+    artY: androidx.compose.ui.unit.Dp,
+    artW: androidx.compose.ui.unit.Dp,
+    artH: androidx.compose.ui.unit.Dp
+) {
+    val density = LocalDensity.current
+    val ink = MediaColors.Ink
+    // The living backdrop: the cover itself, blurred into light,
+    // under everything. Fades in with expansion like the wash; how
+    // much it moves is the tier's call (Backdrop.kt).
+    if (e > 0.01f && q.livingBackdrop && !isVideo) {
+        LivingBackdrop(
+            item = backdropItem,
+            colors = artColors,
+            beat = beat,
+            reactive = q.reactiveLevel >= 2,
+            drift = q.backdropDrift && expanded,
+            turn = q.backdropTurn,
+            fieldPools = q.lightField,
+            grain = q.grain,
+            blur = q.backdropBlur,
+            modifier = Modifier.matchParentSize().clearAndSetSemantics { }
+                .graphicsLayer { alpha = e }
+        )
+    }
+    // §12/§4: ambient wash, strongest behind the artwork and gone by
+    // mid-screen. Fades in with expansion so the collapsed pill keeps
+    // its flat surface. Sits UNDER everything else.
+    if (e > 0.01f && q.ambientGradient) {
+        Box(
+            Modifier.matchParentSize().clearAndSetSemantics { }.background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        // Lighter over the living backdrop: it is
+                        // already coloured light, the wash only tints.
+                        ambient.copy(alpha = (if (q.livingBackdrop && !isVideo) 0.45f else 0.85f) * e),
+                        ambient.copy(alpha = (if (q.livingBackdrop && !isVideo) 0.12f else 0.30f) * e),
+                        ink.copy(alpha = 0f)
+                    ),
+                    // heightPx, not maxHeight: BoxWithConstraintsScope
+                    // isn't reachable as an implicit receiver from
+                    // inside the inner Box's BoxScope.
+                    endY = heightPx * 0.62f
+                )
+            )
+        )
+    }
+
+    // Bloom behind the artwork — grows and brightens on the beat.
+    // Drawn before the art so it reads as light spilling out from
+    // behind it rather than a ring stuck on top.
+    // Shockwave rings ride outside the bloom and are always mounted
+    // while expanded — they animate off their own birth timestamps.
+    if (e > 0.5f && q.reactiveLevel >= 2) {
+        // Full-size layer, centre computed from the artwork rather than
+        // from the Canvas. The old version sized its box to ~1.5x the
+        // screen and offset it negative, so Compose clamped it and the
+        // rings visibly originated from the right instead of the cover.
+        val cx = with(density) { (artX + artW / 2f).toPx() }
+        val cy = with(density) { (artY + artH / 2f).toPx() }
+        val r0 = with(density) { (minOf(artW, artH) / 2f).toPx() }
+        BeatRings(
+            beat = beat,
+            color = glow,
+            centerPx = Offset(cx, cy),
+            baseRadiusPx = r0,
+            strength = 1f,
+            modifier = Modifier.matchParentSize().clearAndSetSemantics { }
+        )
+    }
+    // Every tier glows: one radial gradient a frame is cheap, and it
+    // is what makes the cover feel lit rather than merely bouncing.
+    if (e > 0.35f && q.reactiveLevel >= 1 && !isVideo) {
+        // A Canvas, not a Box with a conditional background: `if
+        // (level > 0.01f)` was a COMPOSITION-level branch on a value
+        // that changes 60x/second, so this mounted and unmounted every
+        // frame. Reading beat.level inside the draw scope keeps the
+        // whole effect in the draw phase.
+        //
+        // There is always a little light behind the cover now, in the
+        // cover's own colour; the beat swells it.
+        val cxB = with(density) { (artX + artW / 2f).toPx() }
+        val cyB = with(density) { (artY + artH / 2f).toPx() }
+        val baseB = with(density) { minOf(artW, artH).toPx() }
+        val fade = ((e - 0.35f) / 0.65f).coerceIn(0f, 1f)
+        Canvas(Modifier.matchParentSize().clearAndSetSemantics { }) {
+            val lv = beat.level
+            val r = baseB * (0.58f + 0.30f * lv)
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        glow.copy(alpha = (0.24f + 0.76f * lv).coerceAtMost(1f) * fade),
+                        glow.copy(alpha = (0.08f + 0.34f * lv) * fade),
+                        Color.Transparent
+                    ),
+                    center = Offset(cxB, cyB),
+                    radius = r
+                ),
+                radius = r,
+                center = Offset(cxB, cyB)
+            )
+        }
+    }
+}
+
+/** The one artwork element that morphs from the pill's thumbnail to the hero cover. */
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+@Composable
+private fun PlayerArtwork(
+    e: Float,
+    q: QualityProfile,
+    isVideo: Boolean,
+    lyr: Float,
+    beat: BeatState,
+    tilt: Tilt,
+    glow: Color,
+    artX: androidx.compose.ui.unit.Dp,
+    artY: androidx.compose.ui.unit.Dp,
+    artW: androidx.compose.ui.unit.Dp,
+    artH: androidx.compose.ui.unit.Dp,
+    artCorner: androidx.compose.ui.unit.Dp,
+    artItem: AppMediaItem?,
+    reduced: Boolean,
+    videoSurface: Boolean,
+    vm: PlayerViewModel
+) {
+    val density = LocalDensity.current
+    // Outside the layer lambda: in there `density` would be the
+    // layer scope's own.
+    val tiltCamera = 14f * density.density
+    Box(
+        Modifier.offset(x = artX, y = artY).size(width = artW, height = artH)
+            // 10% at full level. With the punch curve the value sits
+            // near zero between hits, so this reads as a strike rather
+            // than a constant wobble.
+            .graphicsLayer {
+                // beat.level read HERE, inside the layer lambda: this
+                // re-runs on the draw pass only, never recomposing.
+                // 3%, not 10% - artwork that visibly grows reads as a
+                // bounce; the bloom and rings carry the beat.
+                val s = 1f + beat.level * 0.03f
+                scaleX = s; scaleY = s
+                // Gives way to the lyrics; the pill keeps its cover.
+                alpha = 1f - lyr * e
+                // Ultra: the cover tilts with the phone, a few
+                // degrees, only once it is the hero.
+                if (q.parallax) {
+                    val k = ((e - 0.5f) * 2f).coerceIn(0f, 1f)
+                    rotationY = tilt.x * 7f * k
+                    rotationX = -tilt.y * 7f * k
+                    cameraDistance = tiltCamera
+                }
+            }
+            // Depth grows as it expands: a pill needs almost none, the
+            // hero cover is the strongest thing on the screen.
+            .shadow(
+                elevation = lerpDp(Elevation.low, Elevation.high, e),
+                shape = RoundedCornerShape(artCorner),
+                clip = false,
+                // A coloured shadow reads as light under the cover on
+                // a dark room; black shadow on black is invisible.
+                ambientColor = if (isVideo) Color.Black else glow,
+                spotColor = if (isVideo) Color.Black else glow
+            )
+            .clip(RoundedCornerShape(artCorner))
+            // Light ON the cover: the parallax sheen, and on Ultra
+            // with Reactive artwork a flash that sweeps it on a hard
+            // hit. Drawn after the content, inside the clip.
+            .drawWithContent {
+                drawContent()
+                if (e > 0.5f && !isVideo && (q.parallax || q.reactiveLevel >= 3)) {
+                    val hit = beat.lastHitNanos
+                    val since = beat.frameNanos - hit
+                    val flash = if (q.reactiveLevel >= 3 && hit != 0L && since in 0..FLASH_NS) {
+                        val f = 1f - since / FLASH_NS.toFloat()
+                        f * f * beat.lastHitPower
+                    } else 0f
+                    val k = ((e - 0.5f) * 2f).coerceIn(0f, 1f)
+                    drawCoverLight(
+                        tiltX = tilt.x * k, tiltY = tilt.y * k,
+                        sheen = q.parallax,
+                        flash = flash * k,
+                        flashPos = (since / FLASH_NS.toFloat()).coerceIn(0f, 1f)
+                    )
+                }
+            }
+    ) {
+        // §12: track changes cross-dissolve with a scale drift. Artwork
+        // is never abruptly swapped.
+        AnimatedContent(
+            targetState = artItem,
+            transitionSpec = {
+                if (reduced) {
+                    fadeIn(tween(0)) togetherWith fadeOut(tween(0))
+                } else {
+                    (fadeIn(tween(Motion.Standard)) +
+                        scaleIn(initialScale = 1.08f, animationSpec = tween(Motion.Standard))) togetherWith
+                        (fadeOut(tween(Motion.Standard)) +
+                            scaleOut(targetScale = 0.94f, animationSpec = tween(Motion.Standard)))
+                }
+            },
+            label = "artwork"
+        ) { item ->
+            when {
+                // Video renders INSIDE the morphing box, so it scales
+                // and travels with everything else. factory runs once,
+                // so the surface is never recreated mid-animation.
+                isVideo && videoSurface -> AndroidView(
+                    factory = { ctx ->
+                        PlayerView(ctx).apply {
+                            useController = false
+                            setBackgroundColor(android.graphics.Color.BLACK)
+                            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                        }
+                    },
+                    update = { it.player = vm.boundPlayer() },
+                    // Hand the surface back explicitly instead of
+                    // letting surfaceDestroyed null the output.
+                    onRelease = { it.player = null },
+                    modifier = Modifier.fillMaxSize()
+                )
+                item != null -> CoverArt(
+                    item, Modifier.fillMaxSize(), corner = 0,
+                    targetPx = if (e > 0.5f) 768 else 144
+                )
+                else -> Box(Modifier.fillMaxSize().background(MediaColors.Ink))
+            }
+        }
+    }
+}
+
+/** The docked pill's title, play control and progress line. */
+@Composable
+private fun BoxScope.MiniChrome(
+    miniAlpha: Float,
+    state: PlayerState,
+    darkTheme: Boolean,
+    vm: PlayerViewModel
+) {
+    // Mirror-symmetric. The artwork sits 8dp in from the left; the
+    // play control's centre now sits exactly as far in from the
+    // right as the artwork's does from the left. Before, the 26dp
+    // icon was padded 16dp AND grown to a 48dp touch box, so its
+    // visible edge stood ~27dp in against the art's 8dp and the
+    // whole pill read as shifted left.
+    val inset = MINI_INSET.dp
+    Row(
+        Modifier.fillMaxWidth().height(MINI_HEIGHT.dp)
+            .padding(start = (MINI_INSET + MINI_ART + 12).dp, end = inset - 2.dp)
+            .alpha(miniAlpha),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(state.currentTitle, style = Typo.Primary, color = MediaColors.Cream,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(state.currentArtist, style = Typo.Secondary, color = MediaColors.CreamDim,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Spacer(Modifier.width(Space.sm))
+        // Matching CENTRES was not enough. Measured on a Redmi
+        // 10C the outer margins were equal to the pixel, but the
+        // artwork is a solid 44dp block 8dp from the left edge and
+        // a bare pause glyph is ~12dp wide with ~22dp of air to its
+        // right - the eye reads visible edges, so the pill looked
+        // tight on the left and loose on the right. The control now
+        // has a visible 44dp disc, the artwork's exact size, whose
+        // edge sits the same 8dp from the right: a true mirror.
+        // The 48dp touch box with end padding inset - 2dp puts the
+        // 44dp disc's edge at exactly `inset`.
+        Box(
+            Modifier.size(48.dp).clip(CircleShape)
+                .pressScale(haptic = true) { vm.togglePlayPause() },
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                Modifier.size(MINI_ART.dp).clip(CircleShape)
+                    .background(
+                        if (darkTheme) Color.White.copy(alpha = 0.09f)
+                        else Color.Black.copy(alpha = 0.06f)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                PlayPauseIcon(
+                    playing = state.isPlaying, tint = MediaColors.Cream,
+                    contentDescription = "Play/Pause",
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+    }
+    // §11: a thin progress line along the bottom edge, inset to
+    // where the capsule's curve allows it. Edge to edge, the round
+    // ends clipped it to a stub that started off-centre.
+    val prog = if (state.durationMs > 0)
+        (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f) else 0f
+    // Read the colours HERE: MediaColors.* are @Composable getters
+    // and the DrawScope lambda is not a composable context.
+    val accent = MediaColors.Accent
+    Canvas(
+        Modifier.fillMaxWidth().height(2.dp)
+            .align(Alignment.BottomCenter)
+            .padding(horizontal = 22.dp)
+            .offset(y = (-3).dp)
+            .alpha(miniAlpha)
+    ) {
+        // Progress only - no grey track behind it.
+        val y = size.height / 2
+        if (prog > 0f) drawLine(
+            color = accent,
+            start = Offset(0f, y),
+            end = Offset(size.width * prog, y),
+            strokeWidth = size.height, cap = StrokeCap.Round
+        )
+    }
+}
+
+/** Now Playing's top bar: collapse, video controls, lyrics, EQ, queue. */
+@Composable
+private fun NowPlayingTopBar(
+    state: PlayerState,
+    fullAlpha: Float,
+    showLyrics: Boolean,
+    onCollapse: () -> Unit,
+    onFullscreen: () -> Unit,
+    onToggleLyrics: () -> Unit,
+    onOpenSound: () -> Unit,
+    onOpenQueue: () -> Unit
+) {
+    Row(
+        Modifier.fillMaxWidth().statusBarsPadding()
+            .padding(Space.sm, Space.sm).alpha(fullAlpha),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            Icons.Filled.KeyboardArrowDown, "Collapse", tint = MediaColors.Cream,
+            modifier = Modifier.size(28.dp).pressScale { onCollapse() }
+        )
+        Spacer(Modifier.weight(1f))
+        Text("Now playing", style = Typo.Tertiary, color = MediaColors.CreamDim)
+        Spacer(Modifier.weight(1f))
+        // PiP only exists for video, and only where the device
+        // supports it - no dead button on an audio track.
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        if (state.isVideo) {
+            Icon(
+                Icons.Filled.Fullscreen, "Fullscreen", tint = MediaColors.Cream,
+                modifier = Modifier.size(26.dp)
+                    .pressScale(haptic = true, onClick = onFullscreen)
+            )
+            Spacer(Modifier.width(Space.md))
+        }
+        if (state.isVideo && Pip.isSupported(ctx)) {
+            Icon(
+                Icons.Filled.PictureInPictureAlt, "Picture in picture",
+                tint = MediaColors.Cream,
+                modifier = Modifier.size(26.dp).pressScale(haptic = true) {
+                    (ctx as? android.app.Activity)?.let {
+                        Pip.enter(it, state.videoWidth, state.videoHeight)
+                    }
+                }
+            )
+            Spacer(Modifier.width(Space.md))
+        }
+        // Video has no favourites concept here and the row is
+        // already carrying fullscreen + PiP.
+        if (!state.isVideo) {
+            Icon(
+                Icons.Filled.Lyrics, if (showLyrics) "Hide lyrics" else "Lyrics",
+                tint = if (showLyrics) MediaColors.Accent else MediaColors.Cream,
+                modifier = Modifier.size(24.dp).pressScale(haptic = true) { onToggleLyrics() }
+            )
+            Spacer(Modifier.width(Space.md))
+            // The Sound screen, one tap from what is playing.
+            // Accent while the EQ is on, like shuffle and repeat.
+            val eqOn = SoundEngine.settings.collectAsState().value.eqEnabled
+            Icon(
+                Icons.Filled.Equalizer, "Equalizer",
+                tint = if (eqOn) MediaColors.Accent else MediaColors.Cream,
+                modifier = Modifier.size(24.dp).pressScale(haptic = true, onClick = onOpenSound)
+            )
+            Spacer(Modifier.width(Space.md))
+        }
+        Icon(
+            Icons.AutoMirrored.Filled.QueueMusic, "Queue", tint = MediaColors.Cream,
+            modifier = Modifier.size(28.dp).pressScale(haptic = true) { onOpenQueue() }
+        )
+    }
+}
+
+/** Everything under the artwork: the sung line, title, scrubber, transport. */
+@Composable
+private fun BoxScope.NowPlayingControls(
+    fullAlpha: Float,
+    state: PlayerState,
+    vm: PlayerViewModel,
+    controlsPx: MutableState<Int>,
+    previewLyrics: LyricsState?,
+    previewOffset: Long,
+    showLyrics: Boolean,
+    onOpenLyrics: () -> Unit,
+    titleShadow: Shadow?,
+    source: SourceFormat?,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
+    onOpenAudioPath: () -> Unit,
+    envelope: FloatArray?,
+    beat: BeatState,
+    npAccent: Color,
+    onOpenSleep: () -> Unit
+) {
+    Column(
+        // Measured BEFORE the nav-bar padding. Measured after it,
+        // controlsPx left out the nav bar's height, the lyrics
+        // panel ran that far too low, and its Synced / offset row
+        // sat on top of the title and the heart.
+        Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+            .onSizeChanged { controlsPx.value = it.height }
+            .navigationBarsPadding().alpha(fullAlpha)
+    ) {
+        // The line being sung, under the artwork, the way Spotify
+        // shows it. Only for real synced lyrics, and hidden while
+        // the full lyrics are open. Tap opens them.
+        val nowLine = remember(previewLyrics, state.positionMs, previewOffset) {
+            (previewLyrics as? LyricsState.Synced)?.lines?.let { lines ->
+                Lrc.activeIndex(lines, state.positionMs, previewOffset)
+                    .takeIf { it >= 0 }?.let { lines[it].text }
+            }
+        }
+        if (!state.isVideo && !showLyrics && previewLyrics is LyricsState.Synced) {
+            androidx.compose.animation.AnimatedContent(
+                targetState = nowLine.orEmpty(),
+                transitionSpec = {
+                    (fadeIn(tween(Motion.Standard)) togetherWith fadeOut(tween(Motion.Fast)))
+                },
+                label = "lyricLine",
+                modifier = Modifier.fillMaxWidth()
+                    .padding(start = Space.xl, end = Space.xl, bottom = Space.md)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { onOpenLyrics() }
+            ) { line ->
+                Text(
+                    line.ifBlank { "\u266A" },
+                    style = Typo.Primary.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
+                    color = MediaColors.Cream,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        NowPlayingTitle(
+            state = state, showLyrics = showLyrics, titleShadow = titleShadow, source = source,
+            isFavorite = isFavorite, onToggleFavorite = onToggleFavorite,
+            onOpenAudioPath = onOpenAudioPath
+        )
+
+        if (state.durationMs > 0) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = Space.xl)) {
+                Scrubber(
+                    positionMs = state.positionMs,
+                    durationMs = state.durationMs,
+                    onSeek = { vm.seekTo(it) },
+                    envelope = envelope,
+                    beat = beat,
+                    activeColor = npAccent
+                )
+                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                    Text(fmtClock(state.positionMs), style = Typo.Tertiary,
+                        color = MediaColors.CreamFaint)
+                    Text(fmtClock(state.durationMs), style = Typo.Tertiary,
+                        color = MediaColors.CreamFaint)
+                }
+            }
+        }
+
+        NowPlayingTransport(state = state, vm = vm, onOpenSleep = onOpenSleep)
+    }
+}
+
+/** Title, artist, the heart, and the source badge. */
+@Composable
+private fun NowPlayingTitle(
+    state: PlayerState,
+    showLyrics: Boolean,
+    titleShadow: Shadow?,
+    source: SourceFormat?,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
+    onOpenAudioPath: () -> Unit
+) {
+    Column(Modifier.fillMaxWidth().padding(Space.xl, 0.dp, Space.xl, Space.md)) {
+        // Heart beside the title, under the art: where the
+        // thumb is, not up in the top bar.
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(state.currentTitle, style = Typo.Section.copy(shadow = titleShadow), color = MediaColors.Cream,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(state.currentArtist, style = Typo.Body.copy(shadow = titleShadow), color = MediaColors.CreamDim,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            // Not over lyrics: the words are the subject there,
+            // and a heart beside them is clutter.
+            if (!state.isVideo && !showLyrics) {
+                Spacer(Modifier.width(Space.md))
+                FavoriteButton(isFavorite, Modifier.size(28.dp), onToggleFavorite)
+            }
+        }
+        // What the file really is, quietly. Tap for the whole
+        // path from file to headphones.
+        source?.badge?.let { badge ->
+            Text(
+                if (source?.hiRes == true) "Hi-Res \u00b7 $badge" else badge,
+                style = Typo.Tertiary,
+                color = if (source?.hiRes == true) MediaColors.Accent else MediaColors.CreamFaint,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                // Plain click: pressScale's 48dp minimum would
+                // push the transport down by a whole row.
+                modifier = Modifier.padding(top = Space.xxs)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onOpenAudioPath
+                    )
+            )
+        }
+    }
+}
+
+/** Previous / play / next, then shuffle, repeat, speed and the sleep timer. */
+@Composable
+private fun NowPlayingTransport(
+    state: PlayerState,
+    vm: PlayerViewModel,
+    onOpenSleep: () -> Unit
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(Space.xl, Space.md),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(Icons.Filled.SkipPrevious, "Previous", tint = MediaColors.Cream,
+            modifier = Modifier.size(34.dp).pressScale(haptic = true) { vm.previous() })
+        Box(
+            Modifier.size(64.dp).clip(CircleShape).background(MediaColors.Cream)
+                .pressScale(scaleDown = 0.92f, haptic = true) { vm.togglePlayPause() },
+            contentAlignment = Alignment.Center
+        ) {
+            PlayPauseIcon(state.isPlaying, MediaColors.OnInverse,
+                Modifier.size(34.dp), "Play/Pause")
+        }
+        Icon(Icons.Filled.SkipNext, "Next", tint = MediaColors.Cream,
+            modifier = Modifier.size(34.dp).pressScale(haptic = true) { vm.next() })
+    }
+
+    Row(
+        Modifier.fillMaxWidth().padding(Space.xl, 0.dp, Space.xl, Space.xl),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(Icons.Filled.Shuffle, "Shuffle",
+            tint = if (state.shuffle) MediaColors.Accent else MediaColors.CreamDim,
+            modifier = Modifier.size(IconSize.lg).pressScale(haptic = true) { vm.toggleShuffle() })
+        Icon(
+            if (state.repeatMode == 1) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
+            "Repeat",
+            tint = if (state.repeatMode != 0) MediaColors.Accent else MediaColors.CreamDim,
+            modifier = Modifier.size(IconSize.lg).pressScale(haptic = true) { vm.cycleRepeat() }
+        )
+        Text(
+            "${state.speed}x".replace(".0x", "x"), style = Typo.Primary,
+            color = if (state.speed != 1.0f) MediaColors.Accent else MediaColors.CreamDim,
+            modifier = Modifier.pressScale(haptic = true) { vm.cycleSpeed() }
+        )
+        if (state.sleepActive && !state.sleepEndOfTrack) {
+            Text(fmtClock(state.sleepRemainingMs), style = Typo.Primary,
+                color = MediaColors.Accent,
+                modifier = Modifier.pressScale { onOpenSleep() })
+        } else {
+            Icon(Icons.Filled.Bedtime, "Sleep timer",
+                tint = if (state.sleepActive) MediaColors.Accent else MediaColors.CreamDim,
+                modifier = Modifier.size(IconSize.lg).pressScale { onOpenSleep() })
+        }
     }
 }
 
