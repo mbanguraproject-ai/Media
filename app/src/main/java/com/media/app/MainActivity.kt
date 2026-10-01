@@ -93,6 +93,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
@@ -416,16 +417,124 @@ private fun PermissionGate(
 private val BottomBarHeight = 64.dp
 private val MiniPlayerGap = 12.dp
 
+/**
+ * Every screen, sheet and selection the home scaffold can show, in one
+ * holder.
+ *
+ * WHY THIS EXISTS. HomeScaffold was one composable of ~900 lines holding all
+ * of this as separate remembered states, with every screen, sheet and the
+ * player inlined into it. Compiled, that was a single method needing more
+ * than 256 registers, and past that limit the compiler moved an object
+ * reference with a plain `move`. Android's verifier rejects that outright -
+ * "copy-cat1 v0<-v258 type=Reference: AppMediaItem" - so 4.5 crashed on
+ * launch. The build that crashed was unminified (its trace keeps real names
+ * and line numbers), and unminified DEX keeps every local alive for the
+ * debugger, so it needs far more registers than R8's release output of the
+ * same code. The state now lives here and each part of the screen is its
+ * own composable, so no method comes near the limit in either build.
+ * Behaviour is unchanged: these are the same mutableStateOf values, just
+ * held together.
+ */
+@Stable
+class HomeNav {
+    var showPlayer by mutableStateOf(false)
+    // Aura Share. Held at this level because the header opens it, the back
+    // handler closes it, and the video feed has to know it is open - a sheet
+    // over Home counts as an overlay, so the surface goes back to the pill.
+    var showShare by mutableStateOf(false)
+    // How many feed cards currently hold the one video surface (see
+    // HomeScaffold).
+    var feedSurfaceOwners by mutableStateOf(0)
+    var showSearch by mutableStateOf(false)
+    var showSettings by mutableStateOf(false)
+    var showLibrary by mutableStateOf(false)
+    var openAlbum by mutableStateOf<Album?>(null)
+    var openArtist by mutableStateOf<Artist?>(null)
+    var libraryPillar by mutableStateOf<Pillar?>(null)
+    var currentTab by mutableStateOf(0)
+    var showPlaylists by mutableStateOf(false)
+    var openPlaylist by mutableStateOf<Playlist?>(null)
+    var videoFullscreen by mutableStateOf(false)
+    var addToItem by mutableStateOf<AppMediaItem?>(null)
+    var showTerms by mutableStateOf(false)
+    var showAbout by mutableStateOf(false)
+    // Bumping it (rescan) re-runs the MediaStore scan.
+    var reloadKey by mutableStateOf(0)
+    var editItem by mutableStateOf<AppMediaItem?>(null)
+    // Enrichment overlays: the artwork fixer, track details, the audio path
+    // and the Sound screen.
+    var detailsItem by mutableStateOf<AppMediaItem?>(null)
+    var artworkItem by mutableStateOf<AppMediaItem?>(null)
+    var showAudioPath by mutableStateOf(false)
+    var showSound by mutableStateOf(false)
+    var homePillar by mutableStateOf(Pillar.MUSIC)
+    var adsReady by mutableStateOf(false)
+    var playerHidden by mutableStateOf(false)
+    var playerWasOpen by mutableStateOf(false)
+
+    val anyOverlay: Boolean
+        get() = showSound || artworkItem != null || detailsItem != null || showAudioPath ||
+            addToItem != null || editItem != null || showTerms || showAbout ||
+            showPlayer || showSearch || showSettings || openPlaylist != null ||
+            showPlaylists || openAlbum != null || openArtist != null || showLibrary ||
+            showShare
+
+    // Android back: ONE handler with an explicit priority order, topmost first.
+    // This was a chain of nine BackHandlers whose enabled-guards had to be kept
+    // mutually exclusive by hand — and Terms/About had no handler at all, so
+    // back exited the app instead of closing them. Returning from a tab screen
+    // also resets currentTab so the nav highlight doesn't lie.
+    fun back() {
+        when {
+            showSound -> showSound = false
+            artworkItem != null -> artworkItem = null
+            detailsItem != null -> detailsItem = null
+            showAudioPath -> showAudioPath = false
+            showShare -> showShare = false
+            addToItem != null -> addToItem = null
+            editItem != null -> editItem = null
+            showTerms -> showTerms = false
+            showAbout -> showAbout = false
+            showPlayer -> showPlayer = false
+            showSearch -> { showSearch = false; currentTab = 0 }
+            showSettings -> { showSettings = false; currentTab = 0 }
+            openPlaylist != null -> openPlaylist = null
+            openAlbum != null -> openAlbum = null
+            openArtist != null -> openArtist = null
+            showPlaylists -> { showPlaylists = false; currentTab = 0 }
+            showLibrary -> { showLibrary = false; libraryPillar = null; currentTab = 0 }
+        }
+    }
+}
+
+/**
+ * The library and the views derived from it, as the scaffold's parts read
+ * them. Built in HomeScaffold from the same flows as before.
+ */
+class HomeLibrary(
+    val allAudio: List<AppMediaItem>,
+    val allVideo: List<AppMediaItem>,
+    val videoCount: Int,
+    val music: List<AppMediaItem>,
+    val allById: Map<Long, AppMediaItem>,
+    val albums: List<Album>,
+    val artists: List<Artist>,
+    val favorites: Set<Long>,
+    val playlists: List<Playlist>,
+    val playlistMembers: List<PlaylistMember>,
+    val moodMembers: List<MoodMember>,
+    val moodCounts: Map<String, Int>,
+    val overrides: Map<Long, MediaOverride>,
+    val lastPlayed: Map<Long, Long>,
+    val playCounts: Map<Long, Int>
+)
+
 @UnstableApi
 @Composable
 fun HomeScaffold(vm: PlayerViewModel) {
     val context = LocalContext.current
     val state by vm.state.collectAsState()
-    var showPlayer by remember { mutableStateOf(false) }
-    // Aura Share. Held at this level because the header opens it, the back
-    // handler closes it, and the video feed has to know it is open - a sheet
-    // over Home counts as an overlay, so the surface goes back to the pill.
-    var showShare by remember { mutableStateOf(false) }
+    val nav = remember { HomeNav() }
     val shareState by ShareSession.state.collectAsState()
     // Once per context. remember must hold a value, so it holds the context.
     remember(context) { ShareSession.attach(context); context }
@@ -441,30 +550,11 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // surface the mini-player is not composed at all, and the moment the card
     // lets go - scrolled away, an overlay opened, the full player opened - it
     // comes back and takes over.
-    var feedSurfaceOwners by remember { mutableStateOf(0) }
-    val feedVideoLive = feedSurfaceOwners > 0
-    var showSearch by remember { mutableStateOf(false) }
-    var showSettings by remember { mutableStateOf(false) }
-    var showLibrary by remember { mutableStateOf(false) }
-    var openAlbum by remember { mutableStateOf<Album?>(null) }
-    var openArtist by remember { mutableStateOf<Artist?>(null) }
-    var libraryPillar by remember { mutableStateOf<Pillar?>(null) }
-    var currentTab by remember { mutableStateOf(0) }
-    var showPlaylists by remember { mutableStateOf(false) }
-    var openPlaylist by remember { mutableStateOf<Playlist?>(null) }
-    var videoFullscreen by remember { mutableStateOf(false) }
-    var addToItem by remember { mutableStateOf<AppMediaItem?>(null) }
-    var showTerms by remember { mutableStateOf(false) }
-    var showAbout by remember { mutableStateOf(false) }
-    var reloadKey by remember { mutableStateOf(0) }
+    val feedVideoLive = nav.feedSurfaceOwners > 0
 
     val db = remember { OverrideDatabase.get(context) }
     val scope = rememberCoroutineScope()
     val settings by SettingsStore.flow(context).collectAsState(initial = MediaSettings())
-
-    val recentHistory by remember {
-        db.historyDao().observeRecent(10)
-    }.collectAsState(initial = emptyList())
 
     // Record a play (after 5s) into history; upsert = auto-dedup + move to front by timestamp.
     LaunchedEffect(Unit) {
@@ -477,11 +567,10 @@ fun HomeScaffold(vm: PlayerViewModel) {
     }
     // The review card, if it is due, at a natural pause: Now Playing just
     // closed. Never while something is being looked at or adjusted.
-    var playerWasOpen by remember { mutableStateOf(false) }
-    LaunchedEffect(showPlayer) {
-        if (showPlayer) { playerWasOpen = true; return@LaunchedEffect }
-        if (playerWasOpen) {
-            playerWasOpen = false
+    LaunchedEffect(nav.showPlayer) {
+        if (nav.showPlayer) { nav.playerWasOpen = true; return@LaunchedEffect }
+        if (nav.playerWasOpen) {
+            nav.playerWasOpen = false
             kotlinx.coroutines.delay(600)   // let the collapse finish first
             (context as? android.app.Activity)?.let { InAppReview.maybeAsk(it) }
         }
@@ -506,7 +595,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
     var rawAudio by remember { mutableStateOf<List<AppMediaItem>>(emptyList()) }
     var video by remember { mutableStateOf<List<AppMediaItem>>(emptyList()) }
     var scanning by remember { mutableStateOf(true) }
-    LaunchedEffect(reloadKey) {
+    LaunchedEffect(nav.reloadKey) {
         scanning = true
         rawAudio = MediaRepository.loadAudio(context)
         video = MediaRepository.loadVideo(context)
@@ -551,25 +640,12 @@ fun HomeScaffold(vm: PlayerViewModel) {
     val playlists by remember { db.playlistDao().observePlaylists() }.collectAsState(initial = emptyList())
     val allPlaylistMembers by remember { db.playlistDao().observeAllMembers() }.collectAsState(initial = emptyList())
 
-    // Edit sheet state
-    var editItem by remember { mutableStateOf<AppMediaItem?>(null) }
-    // Enrichment overlays: the artwork fixer, track details, the audio path
-    // and the Sound screen.
-    var detailsItem by remember { mutableStateOf<AppMediaItem?>(null) }
-    var artworkItem by remember { mutableStateOf<AppMediaItem?>(null) }
-    var showAudioPath by remember { mutableStateOf(false) }
-    var showSound by remember { mutableStateOf(false) }
-
-    // ---- beat pulse: ONE driver, shared by the player and Home ----
-    // Runs whenever something is playing, not just when the player is open,
-    // because the playing card on Home consumes the same level.
     val allById = remember(allAudio, allVideo) { (allAudio + allVideo).associateBy { it.id } }
     // Consent first, SDK second. Kicked off once, after the permission gate,
     // so it never lands on top of onboarding.
     // Entitlement: cached value seeds the flow so no ad can flash before Play
     // answers; Billing then confirms, restores or revokes it.
     val cachedAdFree by SettingsStore.adFreeFlow(context).collectAsState(initial = true)
-    val adFree by Billing.adFree.collectAsState()
     LaunchedEffect(cachedAdFree) { Billing.seed(cachedAdFree) }
     LaunchedEffect(Unit) {
         Billing.start(context) { owned ->
@@ -577,13 +653,15 @@ fun HomeScaffold(vm: PlayerViewModel) {
         }
     }
 
-    var adsReady by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         (context as? android.app.Activity)?.let { act ->
-            Ads.startConsentThenInit(act) { adsReady = true }
+            Ads.startConsentThenInit(act) { nav.adsReady = true }
         }
     }
 
+    // ---- beat pulse: ONE driver, shared by the player and Home ----
+    // Runs whenever something is playing, not just when the player is open,
+    // because the playing card on Home consumes the same level.
     val playingItem = rememberArtItem(state)
     // Video never pulses: the artwork box holds a PlayerView, so scaling and
     // blooming it distorts the picture. Passing null also skips the decode
@@ -640,7 +718,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
     KeepScreenOnWhileVideo(state.isVideo, state.isPlaying)
     val inPip = LocalInPip.current
     val pipActivity = context as? android.app.Activity
-    LaunchedEffect(state.isVideo) { if (!state.isVideo) videoFullscreen = false }
+    LaunchedEffect(state.isVideo) { if (!state.isVideo) nav.videoFullscreen = false }
     // Runs for audio TOO, so auto-enter is switched back off when video ends.
     LaunchedEffect(state.videoWidth, state.videoHeight, state.isVideo) {
         pipActivity?.let {
@@ -648,8 +726,8 @@ fun HomeScaffold(vm: PlayerViewModel) {
         }
     }
     // Landscape fullscreen owns the screen outright: no scaffold, no chrome.
-    if (videoFullscreen && state.isVideo && !inPip) {
-        FullscreenVideo(state = state, vm = vm, onExit = { videoFullscreen = false })
+    if (nav.videoFullscreen && state.isVideo && !inPip) {
+        FullscreenVideo(state = state, vm = vm, onExit = { nav.videoFullscreen = false })
         return
     }
     if (inPip) {
@@ -674,6 +752,13 @@ fun HomeScaffold(vm: PlayerViewModel) {
         )
         return
     }
+    // homePillar and playerHidden used to be declared here, after the early
+    // returns, so fullscreen video, PiP and the first-scan reveal discarded
+    // them and Home came back on Music with the mini-player showing. They
+    // live in HomeNav now; this keeps that lifetime exactly.
+    DisposableEffect(nav) {
+        onDispose { nav.homePillar = Pillar.MUSIC; nav.playerHidden = false }
+    }
 
     // The pillars, at the top level instead of two screens down.
     val byPillar = remember(allAudio, allVideo) { (allAudio + allVideo).groupBy { it.pillar } }
@@ -682,22 +767,12 @@ fun HomeScaffold(vm: PlayerViewModel) {
                Pillar.AUDIOBOOK, Pillar.RECORDING)
             .filter { !byPillar[it].isNullOrEmpty() }
     }
-    var homePillar by remember { mutableStateOf(Pillar.MUSIC) }
     // A rescan can empty the pillar you were standing on.
     LaunchedEffect(pillars) {
-        if (pillars.isNotEmpty() && homePillar !in pillars) homePillar = pillars.first()
+        if (pillars.isNotEmpty() && nav.homePillar !in pillars) nav.homePillar = pillars.first()
     }
 
-    // Android back: ONE handler with an explicit priority order, topmost first.
-    // This was a chain of nine BackHandlers whose enabled-guards had to be kept
-    // mutually exclusive by hand — and Terms/About had no handler at all, so
-    // back exited the app instead of closing them. Returning from a tab screen
-    // also resets currentTab so the nav highlight doesn't lie.
-    val anyOverlay = showSound || artworkItem != null || detailsItem != null || showAudioPath ||
-        addToItem != null || editItem != null || showTerms || showAbout ||
-        showPlayer || showSearch || showSettings || openPlaylist != null ||
-        showPlaylists || openAlbum != null || openArtist != null || showLibrary ||
-        showShare
+    val anyOverlay = nav.anyOverlay
 
     // WHO MAY HOLD THE VIDEO SURFACE - decided here, in composition, before
     // either PlayerView is built.
@@ -712,32 +787,68 @@ fun HomeScaffold(vm: PlayerViewModel) {
     //
     // This is plain derived state, so it is already true on the frame the
     // video becomes current and the mini-player simply never attaches.
-    val feedOwnsVideo = state.isVideo && homePillar == Pillar.VIDEO && !anyOverlay
-    BackHandler(enabled = anyOverlay) {
-        when {
-            showSound -> showSound = false
-            artworkItem != null -> artworkItem = null
-            detailsItem != null -> detailsItem = null
-            showAudioPath -> showAudioPath = false
-            showShare -> showShare = false
-            addToItem != null -> addToItem = null
-            editItem != null -> editItem = null
-            showTerms -> showTerms = false
-            showAbout -> showAbout = false
-            showPlayer -> showPlayer = false
-            showSearch -> { showSearch = false; currentTab = 0 }
-            showSettings -> { showSettings = false; currentTab = 0 }
-            openPlaylist != null -> openPlaylist = null
-            openAlbum != null -> openAlbum = null
-            openArtist != null -> openArtist = null
-            showPlaylists -> { showPlaylists = false; currentTab = 0 }
-            showLibrary -> { showLibrary = false; libraryPillar = null; currentTab = 0 }
-        }
-    }
+    val feedOwnsVideo = state.isVideo && nav.homePillar == Pillar.VIDEO && !anyOverlay
+    BackHandler(enabled = anyOverlay) { nav.back() }
+
+    val lib = HomeLibrary(
+        allAudio = allAudio, allVideo = allVideo, videoCount = video.size, music = music,
+        allById = allById, albums = albumsAll, artists = artistsAll, favorites = favorites,
+        playlists = playlists, playlistMembers = allPlaylistMembers, moodMembers = allMoodMembers,
+        moodCounts = moodCounts, overrides = overrides, lastPlayed = lastPlayedMap, playCounts = playCountMap
+    )
 
     // Outer container: home + all overlays render inside; the mini-player and
-    // bottom nav sit at the end so they PERSIST above every screen.
+    // bottom nav sit at the end so they PERSIST above every screen. The parts
+    // are drawn in exactly the order they were when they were all inline.
     Box(Modifier.fillMaxSize()) {
+        HomeFeed(
+            nav = nav, lib = lib, state = state, vm = vm, db = db, scope = scope,
+            mood = mood, setMood = setMood, moodMembers = moodMembers, byPillar = byPillar,
+            pillars = pillars, positions = positions, scanning = scanning,
+            sharing = shareState.sharing, feedOwnsVideo = feedOwnsVideo
+        )
+        HomeScreens(
+            nav = nav, lib = lib, state = state, vm = vm, db = db, scope = scope,
+            settings = settings, setMood = setMood
+        )
+        HomeDetails(nav = nav, lib = lib, state = state, vm = vm, db = db, scope = scope)
+        HomeChrome(nav = nav, state = state, vm = vm)
+        HomePlayer(
+            nav = nav, lib = lib, state = state, vm = vm, db = db, scope = scope,
+            playingItem = playingItem, libraryPlaying = libraryPlaying, beat = beat,
+            envelope = envelope, feedOwnsVideo = feedOwnsVideo, feedVideoLive = feedVideoLive,
+            onlineLookups = onlineLookups, reactiveArtOn = reactiveArtOn, sharing = shareState.sharing
+        )
+        HomeSheets(
+            nav = nav, lib = lib, state = state, vm = vm, db = db, scope = scope,
+            onlineLookups = onlineLookups, artScope = artScope,
+            playingItem = playingItem, libraryPlaying = libraryPlaying
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
+//  The scaffold's parts. Each was a stretch of HomeScaffold, moved here as is.
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun HomeFeed(
+    nav: HomeNav,
+    lib: HomeLibrary,
+    state: PlayerState,
+    vm: PlayerViewModel,
+    db: OverrideDatabase,
+    scope: CoroutineScope,
+    mood: Mood,
+    setMood: (Mood) -> Unit,
+    moodMembers: Set<Long>,
+    byPillar: Map<Pillar, List<AppMediaItem>>,
+    pillars: List<Pillar>,
+    positions: Map<Long, PlaybackPosition>,
+    scanning: Boolean,
+    sharing: Boolean,
+    feedOwnsVideo: Boolean
+) {
     Box(Modifier.fillMaxSize().background(moodBackground())) {
         // Bottom inset = real nav-bar inset + chrome offset (bottom bar + mini-
         // player), so the last shelf always clears the chrome on any device
@@ -749,13 +860,13 @@ fun HomeScaffold(vm: PlayerViewModel) {
         var homeSort by remember { mutableStateOf(SortKey.NAME) }
 
         val shown = remember(
-            byPillar, homePillar, mood, moodMembers, homeSort, lastPlayedMap, playCountMap
+            byPillar, nav.homePillar, mood, moodMembers, homeSort, lib.lastPlayed, lib.playCounts
         ) {
-            val inPillar = byPillar[homePillar].orEmpty()
+            val inPillar = byPillar[nav.homePillar].orEmpty()
             // Moods are a music idea. They never filter video or spoken word.
-            val base = if (homePillar == Pillar.MUSIC && mood.holdsSongs)
+            val base = if (nav.homePillar == Pillar.MUSIC && mood.holdsSongs)
                 inPillar.filter { moodMembers.contains(it.id) } else inPillar
-            base.sortedFor(homeSort, lastPlayedMap, playCountMap)
+            base.sortedFor(homeSort, lib.lastPlayed, lib.playCounts)
         }
 
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -765,12 +876,12 @@ fun HomeScaffold(vm: PlayerViewModel) {
             val homeListState = rememberLazyListState()
 
             StashHeader(
-                onSearch = { showSearch = true },
-                sharing = shareState.sharing,
-                onShare = { showShare = true }
+                onSearch = { nav.showSearch = true },
+                sharing = sharing,
+                onShare = { nav.showShare = true }
             )
 
-            PillarStrip(pillars, homePillar) { homePillar = it }
+            PillarStrip(pillars, nav.homePillar) { nav.homePillar = it }
 
             // SHELVES GONE. "Continue listening", "Recently played", "Your
             // favourites", "Most played", "Recently added" and "Albums you keep
@@ -781,7 +892,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
             // The one actionable item among them was the track you did not
             // finish. That is the bar below; everything else was a rail of
             // cards restating a list already on this screen.
-            val resume = remember(music, positions) {
+            val resume = remember(lib.music, positions) {
                 positions.values
                     .filter {
                         it.durationMs > 0 &&
@@ -789,12 +900,12 @@ fun HomeScaffold(vm: PlayerViewModel) {
                             it.positionMs < it.durationMs * 0.95
                     }
                     .maxByOrNull { it.updatedAt }
-                    ?.let { p -> music.firstOrNull { it.id == p.mediaId }?.to(p) }
+                    ?.let { p -> lib.music.firstOrNull { it.id == p.mediaId }?.to(p) }
             }
 
             // Present only while a collection opened from Playlists is actually
             // filtering the list, so the filter can never be invisible state.
-            if (homePillar == Pillar.MUSIC && mood.holdsSongs) {
+            if (nav.homePillar == Pillar.MUSIC && mood.holdsSongs) {
                 FilterBar(mood.label, shown.size) { setMood(Mood.ALL) }
             }
 
@@ -803,7 +914,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
             } else if (shown.isEmpty()) {
                 EmptyState(
                     mood = mood,
-                    onRescan = { MediaRepository.refresh(); reloadKey++ },
+                    onRescan = { MediaRepository.refresh(); nav.reloadKey++ },
                     onClearMood = { setMood(Mood.ALL) }
                 )
             } else {
@@ -827,7 +938,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
                         // defined in HomeContent.kt for when it comes back.
                         CountAndShuffle(
                             count = shown.size,
-                            noun = pillarNoun(homePillar),
+                            noun = pillarNoun(nav.homePillar),
                             onShuffle = {
                                 if (shown.isNotEmpty()) {
                                     if (!state.shuffle) vm.toggleShuffle()
@@ -838,7 +949,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
                     }
                     items(shown.size) { idx ->
                         val track = shown[idx]
-                        if (homePillar == Pillar.VIDEO) {
+                        if (nav.homePillar == Pillar.VIDEO) {
                             val onIt = state.currentUri == track.uri.toString()
                             VideoCard(
                                 item = track,
@@ -848,7 +959,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
                                     state.positionMs.toFloat() / state.durationMs else 0f,
                                 canRenderVideo = feedOwnsVideo,
                                 onSurfaceOwned = { own ->
-                                    feedSurfaceOwners += if (own) 1 else -1
+                                    nav.feedSurfaceOwners += if (own) 1 else -1
                                 },
                                 vm = vm,
                                 onClick = { vm.playOrToggle(shown, idx) },
@@ -857,23 +968,23 @@ fun HomeScaffold(vm: PlayerViewModel) {
                                     if (state.durationMs > 0L)
                                         vm.seekTo((f * state.durationMs).toLong())
                                 },
-                                onExpand = { showPlayer = true },
-                                onMenu = { addToItem = track }
+                                onExpand = { nav.showPlayer = true },
+                                onMenu = { nav.addToItem = track }
                             )
                         } else {
                             TrackRow(
                                 item = track,
                                 isPlaying = state.currentUri == track.uri.toString() && state.isPlaying,
-                                isFavorite = favorites.contains(track.id),
+                                isFavorite = lib.favorites.contains(track.id),
                                 onClick = {
                                     vm.playOrToggle(shown, idx)
-                                    if (track.type == MediaType.VIDEO) showPlayer = true
+                                    if (track.type == MediaType.VIDEO) nav.showPlayer = true
                                 },
-                                onLongPress = { addToItem = track },
-                                onMenu = { addToItem = track },
+                                onLongPress = { nav.addToItem = track },
+                                onMenu = { nav.addToItem = track },
                                 onToggleFav = {
                                     scope.launch {
-                                        if (favorites.contains(track.id)) db.moodDao().remove(Mood.FAVORITES.key, track.id)
+                                        if (lib.favorites.contains(track.id)) db.moodDao().remove(Mood.FAVORITES.key, track.id)
                                         else db.moodDao().add(MoodMember(Mood.FAVORITES.key, track.id, System.currentTimeMillis()))
                                     }
                                 }
@@ -885,42 +996,55 @@ fun HomeScaffold(vm: PlayerViewModel) {
         }
 
     }
+}
 
-    if (showSearch) {
+@Composable
+private fun HomeScreens(
+    nav: HomeNav,
+    lib: HomeLibrary,
+    state: PlayerState,
+    vm: PlayerViewModel,
+    db: OverrideDatabase,
+    scope: CoroutineScope,
+    settings: MediaSettings,
+    setMood: (Mood) -> Unit
+) {
+    val context = LocalContext.current
+    if (nav.showSearch) {
         SearchScreen(
-            all = allAudio + allVideo,
+            all = lib.allAudio + lib.allVideo,
             onPlay = { list, idx ->
                 vm.play(list, idx)
-                showSearch = false
-                if (list[idx].type == MediaType.VIDEO) showPlayer = true
+                nav.showSearch = false
+                if (list[idx].type == MediaType.VIDEO) nav.showPlayer = true
             },
-            onOpenAlbum = { openAlbum = it; showSearch = false },
-            onOpenArtist = { openArtist = it; showSearch = false },
-            onBrowseLibrary = { showSearch = false; showLibrary = true; currentTab = 1 },
-            onClose = { showSearch = false }
+            onOpenAlbum = { nav.openAlbum = it; nav.showSearch = false },
+            onOpenArtist = { nav.openArtist = it; nav.showSearch = false },
+            onBrowseLibrary = { nav.showSearch = false; nav.showLibrary = true; nav.currentTab = 1 },
+            onClose = { nav.showSearch = false }
         )
     }
-    if (showPlaylists) {
+    if (nav.showPlaylists) {
         PlaylistsScreen(
-            playlists = playlists,
-            moodCounts = moodCounts,
-            onOpenMood = { m -> setMood(m); showPlaylists = false; currentTab = 0 },
+            playlists = lib.playlists,
+            moodCounts = lib.moodCounts,
+            onOpenMood = { m -> setMood(m); nav.showPlaylists = false; nav.currentTab = 0 },
             onCreatePlaylist = { name ->
                 scope.launch { db.playlistDao().create(Playlist(name = name, createdAt = System.currentTimeMillis())) }
             },
-            onOpenPlaylist = { pl -> openPlaylist = pl },
+            onOpenPlaylist = { pl -> nav.openPlaylist = pl },
             onDeletePlaylist = { pl ->
-                if (openPlaylist?.id == pl.id) openPlaylist = null
+                if (nav.openPlaylist?.id == pl.id) nav.openPlaylist = null
                 scope.launch { db.playlistDao().clearMembers(pl.id); db.playlistDao().deletePlaylist(pl.id) }
             },
         )
     }
-    openPlaylist?.let { pl ->
+    nav.openPlaylist?.let { pl ->
         // Members carry addedAt, so honour insertion order rather than whatever
         // order the flat observeAllMembers query happens to return.
-        val byId = remember(allAudio, allVideo) { (allAudio + allVideo).associateBy { it.id } }
-        val tracks = remember(allPlaylistMembers, pl.id, byId) {
-            allPlaylistMembers.filter { it.playlistId == pl.id }
+        val byId = remember(lib.allAudio, lib.allVideo) { (lib.allAudio + lib.allVideo).associateBy { it.id } }
+        val tracks = remember(lib.playlistMembers, pl.id, byId) {
+            lib.playlistMembers.filter { it.playlistId == pl.id }
                 .sortedBy { it.addedAt }
                 .mapNotNull { byId[it.mediaId] }
         }
@@ -928,7 +1052,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
             playlist = pl,
             tracks = tracks,
             state = state,
-            favorites = favorites,
+            favorites = lib.favorites,
             onPlay = { idx -> vm.playOrToggle(tracks, idx) },
             onShuffle = {
                 if (tracks.isNotEmpty()) {
@@ -936,52 +1060,63 @@ fun HomeScaffold(vm: PlayerViewModel) {
                     vm.play(tracks, tracks.indices.random())
                 }
             },
-            onLongPress = { addToItem = it },
+            onLongPress = { nav.addToItem = it },
             onToggleFav = { track ->
                 scope.launch {
-                    if (favorites.contains(track.id)) db.moodDao().remove(Mood.FAVORITES.key, track.id)
+                    if (lib.favorites.contains(track.id)) db.moodDao().remove(Mood.FAVORITES.key, track.id)
                     else db.moodDao().add(MoodMember(Mood.FAVORITES.key, track.id, System.currentTimeMillis()))
                 }
             },
-            onClose = { openPlaylist = null }
+            onClose = { nav.openPlaylist = null }
         )
     }
-    if (showSettings) {
+    if (nav.showSettings) {
         SettingsScreen(
-            audioCount = allAudio.size,
-            videoCount = video.size,
+            audioCount = lib.allAudio.size,
+            videoCount = lib.videoCount,
             settings = settings,
             onFontScaleChange = { scale -> scope.launch { SettingsStore.setFontScale(context, scale) } },
             onRescan = {
                 MediaRepository.refresh()
-                reloadKey++
+                nav.reloadKey++
             },
-            adsReady = adsReady,
-            onOpenTerms = { showTerms = true },
-            onOpenAbout = { showAbout = true },
-            onClose = { showSettings = false },
-            onOpenSound = { showSound = true },
-            onRepairArtwork = { ArtworkRepair.startLibraryRepair(context, music) }
+            adsReady = nav.adsReady,
+            onOpenTerms = { nav.showTerms = true },
+            onOpenAbout = { nav.showAbout = true },
+            onClose = { nav.showSettings = false },
+            onOpenSound = { nav.showSound = true },
+            onRepairArtwork = { ArtworkRepair.startLibraryRepair(context, lib.music) }
         )
     }
-    if (showLibrary) {
+    if (nav.showLibrary) {
         LibraryScreen(
-            all = allAudio + allVideo,
+            all = lib.allAudio + lib.allVideo,
             state = state,
-            initialPillar = libraryPillar,
-            lastPlayed = lastPlayedMap,
-            playCounts = playCountMap,
+            initialPillar = nav.libraryPillar,
+            lastPlayed = lib.lastPlayed,
+            playCounts = lib.playCounts,
             onPlay = { list, idx ->
                 vm.playOrToggle(list, idx)
-                if (list[idx].type == MediaType.VIDEO) showPlayer = true
+                if (list[idx].type == MediaType.VIDEO) nav.showPlayer = true
             },
-            onOpenAlbum = { openAlbum = it },
-            onOpenArtist = { openArtist = it },
-            onEdit = { editItem = it },
-            onClose = { showLibrary = false; libraryPillar = null; currentTab = 0 }
+            onOpenAlbum = { nav.openAlbum = it },
+            onOpenArtist = { nav.openArtist = it },
+            onEdit = { nav.editItem = it },
+            onClose = { nav.showLibrary = false; nav.libraryPillar = null; nav.currentTab = 0 }
         )
     }
-    openAlbum?.let { album ->
+}
+
+@Composable
+private fun HomeDetails(
+    nav: HomeNav,
+    lib: HomeLibrary,
+    state: PlayerState,
+    vm: PlayerViewModel,
+    db: OverrideDatabase,
+    scope: CoroutineScope
+) {
+    nav.openAlbum?.let { album ->
         AlbumDetailScreen(
             album = album,
             state = state,
@@ -992,17 +1127,17 @@ fun HomeScaffold(vm: PlayerViewModel) {
                     vm.play(album.tracks, album.tracks.indices.random())
                 }
             },
-            onLongPress = { addToItem = it },
+            onLongPress = { nav.addToItem = it },
             // §26 "View artist" — jump straight across from the album header.
             onOpenArtist = {
-                artistsAll.firstOrNull { a ->
+                lib.artists.firstOrNull { a ->
                     a.id == album.tracks.firstOrNull()?.artistId
-                }?.let { openArtist = it; openAlbum = null }
+                }?.let { nav.openArtist = it; nav.openAlbum = null }
             },
-            onClose = { openAlbum = null }
+            onClose = { nav.openAlbum = null }
         )
     }
-    openArtist?.let { artist ->
+    nav.openArtist?.let { artist ->
         val artistAlbums = remember(artist) { MediaRepository.albumsOf(artist.tracks) }
         ArtistDetailScreen(
             artist = artist,
@@ -1015,8 +1150,8 @@ fun HomeScaffold(vm: PlayerViewModel) {
                     vm.play(artist.tracks, artist.tracks.indices.random())
                 }
             },
-            onOpenAlbum = { openAlbum = it; openArtist = null },
-            onLongPress = { addToItem = it },
+            onOpenAlbum = { nav.openAlbum = it; nav.openArtist = null },
+            onLongPress = { nav.addToItem = it },
             onRenameArtist = { newName ->
                 // One row per track, written as a single transaction. Existing
                 // overrides are preserved: a track whose TITLE was already
@@ -1030,16 +1165,16 @@ fun HomeScaffold(vm: PlayerViewModel) {
                                 ?: MediaOverride(mediaId = id, customArtist = newName)
                         }
                     )
-                    openArtist = null
+                    nav.openArtist = null
                 }
             },
-            onClose = { openArtist = null }
+            onClose = { nav.openArtist = null }
         )
     }
-    editItem?.let { item ->
+    nav.editItem?.let { item ->
         EditSheet(
             item = item,
-            hasOverride = overrides.containsKey(item.id),
+            hasOverride = lib.overrides.containsKey(item.id),
             onSave = { title, artist, details, pillar ->
                 scope.launch {
                     db.dao().upsert(
@@ -1054,32 +1189,34 @@ fun HomeScaffold(vm: PlayerViewModel) {
                 }
                 // Push edit into the live playback session if this item is playing now
                 vm.updateCurrentMetadata(item.id, title, artist)
-                editItem = null
+                nav.editItem = null
             },
             onReset = {
                 scope.launch { db.dao().delete(item.id) }
-                editItem = null
+                nav.editItem = null
             },
-            onDismiss = { editItem = null }
+            onDismiss = { nav.editItem = null }
         )
     }
+}
 
+@Composable
+private fun BoxScope.HomeChrome(nav: HomeNav, state: PlayerState, vm: PlayerViewModel) {
     // ---- PERSISTENT chrome: mini-player + bottom nav, above all overlays ----
-    var playerHidden by remember { mutableStateOf(false) }
     LaunchedEffect(state.isPlaying, state.currentUri) {
-        if (state.isPlaying) playerHidden = false
-        else if (state.hasItem) { delay(10_000); playerHidden = true }
+        if (state.isPlaying) nav.playerHidden = false
+        else if (state.hasItem) { delay(10_000); nav.playerHidden = true }
     }
-    BottomBar(Modifier.align(Alignment.BottomCenter), current = currentTab) { tab ->
+    BottomBar(Modifier.align(Alignment.BottomCenter), current = nav.currentTab) { tab ->
         // Every tab first clears ALL overlays (mutually exclusive), then opens its own.
-        showPlaylists = false; showSearch = false; showSettings = false
-        showLibrary = false; libraryPillar = null; openPlaylist = null
-        openAlbum = null; openArtist = null
-        currentTab = tab
+        nav.showPlaylists = false; nav.showSearch = false; nav.showSettings = false
+        nav.showLibrary = false; nav.libraryPillar = null; nav.openPlaylist = null
+        nav.openAlbum = null; nav.openArtist = null
+        nav.currentTab = tab
         when (tab) {
-            1 -> showLibrary = true
-            2 -> showPlaylists = true
-            3 -> showSettings = true
+            1 -> nav.showLibrary = true
+            2 -> nav.showPlaylists = true
+            3 -> nav.showSettings = true
             // 0 Home -> the home surface itself, no overlay.
             // Search is no longer a tab — it lives in the header.
         }
@@ -1087,11 +1224,11 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // ---- Surfaces that must sit ABOVE the persistent chrome ----
     // Order matters: everything below is drawn after BottomBar, so the nav bar
     // and mini-player no longer paint over the full player and the info pages.
-    if (showTerms) {
-        TermsScreen(onClose = { showTerms = false })
+    if (nav.showTerms) {
+        TermsScreen(onClose = { nav.showTerms = false })
     }
-    if (showAbout) {
-        AboutScreen(version = BuildConfig.VERSION_NAME, onClose = { showAbout = false })
+    if (nav.showAbout) {
+        AboutScreen(version = BuildConfig.VERSION_NAME, onClose = { nav.showAbout = false })
     }
     // §22: sits above the player pill, below everything else. Non-blocking —
     // the queue, scroll position and current screen are all preserved.
@@ -1103,17 +1240,38 @@ fun HomeScaffold(vm: PlayerViewModel) {
             .padding(bottom = BottomBarHeight + MiniPlayerGap + 68.dp),
         onRetry = { vm.retryPlayback() },
         onSkip = { vm.skipFailedItem() },
-        onRescan = { MediaRepository.refresh(); reloadKey++; vm.clearError() },
+        onRescan = { MediaRepository.refresh(); nav.reloadKey++; vm.clearError() },
         onDismiss = { vm.clearError() }
     )
+}
 
+@UnstableApi
+@Composable
+private fun HomePlayer(
+    nav: HomeNav,
+    lib: HomeLibrary,
+    state: PlayerState,
+    vm: PlayerViewModel,
+    db: OverrideDatabase,
+    scope: CoroutineScope,
+    playingItem: AppMediaItem?,
+    libraryPlaying: AppMediaItem?,
+    beat: BeatState,
+    envelope: FloatArray?,
+    feedOwnsVideo: Boolean,
+    feedVideoLive: Boolean,
+    onlineLookups: Boolean,
+    reactiveArtOn: Boolean,
+    sharing: Boolean
+) {
+    val context = LocalContext.current
     // §11/§15: ONE surface. Sits above the bottom bar so the expanded state
     // is never painted over, and collapses to a pill docked above it.
     // The pill appeared and disappeared instantly - the one piece of chrome
     // that arrives unannounced while you are looking elsewhere. It now slides
     // up from behind the nav bar and leaves the same way.
     androidx.compose.animation.AnimatedVisibility(
-        visible = state.hasItem && !playerHidden && !feedVideoLive,
+        visible = state.hasItem && !nav.playerHidden && !feedVideoLive,
         // Fixed ~55dp of travel, NOT { it }: the lambda receives the container
         // height, and this container is the full screen because PlayerSurface
         // fills it when expanded. Aligning it BottomCenter instead would stop
@@ -1129,17 +1287,17 @@ fun HomeScaffold(vm: PlayerViewModel) {
         PlayerSurface(
             state = state,
             vm = vm,
-            expanded = showPlayer,
-            onFullscreen = { videoFullscreen = true },
+            expanded = nav.showPlayer,
+            onFullscreen = { nav.videoFullscreen = true },
             artItem = playingItem,
             // Media3's timeline only carries title/artist/uri, so map back to
             // the library item to get real cover art in the queue.
-            artForQueue = { e -> allById[e.mediaId] },
-            isFavorite = playingItem?.let { favorites.contains(it.id) } == true,
+            artForQueue = { e -> lib.allById[e.mediaId] },
+            isFavorite = playingItem?.let { lib.favorites.contains(it.id) } == true,
             onToggleFavorite = {
                 playingItem?.let { item ->
                     scope.launch {
-                        if (favorites.contains(item.id))
+                        if (lib.favorites.contains(item.id))
                             db.moodDao().remove(Mood.FAVORITES.key, item.id)
                         else
                             db.moodDao().add(
@@ -1152,20 +1310,20 @@ fun HomeScaffold(vm: PlayerViewModel) {
             envelope = envelope,
             videoSurface = !feedOwnsVideo,
             bottomInset = navBottom + BottomBarHeight + MiniPlayerGap,
-            onExpandedChange = { showPlayer = it },
-            onDismiss = { showPlayer = false; vm.dismiss() },
+            onExpandedChange = { nav.showPlayer = it },
+            onDismiss = { nav.showPlayer = false; vm.dismiss() },
             libraryItem = libraryPlaying,
             onlineLookups = onlineLookups,
             onEnableOnline = { scope.launch { SettingsStore.setOnline(context, true) } },
-            onOpenAudioPath = { showAudioPath = true },
-            onOpenSound = { showSound = true }
+            onOpenAudioPath = { nav.showAudioPath = true },
+            onOpenSound = { nav.showSound = true }
         )
     }
     // One-time nudge for reactive artwork. Only when the player is actually
     // open, only when the feature is off, and only once - a hint that keeps
     // reappearing is an advert.
     val hintSeen by SettingsStore.playerHintSeenFlow(context).collectAsState(initial = true)
-    if (showPlayer && !hintSeen && !reactiveArtOn) {
+    if (nav.showPlayer && !hintSeen && !reactiveArtOn) {
         Box(
             Modifier.fillMaxSize().statusBarsPadding().padding(Space.xl, 64.dp, Space.xl, 0.dp),
             contentAlignment = Alignment.TopCenter
@@ -1210,17 +1368,17 @@ fun HomeScaffold(vm: PlayerViewModel) {
 
     // Two players in one room is not a feature. Handing a file to the TV
     // pauses this one.
-    LaunchedEffect(shareState.sharing) {
-        if (shareState.sharing && state.isPlaying) vm.togglePlayPause()
+    LaunchedEffect(sharing) {
+        if (sharing && state.isPlaying) vm.togglePlayPause()
     }
-    if (showShare) {
+    if (nav.showShare) {
         // Aura Share gets the REAL queue, not just the current track, so Next
         // and end-of-track work on the TV the way they do on the phone. The
         // index is found by uri rather than carried over, because an entry
         // whose item is no longer in the library drops out of the mapping.
         val sessionQueue by vm.queue.collectAsState()
-        val shareQueue = remember(sessionQueue, allById) {
-            sessionQueue.mapNotNull { allById[it.mediaId] }
+        val shareQueue = remember(sessionQueue, lib.allById) {
+            sessionQueue.mapNotNull { lib.allById[it.mediaId] }
         }
         val shareIndex = remember(shareQueue, state.currentUri) {
             shareQueue.indexOfFirst { it.uri.toString() == state.currentUri }.coerceAtLeast(0)
@@ -1228,25 +1386,39 @@ fun HomeScaffold(vm: PlayerViewModel) {
         ShareSheet(
             queue = shareQueue,
             startIndex = shareIndex,
-            onDismiss = { showShare = false }
+            onDismiss = { nav.showShare = false }
         )
     }
+}
 
+@Composable
+private fun HomeSheets(
+    nav: HomeNav,
+    lib: HomeLibrary,
+    state: PlayerState,
+    vm: PlayerViewModel,
+    db: OverrideDatabase,
+    scope: CoroutineScope,
+    onlineLookups: Boolean,
+    artScope: (AppMediaItem) -> List<AppMediaItem>,
+    playingItem: AppMediaItem?,
+    libraryPlaying: AppMediaItem?
+) {
     // Deleting is the one thing in here that touches the user's storage, so
     // it goes through the system's own consent flow and the library is
     // rescanned only once the file is really gone.
     val deleteMedia = rememberMediaDeleter { gone ->
         if (state.currentUri == gone.uri.toString()) vm.skipFailedItem()
         MediaRepository.refresh()
-        reloadKey++
+        nav.reloadKey++
     }
-    addToItem?.let { item ->
-        val itemMoods = allMoodMembers.filter { it.mediaId == item.id }.map { it.moodKey }.toSet()
-        val itemPlaylists = allPlaylistMembers.filter { it.mediaId == item.id }.map { it.playlistId }.toSet()
+    nav.addToItem?.let { item ->
+        val itemMoods = lib.moodMembers.filter { it.mediaId == item.id }.map { it.moodKey }.toSet()
+        val itemPlaylists = lib.playlistMembers.filter { it.mediaId == item.id }.map { it.playlistId }.toSet()
         AddToSheet(
             item = item,
             memberMoods = itemMoods,
-            playlists = playlists,
+            playlists = lib.playlists,
             memberPlaylists = itemPlaylists,
             onToggleMood = { m, nowMember ->
                 scope.launch {
@@ -1260,26 +1432,26 @@ fun HomeScaffold(vm: PlayerViewModel) {
                     else db.playlistDao().removeMember(pl.id, item.id)
                 }
             },
-            onEditDetails = { editItem = item; addToItem = null },
+            onEditDetails = { nav.editItem = item; nav.addToItem = null },
             onPlayNext = { vm.playNext(item) },
             onAddToQueue = { vm.addToQueue(item) },
             // Null when the track has no real album/artist metadata — the row
             // is then absent rather than present and dead.
             onViewAlbum = if (item.album != UNKNOWN_ALBUM) ({
-                albumsAll.firstOrNull { it.id == item.albumId }
-                    ?.let { openAlbum = it; openArtist = null }
+                lib.albums.firstOrNull { it.id == item.albumId }
+                    ?.let { nav.openAlbum = it; nav.openArtist = null }
             }) else null,
             onViewArtist = if (item.artist != UNKNOWN_ARTIST) ({
-                artistsAll.firstOrNull { it.id == item.artistId }
-                    ?.let { openArtist = it; openAlbum = null }
+                lib.artists.firstOrNull { it.id == item.artistId }
+                    ?.let { nav.openArtist = it; nav.openAlbum = null }
             }) else null,
             onDelete = { deleteMedia(item) },
-            onDismiss = { addToItem = null },
-            onDetails = if (item.type == MediaType.AUDIO) ({ detailsItem = item }) else null,
-            onArtwork = if (item.type == MediaType.AUDIO) ({ artworkItem = item }) else null
+            onDismiss = { nav.addToItem = null },
+            onDetails = if (item.type == MediaType.AUDIO) ({ nav.detailsItem = item }) else null,
+            onArtwork = if (item.type == MediaType.AUDIO) ({ nav.artworkItem = item }) else null
         )
     }
-    detailsItem?.let { item ->
+    nav.detailsItem?.let { item ->
         TrackDetailsSheet(
             item = item,
             onlineAllowed = onlineLookups,
@@ -1287,38 +1459,37 @@ fun HomeScaffold(vm: PlayerViewModel) {
                 // An ordinary edit: stored as an override, the file untouched.
                 scope.launch {
                     db.dao().upsert(
-                        overrides[item.id]?.copy(customTitle = title, customArtist = artist)
+                        lib.overrides[item.id]?.copy(customTitle = title, customArtist = artist)
                             ?: MediaOverride(mediaId = item.id, customTitle = title, customArtist = artist)
                     )
                 }
                 vm.updateCurrentMetadata(item.id, title, artist)
-                detailsItem = null
+                nav.detailsItem = null
             },
-            onFixArtwork = { artworkItem = item; detailsItem = null },
-            onDismiss = { detailsItem = null }
+            onFixArtwork = { nav.artworkItem = item; nav.detailsItem = null },
+            onDismiss = { nav.detailsItem = null }
         )
     }
-    artworkItem?.let { item ->
+    nav.artworkItem?.let { item ->
         ArtworkSheet(
             item = item,
             scope = artScope(item),
             onlineAllowed = onlineLookups,
-            onDismiss = { artworkItem = null }
+            onDismiss = { nav.artworkItem = null }
         )
     }
-    if (showAudioPath) {
+    if (nav.showAudioPath) {
         (libraryPlaying ?: playingItem)?.let { item ->
             AudioPathSheet(
                 item = item,
-                onOpenSound = { showSound = true; showAudioPath = false },
-                onDismiss = { showAudioPath = false }
+                onOpenSound = { nav.showSound = true; nav.showAudioPath = false },
+                onDismiss = { nav.showAudioPath = false }
             )
         }
     }
-    if (showSound) {
-        SoundScreen(onClose = { showSound = false })
+    if (nav.showSound) {
+        SoundScreen(onClose = { nav.showSound = false })
     }
-    } // close outer Box
 }
 
 @Composable

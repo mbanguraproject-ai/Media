@@ -1,0 +1,63 @@
+# Compiles the app both ways it gets built - release (R8, minified) and debug
+# (D8, unminified, every local kept alive for the debugger) - and checks the
+# DEX each produces. A method needing more than 255 registers is where 4.5's
+# launch VerifyError came from. See tools/dex_registers.py.
+#
+# Run it by hand on any commit (Actions > Release check > Run workflow) to
+# check an older build: the tool always comes from this branch.
+name: Release check
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Commit, branch or tag to build (default: this one)"
+        required: false
+
+jobs:
+  dex:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Only the R8 step for release: packaging needs the release
+          # keystore, which never leaves the owner's machine, and the DEX is
+          # complete before packaging.
+          - build: release
+            task: ":app:minifyReleaseWithR8"
+            dex: "src/app/build/intermediates/dex/release"
+          - build: debug
+            task: ":app:assembleDebug"
+            dex: "src/app/build/outputs/apk/debug/*arm64-v8a*.apk"
+    name: ${{ matrix.build }}
+    steps:
+      - name: Check out the tool
+        uses: actions/checkout@v4
+        with:
+          path: tool
+
+      - name: Check out the code to build
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          path: src
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Compile (${{ matrix.build }})
+        working-directory: src
+        run: |
+          git log -1 --format='Building %h %s'
+          ./gradlew --no-daemon --stacktrace ${{ matrix.task }}
+
+      - name: Check method register counts
+        run: python3 tool/tools/dex_registers.py ${{ matrix.dex }} --package com.media.app --top 20

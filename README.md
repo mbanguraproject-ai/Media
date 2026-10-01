@@ -122,6 +122,28 @@ Play bundle:
 
 Signing is via keystore.properties (git-ignored, never committed).
 
+### Release check
+
+4.5 crashed at launch with a `VerifyError` in `HomeScaffold`. The method had
+grown to need more than 256 Dalvik registers (the verifier names `v258`), and
+past that limit the compiler moved an object reference with a plain `move`,
+which ART rejects, so the class could not load. The build that crashed was
+unminified: its trace keeps real class names and line numbers. Unminified
+DEX keeps every local alive for the debugger, so the same code needs far more
+registers there than in R8's release output. The big composables
+(`HomeScaffold`, `PlayerSurface`) are now split into small ones.
+
+`tools/dex_registers.py` reads the DEX in a build (a folder, an APK or an
+AAB) and lists the methods with the most registers. It exits 1 if any method
+of the app's own package is over 255:
+
+    python3 tools/dex_registers.py app/build/outputs/apk/debug/app-arm64-v8a-debug.apk --package com.media.app
+    python3 tools/dex_registers.py app/build/outputs/bundle/release/app-release.aab --package com.media.app
+
+The `Release check` GitHub workflow builds both release (R8) and debug on
+every push and runs this check on each. Run by hand (Actions, Release check,
+Run workflow) it takes a commit to build, so any older version can be checked.
+
 ---
 
 ## Known limitations
