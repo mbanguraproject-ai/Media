@@ -218,6 +218,9 @@
     <string name="action_skip_track">トラックをスキップ</string>
     <string name="action_rescan_library">ライブラリを再スキャン</string>
     <string name="action_try_again">再試行</string>
+    <string name="update_ready_title">アップデートの準備ができました</string>
+    <string name="update_ready_body">Auraの新しいバージョンをダウンロードしました。再起動すると完了します。音楽は少しの間止まります。</string>
+    <string name="action_restart">再起動</string>
     <string name="reveal_building">ライブラリを作成中</string>
     <plurals name="reveal_tracks">
         <item quantity="other">曲を発見</item>

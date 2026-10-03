@@ -218,6 +218,9 @@
     <string name="action_skip_track">Bỏ qua bản nhạc</string>
     <string name="action_rescan_library">Quét lại thư viện</string>
     <string name="action_try_again">Thử lại</string>
+    <string name="update_ready_title">Bản cập nhật đã sẵn sàng</string>
+    <string name="update_ready_body">Phiên bản mới của Aura đã tải xong. Khởi động lại để hoàn tất; nhạc sẽ dừng trong giây lát.</string>
+    <string name="action_restart">Khởi động lại</string>
     <string name="reveal_building">Đang xây dựng thư viện của bạn</string>
     <plurals name="reveal_tracks">
         <item quantity="other">bản nhạc đã tìm thấy</item>

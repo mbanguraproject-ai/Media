@@ -227,6 +227,9 @@
     <string name="action_skip_track">Skip track</string>
     <string name="action_rescan_library">Rescan library</string>
     <string name="action_try_again">Try again</string>
+    <string name="update_ready_title">Update ready</string>
+    <string name="update_ready_body">A new version of Aura has downloaded. Restart to finish; the music stops for a moment.</string>
+    <string name="action_restart">Restart</string>
     <string name="reveal_building">Building your library</string>
     <plurals name="reveal_tracks">
         <item quantity="one">track discovered</item>

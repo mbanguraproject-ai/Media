@@ -223,6 +223,9 @@
     <string name="action_skip_track">Titel überspringen</string>
     <string name="action_rescan_library">Mediathek neu scannen</string>
     <string name="action_try_again">Erneut versuchen</string>
+    <string name="update_ready_title">Update bereit</string>
+    <string name="update_ready_body">Eine neue Version von Aura wurde heruntergeladen. Starte neu, um sie abzuschließen; die Musik stoppt kurz.</string>
+    <string name="action_restart">Neu starten</string>
     <string name="reveal_building">Deine Mediathek wird aufgebaut</string>
     <plurals name="reveal_tracks">
         <item quantity="one">Titel gefunden</item>

@@ -233,6 +233,9 @@
     <string name="action_skip_track">Пропустить трек</string>
     <string name="action_rescan_library">Пересканировать медиатеку</string>
     <string name="action_try_again">Повторить</string>
+    <string name="update_ready_title">Обновление готово</string>
+    <string name="update_ready_body">Новая версия Aura загружена. Перезапустите, чтобы завершить; музыка ненадолго остановится.</string>
+    <string name="action_restart">Перезапустить</string>
     <string name="reveal_building">Собираем вашу медиатеку</string>
     <plurals name="reveal_tracks">
         <item quantity="one">трек найден</item>

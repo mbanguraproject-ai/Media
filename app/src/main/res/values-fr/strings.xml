@@ -223,6 +223,9 @@
     <string name="action_skip_track">Passer le titre</string>
     <string name="action_rescan_library">Réanalyser la bibliothèque</string>
     <string name="action_try_again">Réessayer</string>
+    <string name="update_ready_title">Mise à jour prête</string>
+    <string name="update_ready_body">Une nouvelle version d\'Aura a été téléchargée. Redémarrez pour terminer ; la musique s\'arrête un instant.</string>
+    <string name="action_restart">Redémarrer</string>
     <string name="reveal_building">Création de votre bibliothèque</string>
     <plurals name="reveal_tracks">
         <item quantity="one">titre découvert</item>

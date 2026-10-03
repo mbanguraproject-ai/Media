@@ -223,6 +223,9 @@
     <string name="action_skip_track">Pular faixa</string>
     <string name="action_rescan_library">Verificar biblioteca de novo</string>
     <string name="action_try_again">Tentar de novo</string>
+    <string name="update_ready_title">Atualização pronta</string>
+    <string name="update_ready_body">Uma nova versão do Aura foi baixada. Reinicie para concluir; a música para por um instante.</string>
+    <string name="action_restart">Reiniciar</string>
     <string name="reveal_building">Montando sua biblioteca</string>
     <plurals name="reveal_tracks">
         <item quantity="one">faixa encontrada</item>

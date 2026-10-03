@@ -21,8 +21,8 @@ android {
         applicationId = "app.devbangs.media"
         minSdk = 24
         targetSdk = 36
-        versionCode = 24
-        versionName = "4.8"
+        versionCode = 25
+        versionName = "4.9"
     }
 
     signingConfigs {
@@ -114,6 +114,9 @@ dependencies {
     implementation("com.android.billingclient:billing:9.1.0")
     // Google Play In-App Review: the rating card shown inside the app.
     implementation("com.google.android.play:review:2.0.2")
+    // Google Play In-App Updates: offers a new version when the app opens.
+    // Plain artifact, not -ktx, for the same Kotlin metadata reason as billing.
+    implementation("com.google.android.play:app-update:2.1.0")
 
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")

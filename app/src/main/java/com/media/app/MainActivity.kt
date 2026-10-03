@@ -108,6 +108,19 @@ class MainActivity : ComponentActivity() {
 
     private val inPip = mutableStateOf(false)
 
+    // Play's update sheet reports back here (InAppUpdate.kt). Registered as a
+    // field: Android requires it before the activity starts.
+    private val updateLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartIntentSenderForResult()
+    ) { InAppUpdate.onFlowResult(this, it.resultCode) }
+
+    // Each time the app comes to the front: a finished download shows its
+    // banner, and once per app open a new version is offered.
+    override fun onResume() {
+        super.onResume()
+        InAppUpdate.check(this, updateLauncher)
+    }
+
     // The language picked in Settings, on Android 12 and below (Language.kt).
     override fun attachBaseContext(newBase: android.content.Context) {
         super.attachBaseContext(AppLanguage.wrap(newBase))
@@ -1262,6 +1275,13 @@ private fun BoxScope.HomeChrome(nav: HomeNav, state: PlayerState, vm: PlayerView
         onSkip = { vm.skipFailedItem() },
         onRescan = { MediaRepository.refresh(); nav.reloadKey++; vm.clearError() },
         onDismiss = { vm.clearError() }
+    )
+    // A downloaded update, in the same place. A playback error goes first.
+    UpdateBanner(
+        visible = playbackError == null,
+        modifier = Modifier.align(Alignment.BottomCenter)
+            .navigationBarsPadding()
+            .padding(bottom = BottomBarHeight + MiniPlayerGap + 68.dp)
     )
 }
 

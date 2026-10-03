@@ -218,6 +218,9 @@
     <string name="action_skip_track">Lewati lagu</string>
     <string name="action_rescan_library">Pindai ulang koleksi</string>
     <string name="action_try_again">Coba lagi</string>
+    <string name="update_ready_title">Pembaruan siap</string>
+    <string name="update_ready_body">Versi baru Aura sudah diunduh. Mulai ulang untuk menyelesaikan; musik berhenti sebentar.</string>
+    <string name="action_restart">Mulai ulang</string>
     <string name="reveal_building">Membangun koleksimu</string>
     <plurals name="reveal_tracks">
         <item quantity="other">lagu ditemukan</item>

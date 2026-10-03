@@ -223,6 +223,9 @@
     <string name="action_skip_track">Parçayı atla</string>
     <string name="action_rescan_library">Kitaplığı yeniden tara</string>
     <string name="action_try_again">Yeniden dene</string>
+    <string name="update_ready_title">Güncelleme hazır</string>
+    <string name="update_ready_body">Aura\'nın yeni sürümü indirildi. Tamamlamak için yeniden başlat; müzik bir anlığına durur.</string>
+    <string name="action_restart">Yeniden başlat</string>
     <string name="reveal_building">Kitaplığın oluşturuluyor</string>
     <plurals name="reveal_tracks">
         <item quantity="one">parça bulundu</item>

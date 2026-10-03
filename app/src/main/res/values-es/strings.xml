@@ -223,6 +223,9 @@
     <string name="action_skip_track">Saltar pista</string>
     <string name="action_rescan_library">Volver a escanear</string>
     <string name="action_try_again">Reintentar</string>
+    <string name="update_ready_title">Actualización lista</string>
+    <string name="update_ready_body">Se descargó una nueva versión de Aura. Reinicia para terminar; la música se detiene un momento.</string>
+    <string name="action_restart">Reiniciar</string>
     <string name="reveal_building">Creando tu biblioteca</string>
     <plurals name="reveal_tracks">
         <item quantity="one">pista encontrada</item>

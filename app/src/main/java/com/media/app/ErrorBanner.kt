@@ -124,7 +124,7 @@ fun ErrorBanner(
 }
 
 @Composable
-private fun BannerAction(label: String, primary: Boolean, onClick: () -> Unit) {
+internal fun BannerAction(label: String, primary: Boolean, onClick: () -> Unit) {
     Box(
         Modifier
             .clip(RoundedCornerShape(Radius.pill))
