@@ -34,6 +34,7 @@ enum class QualityLevel(val label: String, val goal: String, val features: List<
         "Enhanced", "Your cover lights the room",
         listOf(
             "Now Playing sits on your cover, blurred into coloured light, all the way to the screen's edge",
+            "The whole app takes the playing song's colour: Home, Library, Playlists, Search and Settings sit on the same light, and go back to dark when nothing is playing",
             "Colour from the cover: the waveform, the glow behind the art and its shadow match each song",
             "Fine grain that stops colour banding on the dark gradients",
             "Reactive artwork: the cover pulses and its glow swells on the beat",
@@ -44,8 +45,8 @@ enum class QualityLevel(val label: String, val goal: String, val features: List<
         "Premium", "A living backdrop that moves with the music",
         listOf(
             "Everything in Enhanced",
-            "The backdrop slowly drifts, with a real blur on Android 12+",
-            "A light field: three pools of the cover's own colours drift across it",
+            "The backdrop slowly drifts, in Now Playing and across the app, with a real blur in Now Playing on Android 12+",
+            "A light field: three pools of the cover's own colours drift across it, on every screen",
             "Reactive artwork: shockwave rings, and the backdrop breathes with the bass",
             "Lyrics in focus: lines away from the one being sung go soft",
             "Sharper artwork, 72-bar waveform"
@@ -56,7 +57,7 @@ enum class QualityLevel(val label: String, val goal: String, val features: List<
         listOf(
             "Everything in Premium",
             "Parallax: the cover tilts with your phone and light slides across it",
-            "The backdrop turns, and a fourth pool joins the light field; with Reactive artwork the pools swell on the bass",
+            "The backdrop turns, here and across the app, and a fourth pool joins the light field; with Reactive artwork the pools swell on the bass in Now Playing",
             "Reactive artwork: a flash of light sweeps the cover on hard hits",
             "The sung lyric line glows",
             "Your screen's top refresh rate while Now Playing is open",

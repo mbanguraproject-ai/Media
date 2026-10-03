@@ -347,7 +347,7 @@ private fun DetailScaffold(
     action: (@Composable () -> Unit)? = null,
     body: androidx.compose.foundation.lazy.LazyListScope.() -> Unit
 ) {
-    Column(Modifier.fillMaxSize().background(moodBackground()).statusBarsPadding()) {
+    Column(Modifier.fillMaxSize().screenBackground().statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(Space.sm, Space.sm), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClose) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MediaColors.Cream)

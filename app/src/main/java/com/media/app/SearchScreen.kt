@@ -80,7 +80,7 @@ fun SearchScreen(
     }
     val nothing = q.isNotBlank() && trackHits.isEmpty() && albumHits.isEmpty() && artistHits.isEmpty()
 
-    Column(Modifier.fillMaxSize().background(moodBackground()).statusBarsPadding()) {
+    Column(Modifier.fillMaxSize().screenBackground().statusBarsPadding()) {
         Row(
             Modifier.fillMaxWidth().padding(Space.md, Space.md),
             verticalAlignment = Alignment.CenterVertically

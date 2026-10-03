@@ -68,7 +68,7 @@ fun SettingsScreen(
     Column(
         // Settings is text and empty space with no artwork to justify a
         // gradient, so the illumination is compressed to a near-flat field.
-        Modifier.fillMaxSize().background(moodBackground(flat = true)).statusBarsPadding()
+        Modifier.fillMaxSize().screenBackground().statusBarsPadding()
             .verticalScroll(rememberScrollState())
     ) {
         Row(

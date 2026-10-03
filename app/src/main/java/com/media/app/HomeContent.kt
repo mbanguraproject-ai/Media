@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 
 // Flat solid tile color seeded by title — clean, no gradient noise, no fallback junk.
@@ -50,12 +51,30 @@ import androidx.compose.ui.unit.dp
 // Rescan is gone from here entirely. It already exists at Settings > Rescan
 // device, so the header was carrying a duplicate control for something you
 // touch roughly once a month.
+//
+// The controls end where the content ends. Measured on a Redmi 10C, the mark
+// started 49px from the left edge and the Shuffle pill below ended 50px from
+// the right, but the search glyph stopped at 75px: about 16dp short, made of
+// the 48dp touch minimum around a 38dp control (5dp), its 8dp padding, and
+// the 3.5 of 24 units the Search glyph leaves empty on its right. The row now
+// gives back exactly that, so the glyph's visible edge sits on the gutter and
+// mirrors the mark. Touch targets stay 48dp; they overhang into the gutter.
+private val HeaderGlyph = 22.dp
+private val HeaderTouch = 48.dp
+private val HeaderTouchInset = (HeaderTouch - HeaderGlyph) / 2
+// Material's Search path ends at x = 20.49 of its 24-unit box.
+private val SearchGlyphRightGap = HeaderGlyph * (3.51f / 24f)
+
 @Composable
 fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(start = Space.xl, end = Space.xl, top = Space.sm, bottom = Space.sm),
+            .padding(
+                start = Space.xl,
+                end = (Space.xl - HeaderTouchInset - SearchGlyphRightGap).coerceAtLeast(0.dp),
+                top = Space.sm, bottom = Space.sm
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
@@ -73,19 +92,19 @@ fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit) {
             if (sharing) "Playing on another device" else "Aura Share",
             tint = if (sharing) MediaColors.Accent else MediaColors.Cream,
             modifier = Modifier
+                .size(HeaderTouch)
                 .clip(CircleShape)
                 .pressScale(haptic = true, onClick = onShare)
-                .padding(Space.sm)
-                .size(22.dp)
+                .padding(HeaderTouchInset)
         )
         Icon(
             Icons.Filled.Search, "Search",
             tint = MediaColors.Cream,
             modifier = Modifier
+                .size(HeaderTouch)
                 .clip(CircleShape)
                 .pressScale(haptic = true, onClick = onSearch)
-                .padding(Space.sm)
-                .size(22.dp)
+                .padding(HeaderTouchInset)
         )
     }
 }

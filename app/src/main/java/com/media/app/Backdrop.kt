@@ -106,7 +106,7 @@ import kotlin.math.sin
 //                     resolution, and hands the choice back on close.
 // ============================================================================
 
-private const val BACKDROP_PX = 20
+internal const val BACKDROP_PX = 20
 
 /** The cover's colours, tuned for a dark room. Null fields: the cover had no colour to give. */
 data class ArtColors(val accent: Color?, val glow: Color?, val field: List<Color>)
@@ -175,12 +175,27 @@ private fun rememberBackdropImage(item: AppMediaItem?): ImageBitmap? {
 }
 
 /** 96px of fixed noise, made once. Tiled, it is the anti-banding grain. */
-private val grainImage: ImageBitmap by lazy {
+internal val grainImage: ImageBitmap by lazy {
     val n = 96
     val rnd = java.util.Random(0x5EED)
     val px = IntArray(n * n) { val v = 96 + rnd.nextInt(64); android.graphics.Color.argb(255, v, v, v) }
     Bitmap.createBitmap(px, n, n, Bitmap.Config.ARGB_8888).asImageBitmap()
 }
+
+/**
+ * How a cover becomes light: saturated so it reads as coloured light, and
+ * dimmed a little so a white cover cannot wash out the controls. Shared by
+ * Now Playing and the app-wide backdrop (AppBackdrop.kt), so both show the
+ * same colour from the same cover.
+ */
+internal val BackdropFilter: ColorFilter by lazy {
+    val m = ColorMatrix().apply { setToSaturation(1.45f) }
+    m.timesAssign(ColorMatrix().apply { setToScale(BACKDROP_DIM, BACKDROP_DIM, BACKDROP_DIM, 1f) })
+    ColorFilter.colorMatrix(m)
+}
+
+/** BackdropFilter's brightness scale. Saturation keeps luma, so this is the luma scale. */
+internal const val BACKDROP_DIM = 0.82f
 
 @Composable
 fun LivingBackdrop(
@@ -226,11 +241,7 @@ fun LivingBackdrop(
     // Saturated so it reads as coloured light, and dimmed a little so a white
     // cover cannot wash out the controls now that the scrim stops short of
     // black.
-    val saturate = remember {
-        val m = ColorMatrix().apply { setToSaturation(1.45f) }
-        m.timesAssign(ColorMatrix().apply { setToScale(0.82f, 0.82f, 0.82f, 1f) })
-        ColorFilter.colorMatrix(m)
-    }
+    val saturate = BackdropFilter
     val grainBrush = remember { ShaderBrush(ImageShader(grainImage, TileMode.Repeated, TileMode.Repeated)) }
     val blurred = if (blur > 0.dp && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) Modifier.blur(blur) else Modifier
 
@@ -281,9 +292,10 @@ fun LivingBackdrop(
  * of the clock's period, so when it wraps from 1 back to 0 every pool is
  * exactly where it started.
  */
-private fun DrawScope.drawLightField(tones: List<Color>, t: Float, level: Float, pools: Int, alpha: Float) {
-    val w = size.width
-    val h = size.height
+internal fun DrawScope.drawLightField(
+    tones: List<Color>, t: Float, level: Float, pools: Int, alpha: Float,
+    w: Float = size.width, h: Float = size.height
+) {
     val base = max(w, h) * 0.52f
     val a = (2.0 * PI * t).toFloat()
     for (i in 0 until pools) {
@@ -304,13 +316,15 @@ private fun DrawScope.drawLightField(tones: List<Color>, t: Float, level: Float,
     }
 }
 
-private fun DrawScope.drawCover(image: ImageBitmap, side: Float, filter: ColorFilter, alpha: Float) {
+internal fun DrawScope.drawCover(
+    image: ImageBitmap, side: Float, filter: ColorFilter, alpha: Float, at: Offset = center
+) {
     val s = side.toInt().coerceAtLeast(1)
     drawImage(
         image = image,
         srcOffset = IntOffset.Zero,
         srcSize = IntSize(image.width, image.height),
-        dstOffset = IntOffset((center.x - s / 2f).toInt(), (center.y - s / 2f).toInt()),
+        dstOffset = IntOffset((at.x - s / 2f).toInt(), (at.y - s / 2f).toInt()),
         dstSize = IntSize(s, s),
         alpha = alpha.coerceIn(0f, 1f),
         colorFilter = filter,

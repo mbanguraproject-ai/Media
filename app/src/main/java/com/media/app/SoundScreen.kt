@@ -68,7 +68,7 @@ fun SoundScreen(onClose: () -> Unit) {
     val modern = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
 
     Column(
-        Modifier.fillMaxSize().background(moodBackground(flat = true)).statusBarsPadding()
+        Modifier.fillMaxSize().screenBackground().statusBarsPadding()
             .verticalScroll(rememberScrollState())
     ) {
         Row(Modifier.fillMaxWidth().padding(Space.sm, Space.sm), verticalAlignment = Alignment.CenterVertically) {

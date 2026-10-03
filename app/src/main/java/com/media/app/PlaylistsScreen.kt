@@ -47,7 +47,7 @@ fun PlaylistsScreen(
     var tab by remember { mutableStateOf(0) } // 0 My Playlists, 1 Smart
     var showCreate by remember { mutableStateOf(false) }
 
-    Box(Modifier.fillMaxSize().background(moodBackground())) {
+    Box(Modifier.fillMaxSize().screenBackground()) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             // Title row
             Row(
@@ -213,7 +213,7 @@ fun PlaylistDetailScreen(
     onToggleFav: (AppMediaItem) -> Unit,
     onClose: () -> Unit
 ) {
-    Column(Modifier.fillMaxSize().background(moodBackground()).statusBarsPadding()) {
+    Column(Modifier.fillMaxSize().screenBackground().statusBarsPadding()) {
         Row(
             Modifier.fillMaxWidth().padding(Space.sm, Space.sm, Space.lg, Space.sm),
             verticalAlignment = Alignment.CenterVertically

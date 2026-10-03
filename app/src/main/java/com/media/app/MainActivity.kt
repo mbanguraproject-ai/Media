@@ -535,6 +535,7 @@ fun HomeScaffold(vm: PlayerViewModel) {
     val context = LocalContext.current
     val state by vm.state.collectAsState()
     val nav = remember { HomeNav() }
+    val ambient = remember { AppAmbient() }
     val shareState by ShareSession.state.collectAsState()
     // Once per context. remember must hold a value, so it holds the context.
     remember(context) { ShareSession.attach(context); context }
@@ -710,6 +711,17 @@ fun HomeScaffold(vm: PlayerViewModel) {
         val item = libraryPlaying ?: return@LaunchedEffect
         if (onlineLookups) ArtworkRepair.fixIfNeeded(context, item, artScope(item).map { it.id })
     }
+    // ---- the room's light (AppBackdrop.kt) ----
+    // While a song plays, every screen sits on its cover the way Now Playing
+    // does - the same cover Now Playing uses, the library row first. The room
+    // goes back to the plain floor when nothing is playing: stopped, or
+    // paused until the mini-player hides. Video keeps the plain floor.
+    AppAmbientDriver(
+        ambient,
+        item = if (state.isVideo) null else (libraryPlaying ?: playingItem),
+        active = state.hasItem && !state.isVideo && !nav.playerHidden
+    )
+
     // And a repaired cover reaches the notification straight away.
     val artVersion by ArtworkStore.version.collectAsState()
     LaunchedEffect(artVersion, playingItem?.id) { playingItem?.let { vm.refreshArtwork(it.id) } }
@@ -800,30 +812,33 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // Outer container: home + all overlays render inside; the mini-player and
     // bottom nav sit at the end so they PERSIST above every screen. The parts
     // are drawn in exactly the order they were when they were all inline.
-    Box(Modifier.fillMaxSize()) {
-        HomeFeed(
-            nav = nav, lib = lib, state = state, vm = vm, db = db, scope = scope,
-            mood = mood, setMood = setMood, moodMembers = moodMembers, byPillar = byPillar,
-            pillars = pillars, positions = positions, scanning = scanning,
-            sharing = shareState.sharing, feedOwnsVideo = feedOwnsVideo
-        )
-        HomeScreens(
-            nav = nav, lib = lib, state = state, vm = vm, db = db, scope = scope,
-            settings = settings, setMood = setMood
-        )
-        HomeDetails(nav = nav, lib = lib, state = state, vm = vm, db = db, scope = scope)
-        HomeChrome(nav = nav, state = state, vm = vm)
-        HomePlayer(
-            nav = nav, lib = lib, state = state, vm = vm, db = db, scope = scope,
-            playingItem = playingItem, libraryPlaying = libraryPlaying, beat = beat,
-            envelope = envelope, feedOwnsVideo = feedOwnsVideo, feedVideoLive = feedVideoLive,
-            onlineLookups = onlineLookups, reactiveArtOn = reactiveArtOn, sharing = shareState.sharing
-        )
-        HomeSheets(
-            nav = nav, lib = lib, state = state, vm = vm, db = db, scope = scope,
-            onlineLookups = onlineLookups, artScope = artScope,
-            playingItem = playingItem, libraryPlaying = libraryPlaying
-        )
+    // Every screen in here draws the room's light behind it.
+    CompositionLocalProvider(LocalAppAmbient provides ambient) {
+        Box(Modifier.fillMaxSize()) {
+            HomeFeed(
+                nav = nav, lib = lib, state = state, vm = vm, db = db, scope = scope,
+                mood = mood, setMood = setMood, moodMembers = moodMembers, byPillar = byPillar,
+                pillars = pillars, positions = positions, scanning = scanning,
+                sharing = shareState.sharing, feedOwnsVideo = feedOwnsVideo
+            )
+            HomeScreens(
+                nav = nav, lib = lib, state = state, vm = vm, db = db, scope = scope,
+                settings = settings, setMood = setMood
+            )
+            HomeDetails(nav = nav, lib = lib, state = state, vm = vm, db = db, scope = scope)
+            HomeChrome(nav = nav, state = state, vm = vm)
+            HomePlayer(
+                nav = nav, lib = lib, state = state, vm = vm, db = db, scope = scope,
+                playingItem = playingItem, libraryPlaying = libraryPlaying, beat = beat,
+                envelope = envelope, feedOwnsVideo = feedOwnsVideo, feedVideoLive = feedVideoLive,
+                onlineLookups = onlineLookups, reactiveArtOn = reactiveArtOn, sharing = shareState.sharing
+            )
+            HomeSheets(
+                nav = nav, lib = lib, state = state, vm = vm, db = db, scope = scope,
+                onlineLookups = onlineLookups, artScope = artScope,
+                playingItem = playingItem, libraryPlaying = libraryPlaying
+            )
+        }
     }
 }
 
@@ -849,7 +864,7 @@ private fun HomeFeed(
     sharing: Boolean,
     feedOwnsVideo: Boolean
 ) {
-    Box(Modifier.fillMaxSize().background(moodBackground())) {
+    Box(Modifier.fillMaxSize().screenBackground()) {
         // Bottom inset = real nav-bar inset + chrome offset (bottom bar + mini-
         // player), so the last shelf always clears the chrome on any device
         // (gesture or 3-button). No magic number.
@@ -1537,7 +1552,9 @@ private fun BottomBar(
 ) {
     Column(
         modifier.fillMaxWidth()
-            .background(MediaColors.NavSurface)
+            // The room's light runs on under the bar, lined up with the
+            // screen above it, a step darker so the bar still reads as one.
+            .screenBackground(extraScrim = 0.10f)
             .navigationBarsPadding()
     ) {
         // Hairline on the TOP EDGE only. .border() drew a 0.5dp box on all

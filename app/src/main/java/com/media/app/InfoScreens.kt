@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 private fun InfoScaffold(title: String, onClose: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxSize().background(MediaColors.Ink).statusBarsPadding()) {
+    Column(Modifier.fillMaxSize().screenBackground().statusBarsPadding()) {
         Row(
             Modifier.fillMaxWidth().padding(Space.sm, Space.sm),
             verticalAlignment = Alignment.CenterVertically
