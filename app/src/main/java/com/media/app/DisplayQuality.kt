@@ -28,7 +28,13 @@ import androidx.compose.ui.unit.dp
 // weak device and they looked it - a dense grey list nobody would choose. A
 // tier you would not ship as the whole app is not a tier, it is a penalty, so
 // the floor is Enhanced and the work of protecting a slow phone is left to
-// the frame monitor, which measures instead of guessing.
+// the frame monitor, which measures instead of guessing (Performance.kt).
+//
+// 4.8 moved every tier up one. What was Premium is now Enhanced, what was
+// Ultra is now Premium, and Ultra is new: the cover as liquid light. Every
+// tier also gained the edge light, smooth light on every Android version
+// (CoverLight.kt), and cheaper frames.
+//
 // Names, goals and feature lines are string resources: Settings shows them
 // in the app's language.
 enum class QualityLevel(
@@ -44,7 +50,9 @@ enum class QualityLevel(
             R.string.quality_enhanced_feature_3,
             R.string.quality_enhanced_feature_4,
             R.string.quality_enhanced_feature_5,
-            R.string.quality_enhanced_feature_6
+            R.string.quality_enhanced_feature_6,
+            R.string.quality_enhanced_feature_7,
+            R.string.quality_enhanced_feature_8
         )
     ),
     PREMIUM(
@@ -55,7 +63,8 @@ enum class QualityLevel(
             R.string.quality_premium_feature_3,
             R.string.quality_premium_feature_4,
             R.string.quality_premium_feature_5,
-            R.string.quality_premium_feature_6
+            R.string.quality_premium_feature_6,
+            R.string.quality_premium_feature_7
         )
     ),
     ULTRA(
@@ -66,8 +75,7 @@ enum class QualityLevel(
             R.string.quality_ultra_feature_3,
             R.string.quality_ultra_feature_4,
             R.string.quality_ultra_feature_5,
-            R.string.quality_ultra_feature_6,
-            R.string.quality_ultra_feature_7
+            R.string.quality_ultra_feature_6
         )
     )
 }
@@ -234,55 +242,86 @@ data class QualityProfile(
 
     // The visual engine (Backdrop.kt). Each of these is implemented, and
     // each costs something, which is why they are per tier.
-    val livingBackdrop: Boolean,     // the cover, blurred, behind Now Playing
+    //
+    // `backdropBlur` went in 4.8: it blurred the whole screen every frame to
+    // hide the steps of a 20px texture, and never fully did. The texture is
+    // now smoothed once per song instead (CoverLight.kt), which is smooth on
+    // every Android version and costs nothing per frame.
+    val livingBackdrop: Boolean,     // the cover as light behind Now Playing and the app
     val backdropDrift: Boolean,      // ...slowly moving
     val backdropTurn: Boolean,       // ...and turning
-    val backdropBlur: Dp,            // RenderEffect blur on Android 12+; 0 = the tiny decode alone
+    val fluidFlow: Boolean,          // ...flowing like liquid (FluidLight.kt, Android 13+)
     val lightField: Int,             // drifting pools of the cover's tones (needs drift)
     val grain: Boolean,              // anti-banding grain over the backdrop
-    val reactiveLevel: Int,          // 1 pulse + bloom, 2 + rings + backdrop breath, 3 + light flash
-    val parallax: Boolean,           // tilt with the phone, specular sheen
+    val reactiveLevel: Int,          // 1 pulse + edge light, 2 + rings + backdrop breath, 3 + light flash
+    val parallax: Boolean,           // tilt with the phone, specular sheen, backdrop as a deeper layer
     val lyricFocus: Boolean,         // depth-of-field blur on lyric lines away from the sung one
     val lyricGlow: Boolean,          // accent glow on the sung line
     val topRefresh: Boolean          // ask for the panel's top refresh rate in Now Playing
 )
 
 fun profileFor(level: QualityLevel): QualityProfile = when (level) {
+    // Premium until 4.8. A 4 GB phone runs this on Auto now: the per-frame
+    // blur that made it expensive is gone, the screens behind it no longer
+    // redraw with it, and if frames still drop the monitor lightens it
+    // (relieved below) instead of leaving it struggling.
     QualityLevel.ENHANCED -> QualityProfile(
-        level = level,
-        artScale = 1.0f,
-        ambientGradient = true, dynamicArtLighting = false,
-        gutter = 24.dp, rowPadV = 10.dp, rowArt = 52.dp, rowArtCorner = 12,
-        motionScale = 1.0f, springMotion = true,
-        waveformBars = 56,
-        // The floor is what a 4 GB phone runs, so it gets the cheapest piece
-        // with the biggest effect: one 20px texture, drawn once, no clock.
-        livingBackdrop = true, backdropDrift = false, backdropTurn = false, backdropBlur = 0.dp,
-        lightField = 0, grain = true,
-        reactiveLevel = 1, parallax = false, lyricFocus = false, lyricGlow = false, topRefresh = false
-    )
-    QualityLevel.PREMIUM -> QualityProfile(
         level = level,
         artScale = 1.25f,
         ambientGradient = true, dynamicArtLighting = true,
         gutter = 28.dp, rowPadV = 12.dp, rowArt = 56.dp, rowArtCorner = 14,
         motionScale = 1.10f, springMotion = true,
         waveformBars = 72,
-        livingBackdrop = true, backdropDrift = true, backdropTurn = false, backdropBlur = 24.dp,
+        livingBackdrop = true, backdropDrift = true, backdropTurn = false, fluidFlow = false,
         lightField = 3, grain = true,
         reactiveLevel = 2, parallax = false, lyricFocus = true, lyricGlow = false, topRefresh = false
     )
-    QualityLevel.ULTRA -> QualityProfile(
+    // Ultra until 4.8, and its parallax now has depth: the backdrop moves
+    // behind the tilting cover as its own layer.
+    QualityLevel.PREMIUM -> QualityProfile(
         level = level,
         artScale = 1.50f,
         ambientGradient = true, dynamicArtLighting = true,
         gutter = 32.dp, rowPadV = 14.dp, rowArt = 60.dp, rowArtCorner = 16,
         motionScale = 1.20f, springMotion = true,
         waveformBars = 96,
-        livingBackdrop = true, backdropDrift = true, backdropTurn = true, backdropBlur = 32.dp,
+        livingBackdrop = true, backdropDrift = true, backdropTurn = true, fluidFlow = false,
         lightField = 4, grain = true,
         reactiveLevel = 3, parallax = true, lyricFocus = true, lyricGlow = true, topRefresh = true
     )
+    // New in 4.8: the cover flows. Below Android 13 the flow cannot run and
+    // the backdrop turns as Premium's does.
+    QualityLevel.ULTRA -> QualityProfile(
+        level = level,
+        artScale = 1.50f,
+        ambientGradient = true, dynamicArtLighting = true,
+        gutter = 32.dp, rowPadV = 14.dp, rowArt = 64.dp, rowArtCorner = 18,
+        motionScale = 1.20f, springMotion = true,
+        waveformBars = 120,
+        livingBackdrop = true, backdropDrift = true, backdropTurn = true, fluidFlow = true,
+        lightField = 5, grain = true,
+        reactiveLevel = 3, parallax = true, lyricFocus = true, lyricGlow = true, topRefresh = true
+    )
+}
+
+/** How many lighter steps [relieved] has. */
+const val MAX_RELIEF = 3
+
+/**
+ * [this] with its costliest pieces taken off, [steps] at a time, for the
+ * frame monitor to use at the floor tier where there is no tier below to
+ * step down to. In order of what they cost per frame:
+ *   1  the flow and the turn, and the per-line blur on lyrics
+ *   2  the light field
+ *   3  the drift: the backdrop holds still, as Enhanced did before 4.8
+ * The design - layout, colour, edge light, the cover's light - stays.
+ */
+fun QualityProfile.relieved(steps: Int): QualityProfile {
+    if (steps <= 0) return this
+    var p = copy(fluidFlow = false, backdropTurn = false, lyricFocus = false)
+    if (steps >= 2) p = p.copy(lightField = 0)
+    if (steps >= 3) p = p.copy(backdropDrift = false)
+    return p
 }
 
 val LocalQuality = staticCompositionLocalOf { profileFor(QualityLevel.ENHANCED) }

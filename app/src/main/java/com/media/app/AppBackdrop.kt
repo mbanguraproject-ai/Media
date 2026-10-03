@@ -1,7 +1,5 @@
 package com.media.app
 
-import android.content.Context
-import android.graphics.Bitmap
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -23,17 +21,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
-import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
@@ -61,8 +57,9 @@ import kotlin.math.max
 //  has gone - the room fades back to the plain floor. Video keeps the plain
 //  floor: its picture is the colour.
 //
-//  ONE SOURCE, EVERY SURFACE. The cover is decoded once and the drift clocks
-//  run once, in AppAmbientDriver. Every screen background reads that one
+//  ONE SOURCE, EVERY SURFACE. The cover's light is made once (CoverLight.kt,
+//  shared with Now Playing) and the drift clocks run once, in
+//  AppAmbientDriver. Every screen background reads that one
 //  state and draws in WINDOW coordinates, so a screen opened over Home covers
 //  it with exactly the same pixels, and the bottom bar continues the picture
 //  instead of cutting a band across it. The draws read the clocks in the
@@ -70,8 +67,15 @@ import kotlin.math.max
 //
 //  CALM. No beat - the room does not pulse with the music, Now Playing does.
 //  The tier decides the motion exactly as it does for Now Playing: Enhanced
-//  holds still and cross-dissolves from song to song, Premium drifts and adds
-//  the light field, Ultra also turns. Reduced motion holds still everywhere.
+//  drifts and adds the light field, Premium also turns, Ultra flows like
+//  liquid (FluidLight.kt, Android 13+). Songs cross-dissolve. Reduced motion
+//  holds still everywhere.
+//
+//  THE SCREEN ON TOP IS NOT REDRAWN WITH IT. A moving background invalidates
+//  every frame. Drawn behind a screen's content in the same layer, it made
+//  the whole screen - every row, every line of text - record itself again
+//  each frame while a song played. The content now sits in a layer of its
+//  own above the background, so the background redraws alone.
 //
 //  LEGIBLE ON ANY COVER. The scrim is measured per cover, not fixed. In the
 //  dark theme the brightest 15% of the decoded cover is dimmed until it sits
@@ -90,18 +94,13 @@ private const val FADE_IN_MS = 900
 private const val FADE_OUT_MS = 1400
 private const val CROSSFADE_MS = 1400
 
-/**
- * One decoded cover. [bright] and [dark] are the 85th and 15th percentile
- * sRGB luma of the cover as drawn (after BackdropFilter), which is what the
- * scrim is computed from.
- */
-internal class AmbientFrame(val image: ImageBitmap, val bright: Float, val dark: Float)
-
 /** The motion: clocks (null while still), the cover's tones, and finish. */
 internal class AmbientMotion(
     val pan: State<Float>?,
     val spin: State<Float>?,
     val field: State<Float>?,
+    /** Ultra: the flow's phase, 0..1 over a loop. Replaces pan and spin. */
+    val flow: State<Float>?,
     val tones: List<Color>,
     val pools: Int,
     val grain: Boolean
@@ -110,9 +109,12 @@ internal class AmbientMotion(
 /** The room's light, shared by every screen background. */
 @Stable
 class AppAmbient internal constructor() {
-    internal var frame by mutableStateOf<AmbientFrame?>(null)
+    internal var frame by mutableStateOf<CoverLight?>(null)
     /** The previous cover, drawn under [frame] while [mix] runs 0 -> 1. */
-    internal var outgoing by mutableStateOf<AmbientFrame?>(null)
+    internal var outgoing by mutableStateOf<CoverLight?>(null)
+    /** Ultra: one flow each, so both covers can flow during the cross-dissolve. */
+    internal val fluidNow = FluidLight()
+    internal val fluidOut = FluidLight()
     internal val mix = Animatable(1f)
     /** 0 = the plain floor, 1 = the room fully lit by the cover. */
     internal val presence = Animatable(0f)
@@ -122,43 +124,9 @@ class AppAmbient internal constructor() {
 /** Null outside the home scaffold: onboarding and the like keep the plain floor. */
 val LocalAppAmbient = staticCompositionLocalOf<AppAmbient?> { null }
 
-/** Decodes [item]'s cover small and measures it. Blocking; call on IO. */
-private fun ambientFrame(context: Context, item: AppMediaItem): AmbientFrame? {
-    val src = loadArt(context, item, 96)?.asAndroidBitmap() ?: return null
-    val small = Bitmap.createScaledBitmap(src, BACKDROP_PX, BACKDROP_PX, true)
-    val px = IntArray(BACKDROP_PX * BACKDROP_PX)
-    small.getPixels(px, 0, BACKDROP_PX, 0, 0, BACKDROP_PX, BACKDROP_PX)
-    // Rec.709 weights: the ones ColorMatrix.setToSaturation preserves, so
-    // the saturation boost leaves this luma alone and only the dim applies.
-    val luma = FloatArray(px.size) { i ->
-        val c = px[i]
-        val r = (c shr 16) and 0xFF
-        val g = (c shr 8) and 0xFF
-        val b = c and 0xFF
-        (0.213f * r + 0.715f * g + 0.072f * b) / 255f * BACKDROP_DIM
-    }
-    luma.sort()
-    val last = luma.size - 1
-    return AmbientFrame(
-        image = small.asImageBitmap(),
-        bright = luma[(last * 0.85f).toInt()],
-        dark = luma[(last * 0.15f).toInt()]
-    )
-}
-
-/** How much of the floor colour goes over [f] so text stays legible. */
-private fun scrimFor(f: AmbientFrame, floorLuma: Float, darkTheme: Boolean): Float {
-    val s = if (darkTheme) {
-        // bright * (1 - s) + floor * s <= DARK_TARGET
-        if (f.bright <= DARK_TARGET) 0f
-        else (f.bright - DARK_TARGET) / (f.bright - floorLuma).coerceAtLeast(0.01f)
-    } else {
-        // dark * (1 - s) + floor * s >= LIGHT_TARGET
-        if (f.dark >= LIGHT_TARGET) 0f
-        else (LIGHT_TARGET - f.dark) / (floorLuma - f.dark).coerceAtLeast(0.01f)
-    }
-    return s.coerceIn(MIN_SCRIM, MAX_SCRIM)
-}
+/** How much of the floor goes over [f] in the room: the room is calmer than Now Playing. */
+private fun roomScrim(f: CoverLight, floorLuma: Float, darkTheme: Boolean): Float =
+    scrimFor(f.bright, f.dark, floorLuma, darkTheme, DARK_TARGET, LIGHT_TARGET).coerceIn(MIN_SCRIM, MAX_SCRIM)
 
 /**
  * Keeps [ambient] on [item]'s cover while [active] and fades the room back
@@ -178,7 +146,7 @@ fun AppAmbientDriver(ambient: AppAmbient, item: AppMediaItem?, active: Boolean) 
     LaunchedEffect(item?.uri, artVersion) {
         val song = item ?: return@LaunchedEffect
         val next = withContext(Dispatchers.IO) {
-            runCatching { ambientFrame(context, song) }.getOrNull()
+            runCatching { loadCoverLight(context, song) }.getOrNull()
         }
         // No cover, no colour to take: the room goes back to the floor.
         hasArt = next != null
@@ -209,13 +177,14 @@ fun AppAmbientDriver(ambient: AppAmbient, item: AppMediaItem?, active: Boolean) 
     // moves. An infinite transition asks for every frame while it exists.
     val lit = on || ambient.presence.value > 0f
     val moving = lit && q.backdropDrift && !reduced
+    val flowing = moving && q.fluidFlow && fluidSupported
     val colors = rememberArtColors(item)
-    val pan = if (moving) {
+    val pan = if (moving && !flowing) {
         rememberInfiniteTransition(label = "roomPan").animateFloat(
             0f, 1f, infiniteRepeatable(tween(26_000, easing = LinearEasing), RepeatMode.Reverse), label = "pan"
         )
     } else null
-    val spin = if (moving && q.backdropTurn) {
+    val spin = if (moving && q.backdropTurn && !flowing) {
         rememberInfiniteTransition(label = "roomTurn").animateFloat(
             0f, 360f, infiniteRepeatable(tween(90_000, easing = LinearEasing), RepeatMode.Restart), label = "spin"
         )
@@ -227,8 +196,13 @@ fun AppAmbientDriver(ambient: AppAmbient, item: AppMediaItem?, active: Boolean) 
             0f, 1f, infiniteRepeatable(tween(48_000, easing = LinearEasing), RepeatMode.Restart), label = "fieldClock"
         )
     } else null
-    val motion = remember(pan, spin, field, tones, pools, q.grain) {
-        AmbientMotion(pan, spin, field, tones, pools, q.grain)
+    val flow = if (flowing) {
+        rememberInfiniteTransition(label = "roomFlow").animateFloat(
+            0f, 1f, infiniteRepeatable(tween(FLUID_LOOP_MS, easing = LinearEasing), RepeatMode.Restart), label = "flow"
+        )
+    } else null
+    val motion = remember(pan, spin, field, flow, tones, pools, q.grain) {
+        AmbientMotion(pan, spin, field, flow, tones, pools, q.grain)
     }
     SideEffect { if (ambient.motion !== motion) ambient.motion = motion }
 }
@@ -256,6 +230,10 @@ fun Modifier.screenBackground(extraScrim: Float = 0f): Modifier {
             drawRect(floor)
             drawAmbient(ambient, placement.origin, placement.room, floor, extraScrim)
         }
+        // The screen's own content, in a layer of its own: the background
+        // above redraws every frame while it moves, and this way the rows and
+        // text on top are not recorded again with it.
+        .graphicsLayer()
 }
 
 /** Where this surface sits in the window, so the room lines up across surfaces. */
@@ -277,12 +255,12 @@ private fun DrawScope.drawAmbient(a: AppAmbient, origin: Offset, roomSize: Size,
     val m = a.motion
     val out = a.outgoing
     val mix = if (out != null) a.mix.value.coerceIn(0f, 1f) else 1f
-    val floorLuma = floor.luminanceSrgb()
+    val floorLuma = floor.lumaSrgb()
     val darkTheme = floor.luminance() < 0.5f
     val scrim = if (out != null) {
-        val from = scrimFor(out, floorLuma, darkTheme)
-        from + (scrimFor(frame, floorLuma, darkTheme) - from) * mix
-    } else scrimFor(frame, floorLuma, darkTheme)
+        val from = roomScrim(out, floorLuma, darkTheme)
+        from + (roomScrim(frame, floorLuma, darkTheme) - from) * mix
+    } else roomScrim(frame, floorLuma, darkTheme)
 
     clipRect {
         translate(-origin.x, -origin.y) {
@@ -292,12 +270,26 @@ private fun DrawScope.drawAmbient(a: AppAmbient, origin: Offset, roomSize: Size,
             val dx = (pan - 0.5f) * room.width * 0.22f
             val dy = (0.5f - pan) * room.height * 0.10f
             val degrees = m?.spin?.value
-            withTransform({
-                translate(dx, dy)
-                if (degrees != null) rotate(degrees, pivot = mid)
-            }) {
-                if (out != null && mix < 1f) drawCover(out.image, side, BackdropFilter, p, at = mid)
-                drawCover(frame.image, side, BackdropFilter, p * mix, at = mid)
+            val phase = m?.flow?.value
+            // Ultra: both covers flow. Null where the flow cannot run, and
+            // the cover is drawn the Premium way instead.
+            val nowFlow = if (phase != null) a.fluidNow.brush(frame.backdrop, room, phase, 0f) else null
+            val outFlow = if (phase != null && nowFlow != null && out != null && mix < 1f) {
+                a.fluidOut.brush(out.backdrop, room, phase, 0f)
+            } else null
+            if (nowFlow != null) {
+                if (outFlow != null) {
+                    drawRect(outFlow, topLeft = Offset.Zero, size = room, alpha = p, colorFilter = BackdropFilter)
+                }
+                drawRect(nowFlow, topLeft = Offset.Zero, size = room, alpha = p * mix, colorFilter = BackdropFilter)
+            } else {
+                withTransform({
+                    translate(dx, dy)
+                    if (degrees != null) rotate(degrees, pivot = mid)
+                }) {
+                    if (out != null && mix < 1f) drawCover(out.backdrop, side, BackdropFilter, p, at = mid)
+                    drawCover(frame.backdrop, side, BackdropFilter, p * mix, at = mid)
+                }
             }
             val t = m?.field?.value
             if (m != null && t != null && m.pools > 0 && m.tones.isNotEmpty()) {
@@ -321,6 +313,3 @@ private fun DrawScope.drawAmbient(a: AppAmbient, origin: Offset, roomSize: Size,
         }
     }
 }
-
-/** Rec.709 luma of the gamma-encoded colour, the same scale as AmbientFrame's. */
-private fun Color.luminanceSrgb(): Float = 0.213f * red + 0.715f * green + 0.072f * blue

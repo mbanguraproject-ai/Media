@@ -162,7 +162,7 @@ fun AuraBanner(ready: Boolean, modifier: Modifier = Modifier) {
     var loaded by remember { mutableStateOf(false) }
     // The width the card actually leaves: the screen less the gutter and the
     // card's own 8dp padding on both sides. This was screen - 64, which is
-    // only right for the 24dp gutter; on Premium (28dp) and Ultra (32dp) the
+    // only right for a 24dp gutter; on 28dp (Enhanced) and 32dp (Premium, Ultra) the
     // AdView came out 8-16dp wider than its card and was cropped - and
     // cropping an ad is altering it, which AdMob does not allow.
     val gutter = Space.xl

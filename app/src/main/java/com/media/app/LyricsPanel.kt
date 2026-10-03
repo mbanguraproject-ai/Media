@@ -85,9 +85,9 @@ import androidx.compose.ui.res.stringResource
 //
 //  Synced: the playing line in full cream at full size, the lines around it
 //  smaller and dimmed, the list gliding so the current line sits a third of
-//  the way down. On Premium and Ultra the lines further away also go soft,
-//  the way a lens focuses on one plane, and on Ultra the sung line glows in
-//  the accent. Tapping a line seeks there. The offset control nudges timing
+//  the way down. On every tier the lines further away also go soft, the
+//  way a lens focuses on one plane, and on Premium and Ultra the sung line
+//  glows in the accent. Tapping a line seeks there. The offset control nudges timing
 //  half a second at a time and remembers the nudge for that track.
 //
 //  Plain: shown as text, labelled "Not synced", never animated as though it

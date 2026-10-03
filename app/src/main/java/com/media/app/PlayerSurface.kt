@@ -86,7 +86,7 @@ private const val MINI_ART = 44
 // (MINI_HEIGHT - MINI_ART) / 2: the art is inset this far on every side, so
 // the trailing control mirrors it.
 private const val MINI_INSET = 8
-// How long the Ultra light flash takes to cross the cover.
+// How long the light flash (Premium and Ultra) takes to cross the cover.
 private const val FLASH_NS = 420_000_000L
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -166,8 +166,8 @@ fun PlayerSurface(
     var showQueue by remember { mutableStateOf(false) }
     val queue by vm.queue.collectAsState()
 
-    // Ultra: the phone's motion tilts the cover, and the panel runs at its
-    // top refresh rate - both only while Now Playing is actually open.
+    // Premium and Ultra: the phone's motion tilts the cover, and the panel
+    // runs at its top refresh rate - both only while Now Playing is open.
     val tilt = rememberTilt(enabled = q.parallax && expanded && !state.isVideo && !reduced)
     TopRefreshRate(enabled = q.topRefresh && expanded)
 
@@ -336,7 +336,7 @@ fun PlayerSurface(
             PlayerLight(
                 e = e, q = q, isVideo = state.isVideo, expanded = expanded,
                 backdropItem = libraryItem ?: artItem, artColors = artColors,
-                beat = beat, ambient = ambient, glow = glow, heightPx = heightPx,
+                beat = beat, tilt = tilt, ambient = ambient, glow = glow, heightPx = heightPx,
                 artX = artX, artY = artY, artW = artW, artH = artH
             )
 
@@ -567,7 +567,7 @@ private fun Modifier.pillGestures(
     )
 }
 
-/** The light under the cover: living backdrop, ambient wash, beat rings, glow. */
+/** The light under the cover: living backdrop, ambient wash, beat rings, edge light. */
 @Composable
 private fun BoxScope.PlayerLight(
     e: Float,
@@ -577,6 +577,7 @@ private fun BoxScope.PlayerLight(
     backdropItem: AppMediaItem?,
     artColors: ArtColors?,
     beat: BeatState,
+    tilt: Tilt,
     ambient: Color,
     glow: Color,
     heightPx: Float,
@@ -587,20 +588,24 @@ private fun BoxScope.PlayerLight(
 ) {
     val density = LocalDensity.current
     val ink = MediaColors.Ink
-    // The living backdrop: the cover itself, blurred into light,
-    // under everything. Fades in with expansion like the wash; how
-    // much it moves is the tier's call (Backdrop.kt).
+    // The cover's light, made once per song and shared with the room behind
+    // the other screens (CoverLight.kt).
+    val light = rememberCoverLight(if (isVideo) null else backdropItem)
+    // The living backdrop: the cover itself as light, under everything.
+    // Fades in with expansion like the wash; how much it moves is the
+    // tier's call (Backdrop.kt).
     if (e > 0.01f && q.livingBackdrop && !isVideo) {
         LivingBackdrop(
-            item = backdropItem,
+            light = light,
             colors = artColors,
             beat = beat,
             reactive = q.reactiveLevel >= 2,
             drift = q.backdropDrift && expanded,
             turn = q.backdropTurn,
+            fluid = q.fluidFlow,
             fieldPools = q.lightField,
             grain = q.grain,
-            blur = q.backdropBlur,
+            tilt = if (q.parallax) tilt else null,
             modifier = Modifier.matchParentSize().clearAndSetSemantics { }
                 .graphicsLayer { alpha = e }
         )
@@ -650,37 +655,57 @@ private fun BoxScope.PlayerLight(
             modifier = Modifier.matchParentSize().clearAndSetSemantics { }
         )
     }
-    // Every tier glows: one radial gradient a frame is cheap, and it
-    // is what makes the cover feel lit rather than merely bouncing.
+    // Every tier lights the cover from behind: one texture draw a frame is
+    // cheap, and it is what makes the cover feel lit rather than merely
+    // bouncing.
     if (e > 0.35f && q.reactiveLevel >= 1 && !isVideo) {
         // A Canvas, not a Box with a conditional background: `if
         // (level > 0.01f)` was a COMPOSITION-level branch on a value
         // that changes 60x/second, so this mounted and unmounted every
         // frame. Reading beat.level inside the draw scope keeps the
-        // whole effect in the draw phase.
+        // whole effect in the draw phase, and the layer keeps that redraw
+        // to this canvas instead of the whole player.
         //
-        // There is always a little light behind the cover now, in the
-        // cover's own colour; the beat swells it.
+        // The edge light: the colour at each edge of the cover spills out
+        // behind it, capped so a white cover's halo stays off the title.
+        // Until the cover's light is ready, and for a cover with none, the
+        // old glow in one colour stands in.
         val cxB = with(density) { (artX + artW / 2f).toPx() }
         val cyB = with(density) { (artY + artH / 2f).toPx() }
         val baseB = with(density) { minOf(artW, artH).toPx() }
         val fade = ((e - 0.35f) / 0.65f).coerceIn(0f, 1f)
-        Canvas(Modifier.matchParentSize().clearAndSetSemantics { }) {
+        val darkTheme = ink.luminance() < 0.5f
+        val edge = light?.edge
+        val cap = light?.let { edgeLightCap(it, ink.lumaSrgb(), darkTheme) } ?: 1f
+        val depth = q.parallax
+        Canvas(Modifier.matchParentSize().graphicsLayer().clearAndSetSemantics { }) {
             val lv = beat.level
-            val r = baseB * (0.58f + 0.30f * lv)
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        glow.copy(alpha = (0.24f + 0.76f * lv).coerceAtMost(1f) * fade),
-                        glow.copy(alpha = (0.08f + 0.34f * lv) * fade),
-                        Color.Transparent
+            if (edge != null) {
+                // With depth the light sits under the cover, so it slides a
+                // little the other way as the cover tilts.
+                val k = ((e - 0.5f) * 2f).coerceIn(0f, 1f)
+                val ox = if (depth) -tilt.x * baseB * 0.05f * k else 0f
+                val oy = if (depth) -tilt.y * baseB * 0.05f * k else 0f
+                drawEdgeLight(
+                    edge, Offset(cxB + ox, cyB + oy), baseB, lv,
+                    alpha = (0.62f + 0.38f * lv).coerceAtMost(1f) * cap * fade
+                )
+            } else {
+                val r = baseB * (0.58f + 0.30f * lv)
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            glow.copy(alpha = (0.24f + 0.76f * lv).coerceAtMost(1f) * fade),
+                            glow.copy(alpha = (0.08f + 0.34f * lv) * fade),
+                            Color.Transparent
+                        ),
+                        center = Offset(cxB, cyB),
+                        radius = r
                     ),
-                    center = Offset(cxB, cyB),
-                    radius = r
-                ),
-                radius = r,
-                center = Offset(cxB, cyB)
-            )
+                    radius = r,
+                    center = Offset(cxB, cyB)
+                )
+            }
         }
     }
 }
@@ -724,8 +749,8 @@ private fun PlayerArtwork(
                 scaleX = s; scaleY = s
                 // Gives way to the lyrics; the pill keeps its cover.
                 alpha = 1f - lyr * e
-                // Ultra: the cover tilts with the phone, a few
-                // degrees, only once it is the hero.
+                // Premium and Ultra: the cover tilts with the phone,
+                // a few degrees, only once it is the hero.
                 if (q.parallax) {
                     val k = ((e - 0.5f) * 2f).coerceIn(0f, 1f)
                     rotationY = tilt.x * 7f * k
@@ -745,9 +770,9 @@ private fun PlayerArtwork(
                 spotColor = if (isVideo) Color.Black else glow
             )
             .clip(RoundedCornerShape(artCorner))
-            // Light ON the cover: the parallax sheen, and on Ultra
-            // with Reactive artwork a flash that sweeps it on a hard
-            // hit. Drawn after the content, inside the clip.
+            // Light ON the cover: the parallax sheen, and on Premium
+            // and Ultra with Reactive artwork a flash that sweeps it on
+            // a hard hit. Drawn after the content, inside the clip.
             .drawWithContent {
                 drawContent()
                 if (e > 0.5f && !isVideo && (q.parallax || q.reactiveLevel >= 3)) {

@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -37,8 +38,8 @@ import androidx.compose.ui.res.stringResource
 //  waveform, because a fake waveform is worse than none: it would animate
 //  convincingly while telling you nothing about the audio.
 //
-//  Bar count comes from the display-quality tier - Essential draws 24, Ultra
-//  draws 96. This is the first place a tier genuinely changes what is on
+//  Bar count comes from the display-quality tier - Enhanced draws 72, Ultra
+//  draws 120. This is the first place a tier genuinely changes what is on
 //  screen rather than only how sharp it is.
 //
 //  Behaviour this replaces: Material's Slider called seekTo() from
@@ -55,6 +56,11 @@ import androidx.compose.ui.res.stringResource
 
 private val TouchHeight = 52.dp
 private val BarGap = 2.dp
+// Ultra's 120 bars: 2dp gaps would leave each bar under 1dp on a phone; 1dp
+// gaps keep them a little wider than Premium's 96 (1.8dp against 1.5dp on a
+// typical phone) while drawing a finer wave.
+private val FineBarGap = 1.dp
+private const val FINE_BARS = 120
 private val BarMin = 3.dp        // silence is still a visible line
 private val BarMax = 34.dp
 private val PlainTrack = 4.dp
@@ -156,7 +162,9 @@ fun Scrubber(
                 }
             }
     ) {
-        Canvas(Modifier.fillMaxSize()) {
+        // Its own layer: the bar under the playhead moves with the beat
+        // every frame, and that redraw should not take the player with it.
+        Canvas(Modifier.fillMaxSize().graphicsLayer()) {
             val cy = size.height / 2f
             val insetPx = Inset.toPx()
             val span = (size.width - insetPx * 2f).coerceAtLeast(1f)
@@ -167,7 +175,7 @@ fun Scrubber(
 
             if (bars != null && bars.isNotEmpty()) {
                 val n = bars.size
-                val gap = BarGap.toPx()
+                val gap = (if (n >= FINE_BARS) FineBarGap else BarGap).toPx()
                 val barW = ((span - gap * (n - 1)) / n).coerceAtLeast(1f)
                 val minH = BarMin.toPx()
                 val maxH = BarMax.toPx() * (1f + 0.10f * grow)

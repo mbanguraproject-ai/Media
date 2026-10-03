@@ -46,6 +46,12 @@ import androidx.compose.ui.platform.LocalContext
 //  would oscillate: stepping up restores the cost that caused the drop, which
 //  drops frames, which steps down again. A fresh launch re-measures from the
 //  detected ceiling.
+//
+//  AT THE FLOOR IT LIGHTENS. Enhanced has no tier below it, and since 4.8 it
+//  drifts and carries a light field, so a step down had nowhere to go. On Auto
+//  it now sheds its costliest pieces one at a time instead (relieved() in
+//  DisplayQuality.kt): the flow, turn and per-line lyric blur, then the light
+//  field, then the drift. Settings says so, as it reports a step down.
 // ============================================================================
 
 /** Frames counted per evaluation window. Only frames actually drawn count. */
@@ -66,9 +72,12 @@ data class AdaptiveQuality(
     /** What the user or the ceiling asked for. */
     val requested: QualityLevel,
     /** Sustained trouble seen at a manually-chosen level. */
-    val strained: Boolean
+    val strained: Boolean,
+    /** Lighter steps taken at the floor tier, 0..MAX_RELIEF (QualityProfile.relieved). */
+    val relief: Int = 0
 ) {
     val steppedDown: Boolean get() = level.ordinal < requested.ordinal
+    val lightened: Boolean get() = relief > 0
 }
 
 val LocalAdaptiveQuality = compositionLocalOf {
@@ -88,6 +97,7 @@ fun rememberAdaptiveQuality(
     // rather than inheriting an earlier session's downgrade.
     var level by remember(requested) { mutableStateOf(requested) }
     var strained by remember(requested) { mutableStateOf(false) }
+    var relief by remember(requested) { mutableStateOf(0) }
     val context = LocalContext.current
 
     // The device's REAL refresh rate, never an assumed 60 or 120.
@@ -128,6 +138,7 @@ fun rememberAdaptiveQuality(
                     main.post {
                         if (autoMode) {
                             if (level.ordinal > 0) level = level.stepDown()
+                            else if (relief < MAX_RELIEF) relief++
                         } else {
                             // Never overridden. Settings offers Auto instead.
                             strained = true
@@ -144,5 +155,5 @@ fun rememberAdaptiveQuality(
         }
     }
 
-    return AdaptiveQuality(level, requested, strained)
+    return AdaptiveQuality(level, requested, strained, relief)
 }

@@ -7,6 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.delay
@@ -55,7 +56,7 @@ class BeatState {
     internal val power = FloatArray(RINGS)
     private var next = 0
 
-    /** The latest transient, for the Ultra light flash. 0 = none yet. */
+    /** The latest transient, for the light flash (Premium and Ultra). 0 = none yet. */
     var lastHitNanos = 0L
         private set
     var lastHitPower = 0f
@@ -175,8 +176,11 @@ fun BeatRings(
     baseRadiusPx: Float,
     strength: Float = 1f
 ) {
-    val now = beat.frameNanos
-    Canvas(modifier) {
+    // The frame clock is read inside the draw, never here: read in
+    // composition it recomposed this every frame for as long as music
+    // played. In its own layer, so the redraw stays in this canvas.
+    Canvas(modifier.graphicsLayer()) {
+        val now = beat.frameNanos
         if (now == 0L || baseRadiusPx <= 0f) return@Canvas
         for (i in 0 until RINGS) {
             val b = beat.born[i]

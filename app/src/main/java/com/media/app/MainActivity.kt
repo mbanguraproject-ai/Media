@@ -170,7 +170,9 @@ class MainActivity : ComponentActivity() {
                 autoMode = settings.qualityMode == QualityMode.AUTO,
                 refreshHz = capability.refreshRateHz
             )
-            val quality = remember(adaptive.level) { profileFor(adaptive.level) }
+            val quality = remember(adaptive.level, adaptive.relief) {
+                profileFor(adaptive.level).relieved(adaptive.relief)
+            }
             MediaTheme(
                 themeMode = settings.themeMode,
                 fontScale = settings.fontScale,

@@ -346,7 +346,7 @@ object Space {
     val lg = 16.dp; val xxl = 32.dp; val xxxl = 48.dp
 
     // The screen gutter, and the ONE step on this scale that follows the
-    // display-quality tier: 16dp on Essential through 32dp on Ultra.
+    // display-quality tier: 28dp on Enhanced, 32dp on Premium and Ultra.
     //
     // Home was made tier-aware first while every other screen stayed pinned
     // at 24dp, so on Essential the home rows started 8dp left of the Library

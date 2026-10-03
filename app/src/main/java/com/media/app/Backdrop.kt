@@ -31,8 +31,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -46,12 +46,12 @@ import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.PI
@@ -75,38 +75,47 @@ import kotlin.math.sin
 //                     deep tones for the light field. Now Playing takes its
 //                     colour from the music instead of one fixed teal.
 //
-//  LIVING BACKDROP    The cover itself, behind Now Playing. Decoded at 20px
-//                     and drawn full-screen with bilinear filtering, which IS
-//                     a blur: smooth on every Android version, one texture
-//                     draw. Android 12+ adds a real blur on top on the tiers
-//                     that can afford it. Saturation is lifted so it reads as
-//                     coloured light. The scrim over it is only as dark as
-//                     legibility needs and never reaches solid black, so the
-//                     colour runs all the way under the system navigation bar.
+//  LIVING BACKDROP    The cover itself, behind Now Playing: its colour, none
+//                     of its detail, as a smooth 128px texture made once per
+//                     song (CoverLight.kt) and drawn full-screen - one texture
+//                     draw, smooth on every Android version, no per-frame
+//                     blur. Saturation is lifted so it reads as coloured
+//                     light. The scrim over it is measured per cover: as dark
+//                     as this cover needs for the text on it, never lighter
+//                     than the designed gradient, and never solid black, so
+//                     the colour runs on under the system navigation bar.
 //
-//  LIGHT FIELD        Premium and Ultra. Soft pools of the cover's own tones
+//  FLUID              Ultra on Android 13+. Instead of panning and turning,
+//                     the cover flows like liquid (FluidLight.kt).
+//
+//  EDGE LIGHT         Every tier. The colour at each edge of the cover spills
+//                     out behind it (CoverLight.kt), swelling on the beat with
+//                     Reactive artwork. Capped per cover so a white cover's
+//                     halo never sits bright under the title.
+//
+//  LIGHT FIELD        Enhanced and up. Soft pools of the cover's own tones
 //                     drifting over the backdrop on looping paths (integer
-//                     frequencies, so the loop has no seam). Ultra adds a
-//                     fourth pool, and with Reactive artwork they swell on
-//                     the bass.
+//                     frequencies, so the loop has no seam). Premium adds a
+//                     fourth pool and Ultra a fifth, and with Reactive artwork
+//                     they swell on the bass.
 //
 //  GRAIN              Every tier. A fixed noise texture at a few percent,
 //                     overlaid: it breaks the 8-bit banding that smooth dark
 //                     gradients show on most panels. Not a look - a fix.
 //
-//  PARALLAX           Ultra. The cover tilts a few degrees with the phone,
+//  PARALLAX           Premium and Ultra. The cover tilts a few degrees with the phone,
 //                     read from the game rotation vector (gyro + accel, no
 //                     magnetometer, so no compass jitter), and a specular
 //                     sheen slides across it the way light moves on glass.
 //                     The rest angle re-centres slowly, so holding the phone
-//                     at any angle comes back to flat.
+//                     at any angle comes back to flat. Behind it the backdrop
+//                     moves the other way as the deepest layer, the light
+//                     field half as far, so the screen has depth.
 //
-//  TOP REFRESH        Ultra. While Now Playing is open the window asks the
+//  TOP REFRESH        Premium and Ultra. While Now Playing is open the window asks the
 //                     panel for its highest refresh rate at the current
 //                     resolution, and hands the choice back on close.
 // ============================================================================
-
-internal const val BACKDROP_PX = 20
 
 /** The cover's colours, tuned for a dark room. Null fields: the cover had no colour to give. */
 data class ArtColors(val accent: Color?, val glow: Color?, val field: List<Color>)
@@ -156,24 +165,6 @@ fun rememberArtColors(item: AppMediaItem?): ArtColors? {
     return colors
 }
 
-/** The cover as a tiny source for the backdrop. Null for none. */
-@Composable
-private fun rememberBackdropImage(item: AppMediaItem?): ImageBitmap? {
-    val context = LocalContext.current
-    val artVersion by ArtworkStore.version.collectAsState()
-    var image by remember { mutableStateOf<ImageBitmap?>(null) }
-    LaunchedEffect(item?.uri, artVersion) {
-        if (item == null) { image = null; return@LaunchedEffect }
-        image = withContext(Dispatchers.IO) {
-            runCatching {
-                val src = loadArt(context, item, 96)?.asAndroidBitmap() ?: return@runCatching null
-                Bitmap.createScaledBitmap(src, BACKDROP_PX, BACKDROP_PX, true).asImageBitmap()
-            }.getOrNull()
-        }
-    }
-    return image
-}
-
 /** 96px of fixed noise, made once. Tiled, it is the anti-banding grain. */
 internal val grainImage: ImageBitmap by lazy {
     val n = 96
@@ -197,20 +188,40 @@ internal val BackdropFilter: ColorFilter by lazy {
 /** BackdropFilter's brightness scale. Saturation keeps luma, so this is the luma scale. */
 internal const val BACKDROP_DIM = 0.82f
 
+/** The edge light: saturated so it reads as light, not dimmed - it is already capped per cover. */
+internal val EdgeFilter: ColorFilter by lazy {
+    ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(1.30f) })
+}
+
+// Now Playing is meant to be more colourful than the room behind the other
+// screens (AppBackdrop.kt, 0.22 / 0.80), so its targets are looser.
+/** Dark theme: luma the brightest 15% of the drawn cover is brought down to. */
+private const val NP_DARK_TARGET = 0.30f
+/** Light theme: luma the darkest 15% is brought up to. */
+private const val NP_LIGHT_TARGET = 0.72f
+private const val NP_MAX_SCRIM = 0.80f
+/** Dark theme: the edge light's bright edges are capped at this luma. */
+private const val EDGE_DARK_TARGET = 0.42f
+/** Light theme: the edge light may darken the floor down to this luma, no further. */
+private const val EDGE_LIGHT_FLOOR = 0.58f
+
 @Composable
 fun LivingBackdrop(
-    item: AppMediaItem?,
+    light: CoverLight?,
     colors: ArtColors?,
     beat: BeatState,
     reactive: Boolean,
     drift: Boolean,
     turn: Boolean,
+    fluid: Boolean,
     fieldPools: Int,
     grain: Boolean,
-    blur: Dp,
+    /** Premium and Ultra: the backdrop moves against the tilt as the deepest layer. Null: no depth. */
+    tilt: Tilt?,
     modifier: Modifier = Modifier
 ) {
-    val image = rememberBackdropImage(item) ?: return
+    if (light == null) return
+    val image = light.backdrop
     val reduced = LocalReducedMotion.current
     // Cross-dissolve on a track change instead of a cut.
     val shown = remember { Animatable(0f) }
@@ -219,18 +230,26 @@ fun LivingBackdrop(
         shown.animateTo(1f, tween(Motion.Large))
     }
     val moving = drift && !reduced
+    val flowing = moving && fluid && fluidSupported
     // Only a tier that moves runs a clock at all: an infinite transition
-    // asks for every frame for as long as it exists, read or not.
-    val pan = if (moving) {
+    // asks for every frame for as long as it exists, read or not. The flow
+    // carries its own drift and turn, so it replaces those two clocks.
+    val pan = if (moving && !flowing) {
         rememberInfiniteTransition(label = "backdrop").animateFloat(
             0f, 1f, infiniteRepeatable(tween(26_000, easing = LinearEasing), RepeatMode.Reverse), label = "pan"
         )
     } else null
-    val spin = if (moving && turn) {
+    val spin = if (moving && turn && !flowing) {
         rememberInfiniteTransition(label = "backdropTurn").animateFloat(
             0f, 360f, infiniteRepeatable(tween(90_000, easing = LinearEasing), RepeatMode.Restart), label = "spin"
         )
     } else null
+    val flow = if (flowing) {
+        rememberInfiniteTransition(label = "backdropFlow").animateFloat(
+            0f, 1f, infiniteRepeatable(tween(FLUID_LOOP_MS, easing = LinearEasing), RepeatMode.Restart), label = "flow"
+        )
+    } else null
+    val fluidLight = remember { FluidLight() }
     val pools = if (moving) fieldPools.coerceAtMost(colors?.field?.size?.let { maxOf(it, 2) } ?: 0) else 0
     val field = if (pools > 0) {
         rememberInfiniteTransition(label = "field").animateFloat(
@@ -238,53 +257,100 @@ fun LivingBackdrop(
         )
     } else null
     val ink = MediaColors.Ink
-    // Saturated so it reads as coloured light, and dimmed a little so a white
-    // cover cannot wash out the controls now that the scrim stops short of
-    // black.
-    val saturate = BackdropFilter
+    val darkTheme = ink.luminance() < 0.5f
+    // As dark as this cover needs for the text on it; the designed gradient
+    // below is the least it ever gets.
+    val need = scrimFor(light.bright, light.dark, ink.lumaSrgb(), darkTheme, NP_DARK_TARGET, NP_LIGHT_TARGET)
+        .coerceAtMost(NP_MAX_SCRIM)
     val grainBrush = remember { ShaderBrush(ImageShader(grainImage, TileMode.Repeated, TileMode.Repeated)) }
-    val blurred = if (blur > 0.dp && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) Modifier.blur(blur) else Modifier
 
     Box(modifier) {
-        // Light: the cover and the light field. Blurred where the tier allows.
-        Canvas(Modifier.fillMaxSize().then(blurred)) {
+        // Light: the cover and the light field.
+        Canvas(Modifier.fillMaxSize()) {
             val level = if (reactive) beat.level else 0f
-            val side = max(size.width, size.height) * 1.35f
-            val p = pan?.value ?: 0.5f
-            val dx = (p - 0.5f) * size.width * 0.22f
-            val dy = (0.5f - p) * size.height * 0.10f
-            val scale = 1f + 0.06f * level
             val mid = center
-            val degrees = spin?.value
-            withTransform({
-                translate(dx, dy)
-                if (degrees != null) rotate(degrees, pivot = mid)
-                scale(scale, scale, pivot = mid)
-            }) {
-                drawCover(image, side, saturate, alpha = shown.value)
+            val scale = 1f + 0.06f * level
+            // Depth: the deepest layer moves against the tilt.
+            val deepX = -(tilt?.x ?: 0f) * size.width * 0.035f
+            val deepY = -(tilt?.y ?: 0f) * size.height * 0.02f
+            val brush = flow?.let { fluidLight.brush(image, size, it.value, level) }
+            if (brush != null) {
+                // Drawn past the edges, so the depth shift never shows one.
+                val m = max(size.width, size.height) * 0.06f
+                withTransform({
+                    translate(deepX, deepY)
+                    scale(scale, scale, pivot = mid)
+                }) {
+                    drawRect(
+                        brush, topLeft = Offset(-m, -m), size = Size(size.width + 2 * m, size.height + 2 * m),
+                        alpha = shown.value, colorFilter = BackdropFilter
+                    )
+                }
+            } else {
+                val side = max(size.width, size.height) * 1.35f
+                val p = pan?.value ?: 0.5f
+                val dx = (p - 0.5f) * size.width * 0.22f + deepX
+                val dy = (0.5f - p) * size.height * 0.10f + deepY
+                val degrees = spin?.value
+                withTransform({
+                    translate(dx, dy)
+                    if (degrees != null) rotate(degrees, pivot = mid)
+                    scale(scale, scale, pivot = mid)
+                }) {
+                    drawCover(image, side, BackdropFilter, alpha = shown.value)
+                }
             }
             val t = field?.value
             if (t != null && colors != null && colors.field.isNotEmpty()) {
-                drawLightField(colors.field, t, level, pools, shown.value)
+                translate(deepX * 0.5f, deepY * 0.5f) {
+                    drawLightField(colors.field, t, level, pools, shown.value)
+                }
             }
         }
-        // Legibility and finish, never blurred. The scrim is only as dark as
-        // white text needs and stops well short of black, so the colour runs
-        // on under the navigation bar instead of ending in a black band.
+        // Legibility and finish. Only as dark as this cover needs and never
+        // black, so the colour runs on under the navigation bar instead of
+        // ending in a black band.
         Canvas(Modifier.fillMaxSize()) {
             val level = if (reactive) beat.level else 0f
             val lift = 0.14f * level
             drawRect(
                 Brush.verticalGradient(
-                    0f to ink.copy(alpha = (0.40f - lift).coerceAtLeast(0f)),
-                    0.45f to ink.copy(alpha = (0.42f - lift).coerceAtLeast(0f)),
-                    0.75f to ink.copy(alpha = 0.52f),
-                    1f to ink.copy(alpha = 0.58f)
+                    0f to ink.copy(alpha = (max(0.40f, need) - lift).coerceAtLeast(0f)),
+                    0.45f to ink.copy(alpha = (max(0.42f, need) - lift).coerceAtLeast(0f)),
+                    0.75f to ink.copy(alpha = max(0.52f, need)),
+                    1f to ink.copy(alpha = max(0.58f, need))
                 )
             )
             if (grain) drawRect(grainBrush, alpha = 0.06f, blendMode = BlendMode.Overlay)
         }
     }
+}
+
+/**
+ * How strongly the edge light may show on this floor: in the dark theme its
+ * bright edges are held to EDGE_DARK_TARGET, in the light theme its dark
+ * edges may not pull the floor below EDGE_LIGHT_FLOOR. Never under a quarter.
+ */
+internal fun edgeLightCap(light: CoverLight, floorLuma: Float, darkTheme: Boolean): Float =
+    if (darkTheme) (EDGE_DARK_TARGET / light.edgeBright.coerceAtLeast(0.001f)).coerceIn(0.25f, 1f)
+    else ((floorLuma - EDGE_LIGHT_FLOOR) / (floorLuma - light.edgeDark).coerceAtLeast(0.001f)).coerceIn(0.25f, 1f)
+
+/**
+ * The edge light behind a cover of side [cover] centred on [at]: the texture
+ * at twice the cover's size, a little more on the beat.
+ */
+internal fun DrawScope.drawEdgeLight(edge: ImageBitmap, at: Offset, cover: Float, level: Float, alpha: Float) {
+    val s = (cover * 2f * (1f + 0.06f * level)).toInt().coerceAtLeast(1)
+    drawImage(
+        image = edge,
+        srcOffset = IntOffset.Zero,
+        srcSize = IntSize(edge.width, edge.height),
+        dstOffset = IntOffset((at.x - s / 2f).toInt(), (at.y - s / 2f).toInt()),
+        dstSize = IntSize(s, s),
+        alpha = alpha.coerceIn(0f, 1f),
+        colorFilter = EdgeFilter,
+        filterQuality = FilterQuality.High
+    )
 }
 
 /**

@@ -354,9 +354,12 @@ private fun DisplayQualitySection(current: QualityMode, onPick: (QualityMode) ->
 
     // A tier that quietly changed itself is worse than one that never adapts,
     // so the app says what it did and why.
-    if (adaptive.steppedDown) {
+    if (adaptive.steppedDown || adaptive.lightened) {
         Text(
-            stringResource(R.string.dq_stepped_down, stringResource(adaptive.level.label)),
+            stringResource(
+                if (adaptive.steppedDown) R.string.dq_stepped_down else R.string.dq_lightened,
+                stringResource(adaptive.level.label)
+            ),
             style = MaterialTheme.typography.bodyMedium,
             color = MediaColors.Warning,
             modifier = Modifier.padding(Space.xl, Space.sm, Space.xl, 0.dp)
