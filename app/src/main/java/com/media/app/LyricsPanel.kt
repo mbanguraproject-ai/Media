@@ -78,6 +78,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
+import androidx.compose.ui.res.stringResource
 
 // ============================================================================
 //  LYRICS IN NOW PLAYING
@@ -129,7 +130,7 @@ fun LyricsPanel(
 
     var showActions by remember { mutableStateOf(false) }
     var showPaste by remember { mutableStateOf(false) }
-    var note by remember(item.id) { mutableStateOf<String?>(null) }
+    var note by remember(item.id) { mutableStateOf<Int?>(null) }
 
     // .lrc has no registered MIME type on most phones, so the picker has to
     // offer everything; the text is checked after it is read.
@@ -138,7 +139,7 @@ fun LyricsPanel(
             val ok = withContext(Dispatchers.IO) {
                 LyricsEngine.readText(context, uri)?.let { LyricsEngine.setUserLyrics(item.id, it) } ?: false
             }
-            note = if (ok) null else "That file had no lyrics in it"
+            note = if (ok) null else R.string.lyrics_file_empty
             if (ok) reload++
         }
     }
@@ -148,7 +149,7 @@ fun LyricsPanel(
 
     Box(modifier) {
         when (val s = state) {
-            LyricsState.Loading -> Centered("Looking for lyrics…")
+            LyricsState.Loading -> Centered(stringResource(R.string.lyrics_looking))
             is LyricsState.Synced -> Synced(
                 lines = s.lines, source = s.source, positionMs = positionMs, offsetMs = offset,
                 accent = tint ?: MediaColors.Accent,
@@ -159,7 +160,7 @@ fun LyricsPanel(
                 LyricsEngine.setOffset(item.id, next)
             }
             is LyricsState.Plain -> Plain(s.text, s.source) { showActions = true }
-            LyricsState.Instrumental -> Centered("Instrumental")
+            LyricsState.Instrumental -> Centered(stringResource(R.string.lyrics_instrumental))
             is LyricsState.None -> Column(
                 Modifier.fillMaxSize().padding(horizontal = Space.xl),
                 verticalArrangement = Arrangement.Center,
@@ -167,24 +168,23 @@ fun LyricsPanel(
             ) {
                 Text(
                     when {
-                        s.offline -> "Couldn't reach the lyrics services"
-                        !online -> "No lyrics in this file"
-                        else -> "No lyrics found for this track"
+                        s.offline -> stringResource(R.string.lyrics_offline)
+                        !online -> stringResource(R.string.lyrics_none_in_file)
+                        else -> stringResource(R.string.lyrics_none_found)
                     },
                     style = Typo.Primary, color = MediaColors.CreamDim, textAlign = TextAlign.Center
                 )
                 Spacer(Modifier.height(Space.xs))
                 Text(
-                    if (!online) "Search online, or add your own: a .lrc or .txt from your phone, or pasted text."
-                    else "Add your own: a .lrc or .txt from your phone, or pasted text. A lyrics folder in Settings is searched too.",
+                    stringResource(if (!online) R.string.lyrics_add_hint_offline else R.string.lyrics_add_hint),
                     style = Typo.Tertiary, color = MediaColors.CreamFaint, textAlign = TextAlign.Center
                 )
                 Spacer(Modifier.height(Space.md))
                 Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
-                    Pill("From a file") { pickFile() }
-                    Pill("Paste") { showPaste = true }
+                    Pill(stringResource(R.string.lyrics_from_file)) { pickFile() }
+                    Pill(stringResource(R.string.lyrics_paste)) { showPaste = true }
                     if (s.online) {
-                        Pill(if (!online) "Search online" else "Search again", active = true) {
+                        Pill(stringResource(if (!online) R.string.lyrics_search_online else R.string.action_search_again), active = true) {
                             if (!online) onEnableOnline()
                             force++
                         }
@@ -192,7 +192,7 @@ fun LyricsPanel(
                 }
                 note?.let {
                     Spacer(Modifier.height(Space.sm))
-                    Text(it, style = Typo.Tertiary, color = MediaColors.Accent)
+                    Text(stringResource(it), style = Typo.Tertiary, color = MediaColors.Accent)
                 }
             }
         }
@@ -347,17 +347,17 @@ private fun Synced(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
-                Text("SYNCED", style = Typo.Micro, color = accent)
-                Text(source.label, style = Typo.Tertiary, color = MediaColors.CreamFaint, maxLines = 1)
+                Text(stringResource(R.string.lyrics_synced_caps), style = Typo.Micro, color = accent)
+                Text(stringResource(source.labelRes), style = Typo.Tertiary, color = MediaColors.CreamFaint, maxLines = 1)
             }
             // One quiet capsule instead of two loose pills and a label.
             Row(
                 Modifier.clip(CircleShape).background(MediaColors.Fill),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                CapsuleIcon(Icons.Filled.Remove, "Lyrics earlier") { onNudge(-OFFSET_STEP_MS) }
+                CapsuleIcon(Icons.Filled.Remove, stringResource(R.string.lyrics_earlier)) { onNudge(-OFFSET_STEP_MS) }
                 Text(
-                    if (offsetMs == 0L) "In time" else "%+.1fs".format(java.util.Locale.ROOT, offsetMs / 1000f),
+                    if (offsetMs == 0L) stringResource(R.string.lyrics_in_time) else stringResource(R.string.lyrics_offset_seconds, offsetMs / 1000f),
                     style = Typo.Tertiary,
                     color = if (offsetMs == 0L) MediaColors.CreamFaint else MediaColors.Accent,
                     modifier = Modifier.clickable(
@@ -365,9 +365,9 @@ private fun Synced(
                         indication = null
                     ) { if (offsetMs != 0L) onNudge(-offsetMs) }
                 )
-                CapsuleIcon(Icons.Filled.Add, "Lyrics later") { onNudge(OFFSET_STEP_MS) }
+                CapsuleIcon(Icons.Filled.Add, stringResource(R.string.lyrics_later)) { onNudge(OFFSET_STEP_MS) }
             }
-            CapsuleIcon(Icons.Filled.MoreHoriz, "Lyrics options", onClick = onMore)
+            CapsuleIcon(Icons.Filled.MoreHoriz, stringResource(R.string.lyrics_options), onClick = onMore)
         }
     }
 }
@@ -396,10 +396,10 @@ private fun Plain(text: String, source: LyricsSource, onMore: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
-                Text("NOT SYNCED", style = Typo.Micro, color = MediaColors.CreamFaint)
-                Text(source.label, style = Typo.Tertiary, color = MediaColors.CreamFaint, maxLines = 1)
+                Text(stringResource(R.string.lyrics_not_synced_caps), style = Typo.Micro, color = MediaColors.CreamFaint)
+                Text(stringResource(source.labelRes), style = Typo.Tertiary, color = MediaColors.CreamFaint, maxLines = 1)
             }
-            CapsuleIcon(Icons.Filled.MoreHoriz, "Lyrics options", onClick = onMore)
+            CapsuleIcon(Icons.Filled.MoreHoriz, stringResource(R.string.lyrics_options), onClick = onMore)
         }
     }
 }
@@ -421,14 +421,14 @@ private fun LyricsActions(
                 .background(MediaColors.Modal).border(1.dp, MediaColors.Fill, RoundedCornerShape(20.dp))
                 .padding(vertical = Space.md)
         ) {
-            Text("Lyrics", style = Typo.Section, color = MediaColors.Cream,
+            Text(stringResource(R.string.label_lyrics), style = Typo.Section, color = MediaColors.Cream,
                 modifier = Modifier.padding(horizontal = Space.xl, vertical = Space.sm))
             // Your own lyrics outrank any search, so searching is offered
             // once they are removed, not alongside them.
-            if (!canRemove) ActionLine(Icons.Filled.Search, "Search again online", onSearch)
-            ActionLine(Icons.Filled.FolderOpen, "Load from a file (.lrc or .txt)", onFile)
-            ActionLine(Icons.Filled.ContentPaste, "Paste lyrics", onPaste)
-            if (canRemove) ActionLine(Icons.Filled.DeleteOutline, "Remove the lyrics you added", onRemove, danger = true)
+            if (!canRemove) ActionLine(Icons.Filled.Search, stringResource(R.string.lyrics_search_again_online), onSearch)
+            ActionLine(Icons.Filled.FolderOpen, stringResource(R.string.lyrics_load_file), onFile)
+            ActionLine(Icons.Filled.ContentPaste, stringResource(R.string.lyrics_paste_action), onPaste)
+            if (canRemove) ActionLine(Icons.Filled.DeleteOutline, stringResource(R.string.lyrics_remove_added), onRemove, danger = true)
         }
     }
 }
@@ -455,9 +455,9 @@ private fun PasteLyrics(title: String, onSave: (String) -> Unit, onDismiss: () -
                 .background(MediaColors.Modal).border(1.dp, MediaColors.Fill, RoundedCornerShape(20.dp))
                 .padding(Space.xl)
         ) {
-            Text("Lyrics for $title", style = Typo.Section, color = MediaColors.Cream, maxLines = 1)
+            Text(stringResource(R.string.lyrics_for, title), style = Typo.Section, color = MediaColors.Cream, maxLines = 1)
             Spacer(Modifier.height(Space.xs))
-            Text("Timed LRC lines ([01:23.45] …) play synced; anything else shows as plain text.",
+            Text(stringResource(R.string.lyrics_paste_hint_lrc),
                 style = Typo.Tertiary, color = MediaColors.CreamFaint)
             Spacer(Modifier.height(Space.md))
             Box(
@@ -466,7 +466,7 @@ private fun PasteLyrics(title: String, onSave: (String) -> Unit, onDismiss: () -
                     .border(1.dp, MediaColors.Fill, RoundedCornerShape(12.dp))
                     .padding(Space.md)
             ) {
-                if (text.isEmpty()) Text("Paste or type the lyrics", style = Typo.Body, color = MediaColors.CreamFaint)
+                if (text.isEmpty()) Text(stringResource(R.string.lyrics_paste_placeholder), style = Typo.Body, color = MediaColors.CreamFaint)
                 BasicTextField(
                     value = text, onValueChange = { text = it },
                     textStyle = Typo.Body.copy(color = MediaColors.Cream),
@@ -478,7 +478,7 @@ private fun PasteLyrics(title: String, onSave: (String) -> Unit, onDismiss: () -
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 Box(Modifier.clip(RoundedCornerShape(18.dp)).clickable(onClick = onDismiss)
                     .padding(horizontal = Space.lg, vertical = 10.dp)) {
-                    Text("Cancel", style = Typo.Label, color = MediaColors.CreamDim)
+                    Text(stringResource(R.string.action_cancel), style = Typo.Label, color = MediaColors.CreamDim)
                 }
                 Spacer(Modifier.width(Space.sm))
                 Box(
@@ -486,7 +486,7 @@ private fun PasteLyrics(title: String, onSave: (String) -> Unit, onDismiss: () -
                         .background(if (text.isBlank()) MediaColors.Accent.copy(alpha = 0.4f) else MediaColors.Accent)
                         .clickable(enabled = text.isNotBlank()) { onSave(text) }
                         .padding(horizontal = Space.lg, vertical = 10.dp)
-                ) { Text("Save", style = Typo.Label, color = MediaColors.OnAccent) }
+                ) { Text(stringResource(R.string.action_save), style = Typo.Label, color = MediaColors.OnAccent) }
             }
         }
     }

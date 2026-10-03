@@ -90,8 +90,13 @@ fun List<AppMediaItem>.sortedFor(
     SortKey.DURATION -> sortedByDescending { it.durationMs }
 }
 
+// Library placeholders. They stay in English inside the library, because
+// they are compared, matched and used in keys; shownArtist() and friends
+// (Language.kt) put them in the app's language on screen.
 const val UNKNOWN_ARTIST = "Unknown artist"
 const val UNKNOWN_ALBUM = "Unknown album"
+const val UNTITLED = "Untitled"
+const val VARIOUS_ARTISTS = "Various artists"
 
 // ============================================================================
 //  METADATA NORMALIZATION (§30)
@@ -141,7 +146,7 @@ private val JUNK_TAIL = Regex("""[\s\-\u2013\u2014_|.,\[({]+$""")
 
 internal fun normalizeTitle(raw: String?): String {
     var t = (raw ?: "").trim()
-    if (t.isEmpty() || t == MEDIASTORE_UNKNOWN) return "Untitled"
+    if (t.isEmpty() || t == MEDIASTORE_UNKNOWN) return UNTITLED
     // Drop a trailing extension when TITLE fell back to the filename.
     val dot = t.lastIndexOf('.')
     if (dot > 0 && t.length - dot <= 5) t = t.substring(0, dot)
@@ -172,7 +177,7 @@ internal fun normalizeTitle(raw: String?): String {
 
     t = t.replace(Regex("""\s+"""), " ").trim()
     t = JUNK_TAIL.replace(t, "").trim()
-    return t.ifEmpty { "Untitled" }
+    return t.ifEmpty { UNTITLED }
 }
 
 internal fun normalizeArtist(raw: String?): String =
@@ -396,7 +401,7 @@ object MediaRepository {
                     name = ordered.first().album,
                     // Albums with several contributors read as "Various artists".
                     artist = ordered.map { it.artist }.distinct().let {
-                        if (it.size == 1) it.first() else "Various artists"
+                        if (it.size == 1) it.first() else VARIOUS_ARTISTS
                     },
                     trackCount = ordered.size,
                     durationMs = ordered.sumOf { it.durationMs },

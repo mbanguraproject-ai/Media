@@ -75,12 +75,13 @@ fun SettingsScreen(
             Modifier.fillMaxWidth().padding(Space.sm, Space.sm),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MediaColors.Cream) }
+            IconButton(onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back), tint = MediaColors.Cream) }
         }
 
         ProfileMark(audioCount, videoCount)
 
-        SectionLabel("Appearance")
+        SectionLabel(stringResource(R.string.settings_appearance))
+        LanguageRow()
         FontSizePicker(settings.fontScale, onFontScaleChange)
 
         // A banner, in a card. THE ROUNDED CORNERS ARE THE CARD'S, not the
@@ -95,8 +96,9 @@ fun SettingsScreen(
 
         // Library first: Storage and Rescan are what people come to Settings
         // for. They were below Sound and Artwork, a long scroll down.
-        SectionLabel("Library")
-        SettingRow(Icons.Outlined.Storage, "Storage", "$audioCount + $videoCount items", navigates = false) {}
+        SectionLabel(stringResource(R.string.settings_library))
+        SettingRow(Icons.Outlined.Storage, stringResource(R.string.settings_storage),
+            stringResource(R.string.settings_storage_value, audioCount, videoCount), navigates = false) {}
         RescanRow(onRescan)
 
         DisplayQualitySection(
@@ -106,32 +108,32 @@ fun SettingsScreen(
             }
         )
 
-        SectionLabel("Playback")
+        SectionLabel(stringResource(R.string.settings_playback))
         // OFF by default. It is the most opinionated thing the app does, and
         // an effect someone dislikes is worse than one they never found.
         val reactiveArt by SettingsStore.reactiveArtFlow(context).collectAsState(initial = false)
         ToggleRow(
             icon = Icons.Outlined.GraphicEq,
-            title = "Reactive artwork",
-            subtitle = "Cover art responds to the music as it plays. What it does grows with Display quality.",
+            title = stringResource(R.string.settings_reactive),
+            subtitle = stringResource(R.string.settings_reactive_sub),
             checked = reactiveArt,
             onChange = { on -> settingsScope.launch { SettingsStore.setReactiveArt(context, on) } }
         )
 
-        SectionLabel("Sound")
+        SectionLabel(stringResource(R.string.settings_sound))
         val sound by SoundEngine.settings.collectAsState()
         SettingRow(
-            Icons.Outlined.Tune, "Sound",
-            if (sound.eqEnabled) sound.preset else null,
-            subtitle = "Equalizer, ReplayGain, limiter, bass and spatial"
+            Icons.Outlined.Tune, stringResource(R.string.settings_sound),
+            if (sound.eqEnabled) presetLabel(sound.preset) else null,
+            subtitle = stringResource(R.string.settings_sound_sub)
         ) { onOpenSound() }
 
-        SectionLabel("Artwork & lyrics")
+        SectionLabel(stringResource(R.string.settings_art_lyrics))
         val online by remember(context) { SettingsStore.onlineFlow(context) }.collectAsState(initial = false)
         ToggleRow(
             icon = Icons.Outlined.Language,
-            title = "Find artwork and lyrics online",
-            subtitle = "Covers from MusicBrainz, Cover Art Archive, Deezer and Apple Music; lyrics from LRCLIB, NetEase and lyrics.ovh. Only a track's title, artist, album and length are sent.",
+            title = stringResource(R.string.settings_online),
+            subtitle = stringResource(R.string.settings_online_sub),
             checked = online,
             onChange = { on -> settingsScope.launch { SettingsStore.setOnline(context, on) } }
         )
@@ -140,18 +142,20 @@ fun SettingsScreen(
         val fixedCount = remember(artVersion) { ArtworkStore.fixedCount() }
         SettingRow(
             Icons.Outlined.AutoFixHigh,
-            if (repair.running) "Stop repairing" else "Repair artwork",
+            stringResource(if (repair.running) R.string.repair_stop else R.string.repair_start),
             when {
-                repair.running -> "${repair.done} / ${repair.total}"
-                fixedCount > 0 -> "$fixedCount fixed"
+                repair.running -> stringResource(R.string.repair_progress, repair.done, repair.total)
+                fixedCount > 0 -> stringResource(R.string.repair_fixed, fixedCount)
                 else -> null
             },
             subtitle = when {
-                repair.running -> "Checking ${repair.current ?: "your library"}\u2026"
-                repair.offline -> "Stopped: couldn't reach the cover services"
-                repair.total > 0 && !repair.running -> "Last run fixed ${repair.fixed} of ${repair.total} albums with bad covers"
-                online -> "Finds missing, blurry and blank covers and replaces them"
-                else -> "Turn on online lookups above to use this"
+                repair.running -> stringResource(R.string.repair_checking,
+                    repair.current ?: stringResource(R.string.repair_your_library))
+                repair.offline -> stringResource(R.string.repair_offline)
+                repair.total > 0 && !repair.running ->
+                    plural(R.plurals.repair_last_run, repair.total, repair.fixed, repair.total)
+                online -> stringResource(R.string.repair_sub)
+                else -> stringResource(R.string.repair_needs_online)
             },
             navigates = online || repair.running
         ) { if (repair.running) ArtworkRepair.cancel() else onRepairArtwork() }
@@ -173,13 +177,13 @@ fun SettingsScreen(
         }
         SettingRow(
             Icons.Outlined.Lyrics,
-            "Lyrics folder",
-            lyricsCount?.let { if (it == 1) "1 file" else "$it files" },
-            subtitle = lyricsFolder?.let { "$it \u00b7 tap to choose another folder" }
-                ?: "Pick the folder where you keep .lrc files and they are matched to your songs"
+            stringResource(R.string.lyrics_folder),
+            lyricsCount?.let { plural(R.plurals.count_files, it) },
+            subtitle = lyricsFolder?.let { stringResource(R.string.lyrics_folder_sub_set, it) }
+                ?: stringResource(R.string.lyrics_folder_sub)
         ) { runCatching { folderPicker.launch(null) } }
         if (lyricsFolder != null) {
-            SettingRow(Icons.Outlined.LinkOff, "Stop using the lyrics folder", null, navigates = true) {
+            SettingRow(Icons.Outlined.LinkOff, stringResource(R.string.lyrics_folder_stop), null, navigates = true) {
                 LyricsFolder.clear(context)
                 lyricsFolder = null
             }
@@ -191,19 +195,19 @@ fun SettingsScreen(
         val product by Billing.product.collectAsState()
         val price = product?.oneTimePurchaseOfferDetails?.formattedPrice
         if (adFree) {
-            SectionLabel("Supporter")
+            SectionLabel(stringResource(R.string.settings_supporter))
             SettingRow(
-                Icons.Outlined.Favorite, "Thank you", null,
-                subtitle = "Ads are off for good", navigates = false
+                Icons.Outlined.Favorite, stringResource(R.string.settings_thank_you), null,
+                subtitle = stringResource(R.string.settings_ads_off), navigates = false
             ) {}
         } else if (price != null) {
-            SectionLabel("Support")
+            SectionLabel(stringResource(R.string.settings_support))
             // Framed as backing the app rather than buying an annoyance away:
             // one card in a feed is a weak thing to charge for, and the ask
             // reads better as support with ad removal as the thank-you.
             SettingRow(
-                Icons.Outlined.Favorite, "Support Aura", price,
-                subtitle = "One-time \u00b7 removes ads forever"
+                Icons.Outlined.Favorite, stringResource(R.string.settings_support_aura), price,
+                subtitle = stringResource(R.string.settings_support_sub)
             ) {
                 (context as? android.app.Activity)?.let { Billing.purchase(it) }
             }
@@ -215,46 +219,46 @@ fun SettingsScreen(
         // set up in AdMob) - UMP decides from the user's location - and opens
         // Google's own form, which both withdraws GDPR consent and carries
         // the US "do not sell or share" opt-out.
-        SectionLabel("Privacy")
-        var privacyNote by remember { mutableStateOf<String?>(null) }
+        SectionLabel(stringResource(R.string.settings_privacy))
+        var privacyNote by remember { mutableStateOf<Int?>(null) }
         if (Ads.privacyChoicesRequired(context)) {
             SettingRow(
-                Icons.Outlined.PrivacyTip, "Ad privacy choices", null,
-                subtitle = "Change or withdraw consent for personalised ads, or opt out of the sale or sharing of your data"
+                Icons.Outlined.PrivacyTip, stringResource(R.string.settings_ad_choices), null,
+                subtitle = stringResource(R.string.settings_ad_choices_sub)
             ) {
                 (context as? android.app.Activity)?.let { act ->
                     Ads.showPrivacyChoices(act) { err ->
-                        privacyNote = err?.let { "Couldn't open the privacy form. Check the connection and try again." }
+                        privacyNote = err?.let { R.string.settings_ad_choices_error }
                     }
                 }
             }
         }
         SettingRow(
-            Icons.Outlined.PermIdentity, "Advertising ID", null,
-            subtitle = "Reset or delete it in Android's ad settings; it applies to every app"
+            Icons.Outlined.PermIdentity, stringResource(R.string.settings_ad_id), null,
+            subtitle = stringResource(R.string.settings_ad_id_sub)
         ) { Ads.openDeviceAdSettings(context) }
-        SettingRow(Icons.Outlined.Shield, "Privacy Policy", null) {
+        SettingRow(Icons.Outlined.Shield, stringResource(R.string.settings_privacy_policy), null) {
             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(privacyUrl))) }
         }
         privacyNote?.let {
-            Text(it, style = MaterialTheme.typography.bodyMedium, color = MediaColors.Warning,
+            Text(stringResource(it), style = MaterialTheme.typography.bodyMedium, color = MediaColors.Warning,
                 modifier = Modifier.padding(Space.xl, 0.dp, Space.xl, Space.sm))
         }
 
-        SectionLabel("About")
-        SettingRow(Icons.Outlined.Info, "About " + stringResource(R.string.app_name), null) { onOpenAbout() }
+        SectionLabel(stringResource(R.string.settings_about))
+        SettingRow(Icons.Outlined.Info, stringResource(R.string.settings_about_app), null) { onOpenAbout() }
         SettingRow(
-            Icons.Outlined.StarOutline, "Rate " + stringResource(R.string.app_name), null,
-            subtitle = "On Google Play"
+            Icons.Outlined.StarOutline, stringResource(R.string.settings_rate_app), null,
+            subtitle = stringResource(R.string.settings_rate_sub)
         ) { InAppReview.openListing(context) }
-        SettingRow(Icons.Outlined.Description, "Terms of Use", null) { onOpenTerms() }
-        SettingRow(Icons.Outlined.Info, "Version", BuildConfig.VERSION_NAME, navigates = false) {}
+        SettingRow(Icons.Outlined.Description, stringResource(R.string.terms_title), null) { onOpenTerms() }
+        SettingRow(Icons.Outlined.Info, stringResource(R.string.settings_version), BuildConfig.VERSION_NAME, navigates = false) {}
 
         Spacer(Modifier.height(40.dp))
         Text(stringResource(R.string.app_name), style = MaterialTheme.typography.displaySmall,
             color = MediaColors.CreamFaint,
             modifier = Modifier.padding(Space.xl))
-        Text("Your library, lit by what\'s playing.",
+        Text(stringResource(R.string.tagline),
             style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamFaint,
             modifier = Modifier.padding(start = Space.xl).padding(bottom = bottomSafePadding(gap = 100.dp)))
     }
@@ -271,11 +275,12 @@ fun SettingsScreen(
 // should be able to show its working.
 // "1 videos" is the kind of thing a reviewer screenshots. Also drops a half
 // that reads zero, rather than announcing what someone does not have.
+@Composable
 private fun librarySummary(audio: Int, video: Int): String {
-    val a = if (audio == 1) "1 track" else "$audio tracks"
-    val v = if (video == 1) "1 video" else "$video videos"
+    val a = plural(R.plurals.count_tracks, audio)
+    val v = plural(R.plurals.count_videos, video)
     return when {
-        audio == 0 && video == 0 -> "Nothing here yet"
+        audio == 0 && video == 0 -> stringResource(R.string.library_nothing_yet)
         video == 0 -> a
         audio == 0 -> v
         else -> a + " \u00B7 " + v
@@ -295,16 +300,16 @@ private fun DisplayQualitySection(current: QualityMode, onPick: (QualityMode) ->
     val overReach = current != QualityMode.AUTO &&
         active.ordinal > ceiling.ordinal && !adaptive.strained
 
-    SectionLabel("Display quality")
+    SectionLabel(stringResource(R.string.dq_title))
 
     QualityOption(
-        title = "Auto",
+        title = stringResource(R.string.dq_auto),
         // The CEILING, not the active level. Reading `active` here meant that
         // picking Essential manually made the Auto row claim "currently
         // Essential" - describing the manual choice instead of what Auto
         // would actually resolve to, which is the one thing this row exists
         // to answer.
-        subtitle = "Matches this device \u2014 ${ceiling.label}",
+        subtitle = stringResource(R.string.dq_auto_sub, stringResource(ceiling.label)),
         selected = current == QualityMode.AUTO,
         onClick = { onPick(QualityMode.AUTO) }
     )
@@ -312,8 +317,8 @@ private fun DisplayQualitySection(current: QualityMode, onPick: (QualityMode) ->
         val mode = QualityMode.valueOf(level.name)
         val above = level.ordinal > ceiling.ordinal
         QualityOption(
-            title = level.label,
-            subtitle = if (above) "Above this device's measured ceiling" else level.goal,
+            title = stringResource(level.label),
+            subtitle = stringResource(if (above) R.string.dq_above else level.goal),
             selected = current == mode,
             warn = above,
             onClick = { onPick(mode) }
@@ -324,7 +329,7 @@ private fun DisplayQualitySection(current: QualityMode, onPick: (QualityMode) ->
     // cannot name is a level nobody can choose between.
     Column(Modifier.padding(Space.xl, Space.md, Space.xl, 0.dp)) {
         Text(
-            "${active.label} gives you",
+            stringResource(R.string.dq_gives_you, stringResource(active.label)),
             style = MaterialTheme.typography.labelMedium,
             color = MediaColors.CreamDim
         )
@@ -333,14 +338,14 @@ private fun DisplayQualitySection(current: QualityMode, onPick: (QualityMode) ->
             Row(Modifier.padding(vertical = 2.dp)) {
                 Text("\u2022", style = MaterialTheme.typography.bodyMedium, color = MediaColors.Accent,
                     modifier = Modifier.width(16.dp))
-                Text(f, style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamFaint)
+                Text(stringResource(f), style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamFaint)
             }
         }
     }
 
     if (overReach) {
         Text(
-            "${active.label} is above what this device measured. Frames may drop.",
+            stringResource(R.string.dq_over_reach, stringResource(active.label)),
             style = MaterialTheme.typography.bodyMedium,
             color = MediaColors.Warning,
             modifier = Modifier.padding(Space.xl, Space.sm, Space.xl, 0.dp)
@@ -351,8 +356,7 @@ private fun DisplayQualitySection(current: QualityMode, onPick: (QualityMode) ->
     // so the app says what it did and why.
     if (adaptive.steppedDown) {
         Text(
-            "Stepped down to ${adaptive.level.label} to hold a steady frame rate. " +
-                "Playback was not affected.",
+            stringResource(R.string.dq_stepped_down, stringResource(adaptive.level.label)),
             style = MaterialTheme.typography.bodyMedium,
             color = MediaColors.Warning,
             modifier = Modifier.padding(Space.xl, Space.sm, Space.xl, 0.dp)
@@ -363,7 +367,7 @@ private fun DisplayQualitySection(current: QualityMode, onPick: (QualityMode) ->
         // offer with a button, not a silent correction.
         Column(Modifier.padding(Space.xl, Space.sm, Space.xl, 0.dp)) {
             Text(
-                "${adaptive.level.label} is dropping frames on this device.",
+                stringResource(R.string.dq_strained, stringResource(adaptive.level.label)),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MediaColors.Warning
             )
@@ -376,7 +380,7 @@ private fun DisplayQualitySection(current: QualityMode, onPick: (QualityMode) ->
                     .padding(horizontal = Space.lg, vertical = 9.dp)
             ) {
                 Text(
-                    "Use Auto",
+                    stringResource(R.string.dq_use_auto),
                     style = MaterialTheme.typography.labelMedium,
                     color = MediaColors.OnAccent
                 )
@@ -388,11 +392,9 @@ private fun DisplayQualitySection(current: QualityMode, onPick: (QualityMode) ->
         if (cap.totalRamMb >= 1024) "%.1f GB".format(cap.totalRamMb / 1024f)
         else "${cap.totalRamMb} MB"
     val facts = buildString {
-        append(ramText); append(" RAM \u00b7 ")
-        append(cap.cpuCores); append(" cores \u00b7 ")
-        append(cap.refreshRateHz.toInt()); append(" Hz")
-        if (cap.supportsHdr) append(" \u00b7 HDR")
-        if (cap.isLowRamDevice) append(" \u00b7 low-RAM device")
+        append(stringResource(R.string.dq_facts, ramText, cap.cpuCores, cap.refreshRateHz.toInt()))
+        if (cap.supportsHdr) append(" \u00b7 ").append(stringResource(R.string.dq_hdr))
+        if (cap.isLowRamDevice) append(" \u00b7 ").append(stringResource(R.string.dq_low_ram))
     }
     Text(
         facts,
@@ -401,7 +403,7 @@ private fun DisplayQualitySection(current: QualityMode, onPick: (QualityMode) ->
         modifier = Modifier.padding(Space.xl, Space.md, Space.xl, 0.dp)
     )
     Text(
-        "Measured ceiling: ${ceiling.label} (score ${cap.score}/8)",
+        stringResource(R.string.dq_ceiling, stringResource(ceiling.label), cap.score),
         style = MaterialTheme.typography.labelSmall,
         color = MediaColors.CreamFaint,
         modifier = Modifier.padding(Space.xl, 2.dp, Space.xl, 0.dp)
@@ -410,7 +412,7 @@ private fun DisplayQualitySection(current: QualityMode, onPick: (QualityMode) ->
     // changes how Aura renders. It cannot turn an LCD into an OLED, and saying
     // otherwise would be a claim the app cannot support.
     Text(
-        "Display quality changes how Aura renders. It does not change your screen.",
+        stringResource(R.string.dq_honest),
         style = MaterialTheme.typography.labelSmall,
         color = MediaColors.CreamFaint,
         modifier = Modifier.padding(Space.xl, Space.sm, Space.xl, Space.sm)
@@ -467,17 +469,17 @@ private fun QualityOption(
 private fun RescanRow(onRescan: () -> Unit) {
     val scope = rememberCoroutineScope()
     var scanning by remember { mutableStateOf(false) }
-    var statusValue by remember { mutableStateOf<String?>(null) }
+    var statusValue by remember { mutableStateOf<Int?>(null) }
 
     Row(
         Modifier.fillMaxWidth()
             .clickable(enabled = !scanning) {
                 scope.launch {
                     scanning = true
-                    statusValue = "Scanning your media…"
+                    statusValue = R.string.rescan_scanning
                     delay(900)           // let the scanning state be seen
                     onRescan()
-                    statusValue = "Library updated"
+                    statusValue = R.string.rescan_done
                     scanning = false
                     delay(1600)
                     statusValue = null
@@ -488,7 +490,7 @@ private fun RescanRow(onRescan: () -> Unit) {
     ) {
         Icon(Icons.Outlined.Refresh, null, tint = MediaColors.CreamDim, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(Space.md))
-        Text("Rescan device", style = MaterialTheme.typography.bodyLarge, color = MediaColors.Cream,
+        Text(stringResource(R.string.rescan_title), style = MaterialTheme.typography.bodyLarge, color = MediaColors.Cream,
             modifier = Modifier.weight(1f))
         if (scanning) {
             CircularProgressIndicator(
@@ -497,7 +499,7 @@ private fun RescanRow(onRescan: () -> Unit) {
             Spacer(Modifier.width(Space.sm))
         }
         if (statusValue != null) {
-            Text(statusValue!!, style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamDim)
+            Text(stringResource(statusValue!!), style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamDim)
         } else {
             Icon(Icons.Filled.ChevronRight, null, tint = MediaColors.CreamFaint, modifier = Modifier.size(18.dp))
         }
@@ -545,11 +547,15 @@ private fun FontSizePicker(current: Float, onChange: (Float) -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.TextFields, null, tint = MediaColors.CreamDim, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(Space.md))
-            Text("Text size", style = MaterialTheme.typography.bodyLarge, color = MediaColors.Cream)
+            Text(stringResource(R.string.text_size), style = MaterialTheme.typography.bodyLarge, color = MediaColors.Cream)
         }
         Spacer(Modifier.height(Space.sm))
         Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
-            listOf(0.9f to "Compact", 1.0f to "Default", 1.15f to "Large").forEach { (scale, label) ->
+            listOf(
+                0.9f to stringResource(R.string.text_size_compact),
+                1.0f to stringResource(R.string.text_size_default),
+                1.15f to stringResource(R.string.text_size_large)
+            ).forEach { (scale, label) ->
                 val sel = kotlin.math.abs(scale - current) < 0.01f
                 Box(
                     Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
@@ -565,6 +571,97 @@ private fun FontSizePicker(current: Float, onChange: (Float) -> Unit) {
                     Text(label, style = MaterialTheme.typography.titleMedium,
                         color = if (sel) MediaColors.OnAccent else MediaColors.CreamDim)
                 }
+            }
+        }
+    }
+}
+
+// ------------------------------------------------------------------ LANGUAGE
+//
+// Automatic follows the phone, and is where everyone starts. A pick here is
+// for Aura alone. On Android 13+ it is the same setting as the system's own
+// per-app language, so it can be changed from either place (Language.kt).
+// Languages are listed in their own names: someone looking for theirs must
+// be able to read it whatever the app is currently in.
+@Composable
+private fun LanguageRow() {
+    val context = LocalContext.current
+    val picked = remember { AppLanguage.picked(context) }
+    var open by remember { mutableStateOf(false) }
+    SettingRow(
+        Icons.Outlined.Translate, stringResource(R.string.language_title),
+        picked?.nativeName ?: stringResource(R.string.language_automatic),
+        subtitle = if (picked == null)
+            stringResource(R.string.language_follows_phone, AppLanguage.deviceLanguageName()) else null
+    ) { open = true }
+    if (open) {
+        LanguagePicker(
+            current = picked,
+            onPick = { option ->
+                open = false
+                if (option?.tag != picked?.tag) {
+                    (context as? android.app.Activity)?.let { AppLanguage.pick(it, option) }
+                }
+            },
+            onDismiss = { open = false }
+        )
+    }
+}
+
+@Composable
+private fun LanguagePicker(
+    current: AppLanguage.Option?,
+    onPick: (AppLanguage.Option?) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = MediaColors.Modal,
+        title = { Text(stringResource(R.string.language_title), color = MediaColors.Cream) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                LanguageChoice(
+                    stringResource(R.string.language_automatic),
+                    stringResource(R.string.language_follows_phone, AppLanguage.deviceLanguageName()),
+                    selected = current == null
+                ) { onPick(null) }
+                AppLanguage.options.forEach { option ->
+                    LanguageChoice(option.nativeName, null, selected = current?.tag == option.tag) {
+                        onPick(option)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onDismiss) {
+                Text(stringResource(R.string.action_cancel), color = MediaColors.CreamDim)
+            }
+        }
+    )
+}
+
+@Composable
+private fun LanguageChoice(name: String, detail: String?, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(Radius.sm))
+            .clickable(onClick = onClick)
+            .padding(horizontal = Space.xs, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier.size(20.dp).clip(CircleShape)
+                .border(1.5.dp, if (selected) MediaColors.Accent else MediaColors.CreamFaint, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (selected) Box(Modifier.size(10.dp).clip(CircleShape).background(MediaColors.Accent))
+        }
+        Spacer(Modifier.width(Space.md))
+        Column(Modifier.weight(1f)) {
+            Text(name, style = MaterialTheme.typography.bodyLarge,
+                color = if (selected) MediaColors.Accent else MediaColors.Cream)
+            if (detail != null) {
+                Text(detail, style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamDim)
             }
         }
     }
@@ -673,7 +770,7 @@ private fun ProfileMark(audioCount: Int, videoCount: Int) {
         if (shot != null) {
             Image(
                 bitmap = shot,
-                contentDescription = "Change your picture",
+                contentDescription = stringResource(R.string.avatar_change_cd),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .size(104.dp)
@@ -684,13 +781,13 @@ private fun ProfileMark(audioCount: Int, videoCount: Int) {
         } else {
             Image(
                 painter = painterResource(R.drawable.aura_mark),
-                contentDescription = "Add your picture",
+                contentDescription = stringResource(R.string.avatar_add),
                 modifier = Modifier.height(96.dp).clickable { pick() }
             )
         }
         Spacer(Modifier.height(Space.md))
         Text(
-            "Your library",
+            stringResource(R.string.profile_your_library),
             style = MaterialTheme.typography.titleLarge,
             color = MediaColors.Cream
         )
@@ -702,7 +799,7 @@ private fun ProfileMark(audioCount: Int, videoCount: Int) {
         Spacer(Modifier.height(Space.sm))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                if (shot != null) "Change picture" else "Add your picture",
+                stringResource(if (shot != null) R.string.avatar_change else R.string.avatar_add),
                 style = MaterialTheme.typography.labelMedium,
                 color = MediaColors.Accent,
                 modifier = Modifier
@@ -714,7 +811,7 @@ private fun ProfileMark(audioCount: Int, videoCount: Int) {
             if (shot != null) {
                 Spacer(Modifier.width(Space.sm))
                 Text(
-                    "Remove",
+                    stringResource(R.string.action_remove),
                     style = MaterialTheme.typography.labelMedium,
                     color = MediaColors.CreamDim,
                     modifier = Modifier

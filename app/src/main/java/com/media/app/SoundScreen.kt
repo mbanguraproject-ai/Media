@@ -48,6 +48,7 @@ import androidx.compose.runtime.remember
 import kotlin.math.log10
 import kotlin.math.pow
 import kotlin.math.roundToInt
+import androidx.compose.ui.res.stringResource
 
 // ============================================================================
 //  SOUND
@@ -72,13 +73,13 @@ fun SoundScreen(onClose: () -> Unit) {
             .verticalScroll(rememberScrollState())
     ) {
         Row(Modifier.fillMaxWidth().padding(Space.sm, Space.sm), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MediaColors.Cream) }
+            IconButton(onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back), tint = MediaColors.Cream) }
             Spacer(Modifier.width(Space.xs))
-            Text("Sound", style = Typo.Section, color = MediaColors.Cream)
+            Text(stringResource(R.string.sound_title), style = Typo.Section, color = MediaColors.Cream)
         }
 
-        Section("Equalizer")
-        Toggle("Equalizer", "Ten sliders shape one smooth curve, applied to everything that plays", s.eqEnabled) {
+        Section(stringResource(R.string.sound_eq))
+        Toggle(stringResource(R.string.sound_eq), stringResource(R.string.sound_eq_sub), s.eqEnabled) {
             update(s.copy(eqEnabled = it))
         }
         Row(
@@ -87,11 +88,11 @@ fun SoundScreen(onClose: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(Space.sm)
         ) {
             SoundEngine.PRESETS.forEach { (name, gains) ->
-                Chip(name, selected = s.eqEnabled && s.preset == name) {
+                Chip(presetLabel(name), selected = s.eqEnabled && s.preset == name) {
                     update(s.copy(eqEnabled = true, preset = name, bands = gains))
                 }
             }
-            if (s.preset == "Custom") Chip("Custom", selected = s.eqEnabled) {}
+            if (s.preset == "Custom") Chip(presetLabel("Custom"), selected = s.eqEnabled) {}
         }
         ResponseCurve(s, status.speaker)
         SoundEngine.BANDS.forEachIndexed { i, hz ->
@@ -101,7 +102,7 @@ fun SoundScreen(onClose: () -> Unit) {
                 value = g, range = -SoundEngine.BAND_RANGE_DB..SoundEngine.BAND_RANGE_DB,
                 // One decimal: the sliders move in half-dB steps, and "+1 dB"
                 // for a +0.5 setting was a readout that lied by half.
-                readout = "%+.1f dB".format(java.util.Locale.ROOT, g),
+                readout = stringResource(R.string.db_value, g),
                 enabled = s.eqEnabled
             ) { v ->
                 val bands = s.bands.toMutableList().also { it[i] = (v * 2).roundToInt() / 2f }
@@ -109,79 +110,75 @@ fun SoundScreen(onClose: () -> Unit) {
             }
         }
 
-        Section("Loudness")
+        Section(stringResource(R.string.sound_loudness))
         if (!modern) {
-            Note("Preamp, ReplayGain and the limiter need Android 9 or newer.")
+            Note(stringResource(R.string.sound_needs_p))
         }
         SliderRow(
-            label = "Preamp", value = s.preampDb, range = -12f..12f,
-            readout = "%+.1f dB".format(java.util.Locale.ROOT, s.preampDb), enabled = modern
+            label = stringResource(R.string.sound_preamp), value = s.preampDb, range = -12f..12f,
+            readout = stringResource(R.string.db_value, s.preampDb), enabled = modern
         ) { update(s.copy(preampDb = (it * 2).roundToInt() / 2f)) }
         Column(Modifier.fillMaxWidth().padding(Space.xl, Space.md)) {
-            Text("ReplayGain", style = Typo.Body, color = if (modern) MediaColors.Cream else MediaColors.CreamFaint)
-            Text("Plays every track at the same loudness, using the gain tags in the file",
+            Text(stringResource(R.string.sound_replaygain), style = Typo.Body, color = if (modern) MediaColors.Cream else MediaColors.CreamFaint)
+            Text(stringResource(R.string.sound_replaygain_sub),
                 style = Typo.Tertiary, color = MediaColors.CreamFaint)
             Spacer(Modifier.height(Space.sm))
             Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
                 ReplayGainMode.entries.forEach { m ->
-                    Chip(m.label, selected = s.replayGain == m, modifier = Modifier.weight(1f)) {
+                    Chip(stringResource(m.label), selected = s.replayGain == m, modifier = Modifier.weight(1f)) {
                         if (modern) update(s.copy(replayGain = m))
                     }
                 }
             }
             status.replayGainDb?.let {
                 Spacer(Modifier.height(Space.xs))
-                Text("Now playing: %+.2f dB".format(java.util.Locale.ROOT, it), style = Typo.Tertiary, color = MediaColors.Accent)
+                Text(stringResource(R.string.sound_rg_now, it), style = Typo.Tertiary, color = MediaColors.Accent)
             }
         }
-        Toggle("Limiter", "Catches peaks so gain and EQ boosts never clip", s.limiter, enabled = modern) {
+        Toggle(stringResource(R.string.sound_limiter), stringResource(R.string.sound_limiter_sub), s.limiter, enabled = modern) {
             update(s.copy(limiter = it))
         }
 
-        Section("Effects")
+        Section(stringResource(R.string.sound_effects))
         SliderRow(
-            label = "Bass", value = s.bass / 10f, range = 0f..100f,
-            readout = "${s.bass / 10}%", enabled = true
+            label = stringResource(R.string.sound_bass), value = s.bass / 10f, range = 0f..100f,
+            readout = stringResource(R.string.percent_value, s.bass / 10), enabled = true
         ) { update(s.copy(bass = (it * 10).roundToInt())) }
         // Said plainly, from what the chain is doing right now.
         Note(
-            if (status.speaker)
-                "Tuned for the phone speaker: lifts the punch range it can actually play, and trims the deep sub-bass it can't."
-            else
-                "Tuned for headphones: the full low end, down to 31 Hz."
+            stringResource(if (status.speaker) R.string.sound_bass_speaker else R.string.sound_bass_headphones)
         )
         SliderRow(
-            label = "Spatial", value = s.spatial / 10f, range = 0f..100f,
-            readout = "${s.spatial / 10}%", enabled = true
+            label = stringResource(R.string.sound_spatial), value = s.spatial / 10f, range = 0f..100f,
+            readout = stringResource(R.string.percent_value, s.spatial / 10), enabled = true
         ) { update(s.copy(spatial = (it * 10).roundToInt())) }
         Note(
             when {
-                !status.spatial -> "This phone has no virtualiser, so Spatial can't run here."
-                status.speaker -> "Spatial needs headphones. Android switches it off on the phone speaker, which plays in mono."
-                s.spatial > 0 && status.spatialActive -> "Spatial is on."
-                s.spatial > 0 -> "Spatial is set, but Android isn't virtualising on this output."
-                else -> "Widens the stereo image on headphones."
+                !status.spatial -> stringResource(R.string.sound_spatial_none)
+                status.speaker -> stringResource(R.string.sound_spatial_speaker)
+                s.spatial > 0 && status.spatialActive -> stringResource(R.string.sound_spatial_on)
+                s.spatial > 0 -> stringResource(R.string.sound_spatial_idle)
+                else -> stringResource(R.string.sound_spatial_sub)
             }
         )
 
-        Section("Engine")
+        Section(stringResource(R.string.sound_engine))
         Toggle(
-            "Compatibility mode",
-            "Use Android's classic equaliser. Try this if the EQ makes no difference on your phone.",
+            stringResource(R.string.sound_compat),
+            stringResource(R.string.sound_compat_sub),
             s.classic
         ) { update(s.copy(classic = it)) }
         Note(
             when (status.engine) {
-                "Dynamics" -> if (status.eqBands >= 31)
-                    "Running on Dynamics Processing: the curve rendered at 31 bands (1/3 octave), with preamp and limiter."
-                    else "Running on Dynamics Processing: ${status.eqBands} bands, with preamp and limiter."
-                "Classic" -> "Running on the classic equaliser: the curve is sampled at this phone's ${status.eqBands} bands."
-                else -> "Start playing something to see the engine in use."
+                "Dynamics" -> if (status.eqBands >= 31) stringResource(R.string.sound_engine_dynamics_31)
+                    else stringResource(R.string.sound_engine_dynamics, status.eqBands)
+                "Classic" -> stringResource(R.string.sound_engine_classic, status.eqBands)
+                else -> stringResource(R.string.sound_engine_idle)
             }
         )
 
         Box(Modifier.fillMaxWidth().padding(Space.xl, Space.lg), contentAlignment = Alignment.CenterStart) {
-            Text("Reset to flat", style = Typo.Label, color = MediaColors.CreamDim,
+            Text(stringResource(R.string.sound_reset_flat), style = Typo.Label, color = MediaColors.CreamDim,
                 modifier = Modifier.pressScale(haptic = true) { update(SoundSettings()) })
         }
         Spacer(Modifier.height(bottomSafePadding(gap = 100.dp)))
@@ -313,9 +310,28 @@ private fun ResponseCurve(s: SoundSettings, speaker: Boolean) {
         }
         Row(Modifier.fillMaxWidth().padding(top = Space.xxs), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("20 Hz", style = Typo.Micro, color = MediaColors.CreamFaint)
-            Text(if (speaker) "Tuned for the phone speaker" else "Tuned for headphones",
+            Text(stringResource(if (speaker) R.string.sound_tuned_speaker else R.string.sound_tuned_headphones),
                 style = Typo.Micro, color = MediaColors.CreamDim)
             Text("20 kHz", style = Typo.Micro, color = MediaColors.CreamFaint)
         }
     }
+}
+
+/**
+ * An EQ preset's name on screen. Presets are stored by their English name
+ * ("Flat", "Custom"), which stays the key; this is the same name in the app's
+ * language.
+ */
+@Composable
+fun presetLabel(name: String): String = when (name) {
+    "Flat" -> stringResource(R.string.preset_flat)
+    "Bass" -> stringResource(R.string.preset_bass)
+    "Warm" -> stringResource(R.string.preset_warm)
+    "Vocal" -> stringResource(R.string.preset_vocal)
+    "Bright" -> stringResource(R.string.preset_bright)
+    "Loudness" -> stringResource(R.string.preset_loudness)
+    "Classical" -> stringResource(R.string.preset_classical)
+    "Electronic" -> stringResource(R.string.preset_electronic)
+    "Custom" -> stringResource(R.string.preset_custom)
+    else -> name
 }

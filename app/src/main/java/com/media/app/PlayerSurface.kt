@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.lerp as lerpDp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import androidx.compose.ui.res.stringResource
 
 // ============================================================================
 //  PLAYER SURFACE (§11, §12, §15, §46)
@@ -832,9 +833,9 @@ private fun BoxScope.MiniChrome(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
-            Text(state.currentTitle, style = Typo.Primary, color = MediaColors.Cream,
+            Text(shownTitle(state.currentTitle), style = Typo.Primary, color = MediaColors.Cream,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(state.currentArtist, style = Typo.Secondary, color = MediaColors.CreamDim,
+            Text(shownArtist(state.currentArtist), style = Typo.Secondary, color = MediaColors.CreamDim,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Spacer(Modifier.width(Space.sm))
@@ -863,7 +864,7 @@ private fun BoxScope.MiniChrome(
             ) {
                 PlayPauseIcon(
                     playing = state.isPlaying, tint = MediaColors.Cream,
-                    contentDescription = "Play/Pause",
+                    contentDescription = stringResource(R.string.action_play_pause),
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -913,18 +914,18 @@ private fun NowPlayingTopBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            Icons.Filled.KeyboardArrowDown, "Collapse", tint = MediaColors.Cream,
+            Icons.Filled.KeyboardArrowDown, stringResource(R.string.action_collapse), tint = MediaColors.Cream,
             modifier = Modifier.size(28.dp).pressScale { onCollapse() }
         )
         Spacer(Modifier.weight(1f))
-        Text("Now playing", style = Typo.Tertiary, color = MediaColors.CreamDim)
+        Text(stringResource(R.string.now_playing_title), style = Typo.Tertiary, color = MediaColors.CreamDim)
         Spacer(Modifier.weight(1f))
         // PiP only exists for video, and only where the device
         // supports it - no dead button on an audio track.
         val ctx = androidx.compose.ui.platform.LocalContext.current
         if (state.isVideo) {
             Icon(
-                Icons.Filled.Fullscreen, "Fullscreen", tint = MediaColors.Cream,
+                Icons.Filled.Fullscreen, stringResource(R.string.action_fullscreen), tint = MediaColors.Cream,
                 modifier = Modifier.size(26.dp)
                     .pressScale(haptic = true, onClick = onFullscreen)
             )
@@ -932,7 +933,7 @@ private fun NowPlayingTopBar(
         }
         if (state.isVideo && Pip.isSupported(ctx)) {
             Icon(
-                Icons.Filled.PictureInPictureAlt, "Picture in picture",
+                Icons.Filled.PictureInPictureAlt, stringResource(R.string.action_pip),
                 tint = MediaColors.Cream,
                 modifier = Modifier.size(26.dp).pressScale(haptic = true) {
                     (ctx as? android.app.Activity)?.let {
@@ -946,7 +947,7 @@ private fun NowPlayingTopBar(
         // already carrying fullscreen + PiP.
         if (!state.isVideo) {
             Icon(
-                Icons.Filled.Lyrics, if (showLyrics) "Hide lyrics" else "Lyrics",
+                Icons.Filled.Lyrics, stringResource(if (showLyrics) R.string.action_hide_lyrics else R.string.action_lyrics),
                 tint = if (showLyrics) MediaColors.Accent else MediaColors.Cream,
                 modifier = Modifier.size(24.dp).pressScale(haptic = true) { onToggleLyrics() }
             )
@@ -955,14 +956,14 @@ private fun NowPlayingTopBar(
             // Accent while the EQ is on, like shuffle and repeat.
             val eqOn = SoundEngine.settings.collectAsState().value.eqEnabled
             Icon(
-                Icons.Filled.Equalizer, "Equalizer",
+                Icons.Filled.Equalizer, stringResource(R.string.action_equalizer),
                 tint = if (eqOn) MediaColors.Accent else MediaColors.Cream,
                 modifier = Modifier.size(24.dp).pressScale(haptic = true, onClick = onOpenSound)
             )
             Spacer(Modifier.width(Space.md))
         }
         Icon(
-            Icons.AutoMirrored.Filled.QueueMusic, "Queue", tint = MediaColors.Cream,
+            Icons.AutoMirrored.Filled.QueueMusic, stringResource(R.string.action_queue), tint = MediaColors.Cream,
             modifier = Modifier.size(28.dp).pressScale(haptic = true) { onOpenQueue() }
         )
     }
@@ -1074,9 +1075,9 @@ private fun NowPlayingTitle(
         // thumb is, not up in the top bar.
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(state.currentTitle, style = Typo.Section.copy(shadow = titleShadow), color = MediaColors.Cream,
+                Text(shownTitle(state.currentTitle), style = Typo.Section.copy(shadow = titleShadow), color = MediaColors.Cream,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(state.currentArtist, style = Typo.Body.copy(shadow = titleShadow), color = MediaColors.CreamDim,
+                Text(shownArtist(state.currentArtist), style = Typo.Body.copy(shadow = titleShadow), color = MediaColors.CreamDim,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             // Not over lyrics: the words are the subject there,
@@ -1119,7 +1120,7 @@ private fun NowPlayingTransport(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Filled.SkipPrevious, "Previous", tint = MediaColors.Cream,
+        Icon(Icons.Filled.SkipPrevious, stringResource(R.string.action_previous), tint = MediaColors.Cream,
             modifier = Modifier.size(34.dp).pressScale(haptic = true) { vm.previous() })
         Box(
             Modifier.size(64.dp).clip(CircleShape).background(MediaColors.Cream)
@@ -1127,9 +1128,9 @@ private fun NowPlayingTransport(
             contentAlignment = Alignment.Center
         ) {
             PlayPauseIcon(state.isPlaying, MediaColors.OnInverse,
-                Modifier.size(34.dp), "Play/Pause")
+                Modifier.size(34.dp), stringResource(R.string.action_play_pause))
         }
-        Icon(Icons.Filled.SkipNext, "Next", tint = MediaColors.Cream,
+        Icon(Icons.Filled.SkipNext, stringResource(R.string.action_next), tint = MediaColors.Cream,
             modifier = Modifier.size(34.dp).pressScale(haptic = true) { vm.next() })
     }
 
@@ -1138,12 +1139,12 @@ private fun NowPlayingTransport(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Filled.Shuffle, "Shuffle",
+        Icon(Icons.Filled.Shuffle, stringResource(R.string.action_shuffle),
             tint = if (state.shuffle) MediaColors.Accent else MediaColors.CreamDim,
             modifier = Modifier.size(IconSize.lg).pressScale(haptic = true) { vm.toggleShuffle() })
         Icon(
             if (state.repeatMode == 1) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
-            "Repeat",
+            stringResource(R.string.action_repeat),
             tint = if (state.repeatMode != 0) MediaColors.Accent else MediaColors.CreamDim,
             modifier = Modifier.size(IconSize.lg).pressScale(haptic = true) { vm.cycleRepeat() }
         )
@@ -1157,7 +1158,7 @@ private fun NowPlayingTransport(
                 color = MediaColors.Accent,
                 modifier = Modifier.pressScale { onOpenSleep() })
         } else {
-            Icon(Icons.Filled.Bedtime, "Sleep timer",
+            Icon(Icons.Filled.Bedtime, stringResource(R.string.action_sleep_timer),
                 tint = if (state.sleepActive) MediaColors.Accent else MediaColors.CreamDim,
                 modifier = Modifier.size(IconSize.lg).pressScale { onOpenSleep() })
         }

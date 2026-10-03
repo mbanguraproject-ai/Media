@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 
 // ============================================================================
 //  MICRO-INTERACTIONS (§13, §32, §35) + REDUCED MOTION (§31)
@@ -161,7 +162,7 @@ fun FavoriteButton(
     }
     Icon(
         imageVector = if (favorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-        contentDescription = if (favorite) "Remove from favourites" else "Add to favourites",
+        contentDescription = stringResource(if (favorite) R.string.cd_remove_favourite else R.string.cd_add_favourite),
         tint = tint,
         modifier = modifier
             .graphicsLayer { scaleX = scale; scaleY = scale }
@@ -202,9 +203,10 @@ fun PlayingEqualizer(
         }
     }
 
+    val stateLabel = stringResource(if (playing) R.string.cd_now_playing else R.string.cd_paused)
     Canvas(
         modifier.semantics {
-            contentDescription = if (playing) "Now playing" else "Paused"
+            contentDescription = stateLabel
         }
     ) {
         val gap = size.width / 7f

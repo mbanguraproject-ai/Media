@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 
 // Flat solid tile color seeded by title — clean, no gradient noise, no fallback junk.
 
@@ -80,7 +81,7 @@ fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit) {
         Image(
             painter = painterResource(R.drawable.aura_mark),
             // The mark carries the name on its own now, so it has to say so.
-            contentDescription = "Aura",
+            contentDescription = stringResource(R.string.cd_app_mark),
             modifier = Modifier.height(54.dp)
         )
         Spacer(Modifier.weight(1f))
@@ -89,7 +90,7 @@ fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit) {
         // tell why their phone is silent.
         Icon(
             if (sharing) Icons.Filled.CastConnected else Icons.Filled.Cast,
-            if (sharing) "Playing on another device" else "Aura Share",
+            stringResource(if (sharing) R.string.share_playing_elsewhere else R.string.share_name),
             tint = if (sharing) MediaColors.Accent else MediaColors.Cream,
             modifier = Modifier
                 .size(HeaderTouch)
@@ -98,7 +99,7 @@ fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit) {
                 .padding(HeaderTouchInset)
         )
         Icon(
-            Icons.Filled.Search, "Search",
+            Icons.Filled.Search, stringResource(R.string.action_search),
             tint = MediaColors.Cream,
             modifier = Modifier
                 .size(HeaderTouch)
@@ -122,16 +123,19 @@ fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit) {
 // The underline is drawn rather than laid out. A Box sized to the label needs
 // an intrinsic measurement, and intrinsics inside a scrollable row are how you
 // get a crash on the one device with a long language and a large font scale.
+// Each pillar's tab name and the plural for its count ("12 episodes"),
+// as resources: both follow the app's language.
 private val PillarNames = mapOf(
-    Pillar.MUSIC to ("Music" to "tracks"),
-    Pillar.VIDEO to ("Video" to "videos"),
-    Pillar.PODCAST to ("Podcasts" to "episodes"),
-    Pillar.AUDIOBOOK to ("Audiobooks" to "audiobooks"),
-    Pillar.RECORDING to ("Recordings" to "recordings")
+    Pillar.MUSIC to (R.string.pillar_music to R.plurals.count_tracks),
+    Pillar.VIDEO to (R.string.pillar_video to R.plurals.count_videos),
+    Pillar.PODCAST to (R.string.pillar_podcasts to R.plurals.count_episodes),
+    Pillar.AUDIOBOOK to (R.string.pillar_audiobooks to R.plurals.count_audiobooks),
+    Pillar.RECORDING to (R.string.pillar_recordings to R.plurals.count_recordings)
 )
 
-fun pillarLabel(p: Pillar): String = PillarNames[p]?.first ?: "Music"
-fun pillarNoun(p: Pillar): String = PillarNames[p]?.second ?: "tracks"
+@Composable
+fun pillarLabel(p: Pillar): String = stringResource(PillarNames[p]?.first ?: R.string.pillar_music)
+fun pillarCountRes(p: Pillar): Int = PillarNames[p]?.second ?: R.plurals.count_tracks
 
 @Composable
 fun PillarStrip(available: List<Pillar>, current: Pillar, onPick: (Pillar) -> Unit) {
@@ -208,10 +212,10 @@ fun ResumeBar(item: AppMediaItem, progress: Float, onPlay: () -> Unit) {
         CoverArt(item, Modifier.size(44.dp), corner = 10, targetPx = 144)
         Spacer(Modifier.width(Space.md))
         Column(Modifier.weight(1f)) {
-            Text("RESUME", style = Typo.Micro, color = MediaColors.Accent)
+            Text(stringResource(R.string.label_resume_caps), style = Typo.Micro, color = MediaColors.Accent)
             Spacer(Modifier.height(3.dp))
             Text(
-                item.title, style = Typo.Primary, color = MediaColors.Cream,
+                shownTitle(item.title), style = Typo.Primary, color = MediaColors.Cream,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             Spacer(Modifier.height(7.dp))
@@ -249,7 +253,7 @@ fun FilterBar(label: String, count: Int, onClear: () -> Unit) {
     ) {
         Text(label, style = Typo.Label, color = MediaColors.Cream)
         Spacer(Modifier.width(Space.sm))
-        Text("$count tracks", style = Typo.Secondary, color = MediaColors.CreamFaint)
+        Text(plural(R.plurals.count_tracks, count), style = Typo.Secondary, color = MediaColors.CreamFaint)
         Spacer(Modifier.weight(1f))
         Row(
             Modifier
@@ -263,7 +267,7 @@ fun FilterBar(label: String, count: Int, onClear: () -> Unit) {
                 modifier = Modifier.size(15.dp)
             )
             Spacer(Modifier.width(Space.xs))
-            Text("Clear", style = Typo.Label, color = MediaColors.CreamDim)
+            Text(stringResource(R.string.action_clear), style = Typo.Label, color = MediaColors.CreamDim)
         }
     }
 }
@@ -293,9 +297,9 @@ fun SortSegments(selected: SortKey, onSelect: (SortKey) -> Unit) {
     // A segmented control, placed directly above the list it sorts, says what
     // it is without needing a label.
     val opts = listOf(
-        SortKey.RECENTLY_PLAYED to "Recent",
-        SortKey.NAME to "A\u2013Z",
-        SortKey.MOST_PLAYED to "Most played"
+        SortKey.RECENTLY_PLAYED to stringResource(R.string.sort_recent),
+        SortKey.NAME to stringResource(R.string.sort_az),
+        SortKey.MOST_PLAYED to stringResource(R.string.sort_most_played)
     )
     Row(
         Modifier.fillMaxWidth().padding(Space.xl, Space.sm, Space.xl, Space.sm)
@@ -324,13 +328,13 @@ fun SortSegments(selected: SortKey, onSelect: (SortKey) -> Unit) {
     }
 }
 @Composable
-fun CountAndShuffle(count: Int, noun: String = "tracks", onShuffle: () -> Unit) {
+fun CountAndShuffle(count: Int, nounPlural: Int = R.plurals.count_tracks, onShuffle: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().padding(Space.xl, Space.lg, Space.xl, Space.sm),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("$count $noun", style = Typo.Secondary, color = MediaColors.CreamDim)
+        Text(plural(nounPlural, count), style = Typo.Secondary, color = MediaColors.CreamDim)
         Row(
             Modifier.clip(RoundedCornerShape(20.dp))
                 .border(1.dp, MediaColors.Accent.copy(alpha = 0.55f), RoundedCornerShape(20.dp))
@@ -340,7 +344,7 @@ fun CountAndShuffle(count: Int, noun: String = "tracks", onShuffle: () -> Unit) 
         ) {
             Icon(Icons.Filled.Shuffle, null, tint = MediaColors.Accent, modifier = Modifier.size(15.dp))
             Spacer(Modifier.width(Space.sm))
-            Text("Shuffle", style = Typo.Label, color = MediaColors.Accent)
+            Text(stringResource(R.string.action_shuffle), style = Typo.Label, color = MediaColors.Accent)
         }
     }
 }
@@ -377,13 +381,13 @@ fun TrackRow(
         )
         Spacer(Modifier.width(Space.md))
         Column(Modifier.weight(1f)) {
-            Text(item.title, style = Typo.Primary,
+            Text(shownTitle(item.title), style = Typo.Primary,
                 color = if (isPlaying) MediaColors.Accent else MediaColors.Cream,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(Space.xxs))
             // Duration moved into the subtitle to free the trailing edge for a
             // visible menu affordance without crowding the row.
-            Text("${item.artist}  \u00b7  ${fmtDur(item.durationMs)}", style = Typo.Secondary,
+            Text("${shownArtist(item.artist)}  \u00b7  ${fmtDur(item.durationMs)}", style = Typo.Secondary,
                 color = MediaColors.CreamFaint, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Spacer(Modifier.width(Space.sm))
@@ -401,7 +405,7 @@ fun TrackRow(
             // as one control.
             Spacer(Modifier.width(Space.md))
             Icon(
-                Icons.Filled.MoreVert, "More options", tint = MediaColors.CreamFaint,
+                Icons.Filled.MoreVert, stringResource(R.string.cd_more_options), tint = MediaColors.CreamFaint,
                 modifier = Modifier.size(21.dp).pressScale(haptic = true, onClick = onMenu)
             )
         }

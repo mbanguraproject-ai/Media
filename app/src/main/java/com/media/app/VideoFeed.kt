@@ -39,6 +39,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
+import androidx.compose.ui.res.stringResource
 
 // ============================================================================
 //  VIDEO FEED
@@ -189,7 +190,7 @@ fun VideoCard(
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    item.title,
+                    shownTitle(item.title),
                     style = Typo.Primary,
                     color = MediaColors.Cream,
                     maxLines = 2,
@@ -208,7 +209,7 @@ fun VideoCard(
                 }
             }
             Icon(
-                Icons.Filled.MoreVert, "More options",
+                Icons.Filled.MoreVert, stringResource(R.string.cd_more_options),
                 tint = MediaColors.CreamFaint,
                 modifier = Modifier
                     .padding(start = Space.sm)
@@ -254,7 +255,7 @@ private fun InlineControls(
         ) {
             Icon(
                 if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                if (isPlaying) "Pause" else "Play",
+                stringResource(if (isPlaying) R.string.action_pause else R.string.action_play),
                 tint = Color.White,
                 modifier = Modifier
                     .clip(CircleShape)
@@ -265,7 +266,7 @@ private fun InlineControls(
             )
             Spacer(Modifier.weight(1f))
             Icon(
-                Icons.Filled.Fullscreen, "Open in the player",
+                Icons.Filled.Fullscreen, stringResource(R.string.video_open_player),
                 tint = Color.White,
                 modifier = Modifier
                     .clip(CircleShape)

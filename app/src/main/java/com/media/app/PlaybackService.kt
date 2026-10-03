@@ -14,6 +14,11 @@ import androidx.media3.session.MediaSessionService
 @UnstableApi
 class PlaybackService : MediaSessionService() {
 
+    // The language picked in Settings, on Android 12 and below (Language.kt).
+    override fun attachBaseContext(base: android.content.Context) {
+        super.attachBaseContext(AppLanguage.wrap(base))
+    }
+
     private var mediaSession: MediaSession? = null
     private var effects: SoundEffects? = null
     private var soundListener: SharedPreferences.OnSharedPreferenceChangeListener? = null

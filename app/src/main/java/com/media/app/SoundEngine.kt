@@ -49,7 +49,10 @@ import kotlin.math.sqrt
 //  listener is the simplest way for it to follow the Sound screen live.
 // ============================================================================
 
-enum class ReplayGainMode(val label: String) { OFF("Off"), TRACK("Track"), ALBUM("Album") }
+// Stored by name; the label is a string resource in the app's language.
+enum class ReplayGainMode(@androidx.annotation.StringRes val label: Int) {
+    OFF(R.string.rg_off), TRACK(R.string.rg_mode_track), ALBUM(R.string.rg_mode_album)
+}
 
 data class SoundSettings(
     val eqEnabled: Boolean = false,

@@ -38,14 +38,16 @@ import com.media.app.Matching.isUsable
 //  costs one lookup and then works offline for good.
 // ============================================================================
 
-enum class LyricsSource(val label: String) {
-    EMBEDDED("Embedded in the file"),
-    LRC_FILE("From a .lrc file"),
-    FOLDER("From your lyrics folder"),
-    LRCLIB("From LRCLIB"),
-    NETEASE("From NetEase"),
-    LYRICS_OVH("From lyrics.ovh"),
-    USER("Added by you")
+// The label is a string resource, shown in the app's language. Stored
+// lyrics record the source by name, never by label.
+enum class LyricsSource(@androidx.annotation.StringRes val labelRes: Int) {
+    EMBEDDED(R.string.lyrics_src_embedded),
+    LRC_FILE(R.string.lyrics_src_lrc_file),
+    FOLDER(R.string.lyrics_src_folder),
+    LRCLIB(R.string.lyrics_src_lrclib),
+    NETEASE(R.string.lyrics_src_netease),
+    LYRICS_OVH(R.string.lyrics_src_ovh),
+    USER(R.string.lyrics_src_user)
 }
 
 sealed interface LyricsState {

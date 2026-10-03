@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 
 // ============================================================================
 //  SEARCH (§19)
@@ -86,7 +87,7 @@ fun SearchScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClose) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MediaColors.Cream)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back), tint = MediaColors.Cream)
             }
             Row(
                 Modifier.weight(1f).clip(RoundedCornerShape(Radius.md))
@@ -98,7 +99,7 @@ fun SearchScreen(
                 Spacer(Modifier.width(Space.sm))
                 Box(Modifier.weight(1f)) {
                     if (query.isEmpty()) {
-                        Text("Search your library", style = Typo.Body, color = MediaColors.CreamFaint)
+                        Text(stringResource(R.string.search_hint), style = Typo.Body, color = MediaColors.CreamFaint)
                     }
                     BasicTextField(
                         value = query,
@@ -111,14 +112,14 @@ fun SearchScreen(
                     )
                 }
                 if (query.isNotEmpty()) {
-                    Icon(Icons.Filled.Close, "Clear", tint = MediaColors.CreamDim,
+                    Icon(Icons.Filled.Close, stringResource(R.string.action_clear), tint = MediaColors.CreamDim,
                         modifier = Modifier.size(IconSize.md).clickable { query = "" })
                 }
             }
         }
 
         when {
-            q.isBlank() -> CenterHint("Find anything in your library")
+            q.isBlank() -> CenterHint(stringResource(R.string.search_empty_hint))
 
             // §19's exact prescription: name the situation, then offer a way out.
             nothing -> Column(
@@ -126,10 +127,10 @@ fun SearchScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Text("No matches in your library", style = Typo.Section, color = MediaColors.Cream)
+                Text(stringResource(R.string.search_no_matches_title), style = Typo.Section, color = MediaColors.Cream)
                 Spacer(Modifier.height(Space.sm))
                 Text(
-                    "Nothing here matches \"$query\".",
+                    stringResource(R.string.search_no_matches_body, query),
                     style = Typo.Secondary, color = MediaColors.CreamFaint
                 )
                 Spacer(Modifier.height(Space.xl))
@@ -138,12 +139,12 @@ fun SearchScreen(
                         Modifier.clip(CircleShape).background(MediaColors.Accent)
                             .pressScale(haptic = true) { query = "" }
                             .padding(horizontal = Space.xl, vertical = Space.md)
-                    ) { Text("Search again", style = Typo.Label, color = Color.White) }
+                    ) { Text(stringResource(R.string.action_search_again), style = Typo.Label, color = Color.White) }
                     Box(
                         Modifier.clip(CircleShape).background(MediaColors.Elevated)
                             .pressScale(haptic = true, onClick = onBrowseLibrary)
                             .padding(horizontal = Space.xl, vertical = Space.md)
-                    ) { Text("Browse your library", style = Typo.Label, color = MediaColors.Cream) }
+                    ) { Text(stringResource(R.string.search_browse), style = Typo.Label, color = MediaColors.Cream) }
                 }
             }
 
@@ -154,36 +155,36 @@ fun SearchScreen(
                 // they're fewer and more specific, so a match there is a
                 // stronger signal than one of forty track matches.
                 if (artistHits.isNotEmpty()) {
-                    item { SectionHeader("Artists") }
+                    item { SectionHeader(stringResource(R.string.label_artists)) }
                     items(artistHits.size) { i ->
                         val a = artistHits[i]
                         ResultRow(
-                            title = a.name,
-                            subtitle = if (a.trackCount == 1) "1 song" else "${a.trackCount} songs",
+                            title = shownArtist(a.name),
+                            subtitle = plural(R.plurals.count_songs, a.trackCount),
                             art = a.tracks.firstOrNull(),
                             circular = true
                         ) { onOpenArtist(a) }
                     }
                 }
                 if (albumHits.isNotEmpty()) {
-                    item { SectionHeader("Albums") }
+                    item { SectionHeader(stringResource(R.string.label_albums)) }
                     items(albumHits.size) { i ->
                         val al = albumHits[i]
                         ResultRow(
-                            title = al.name,
-                            subtitle = al.artist,
+                            title = shownAlbum(al.name),
+                            subtitle = shownArtist(al.artist),
                             art = al.tracks.firstOrNull(),
                             circular = false
                         ) { onOpenAlbum(al) }
                     }
                 }
                 if (trackHits.isNotEmpty()) {
-                    item { SectionHeader("Tracks") }
+                    item { SectionHeader(stringResource(R.string.label_tracks)) }
                     items(trackHits.size) { i ->
                         val t = trackHits[i]
                         ResultRow(
-                            title = t.title,
-                            subtitle = t.artist,
+                            title = shownTitle(t.title),
+                            subtitle = shownArtist(t.artist),
                             art = t,
                             circular = false
                         ) { onPlay(trackHits, i) }

@@ -22,6 +22,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 
 // ============================================================================
 //  SCRUBBER — the track's real waveform
@@ -119,7 +120,7 @@ fun Scrubber(
         label = "scrubGrow"
     )
 
-    val spoken = "Seek. ${fmtClock((frac * durationMs).toLong())} of ${fmtClock(durationMs)}"
+    val spoken = stringResource(R.string.scrubber_spoken, fmtClock((frac * durationMs).toLong()), fmtClock(durationMs))
 
     Box(
         modifier

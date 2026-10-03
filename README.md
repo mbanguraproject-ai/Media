@@ -92,6 +92,14 @@ Each tier is a complete design (gutters, artwork resolution, motion) plus a visu
 - Dialogs that take text (new playlist, paste lyrics) are real dialog windows: above the mini-player and nav bar, Back closes only them, and they stay clear of the keyboard.
 - The long-press sheet scrolls, with Edit info as a quick action at the top.
 
+### Languages (4.7)
+- English, Spanish, Portuguese (Brazil), French, German, Russian, Turkish, Indonesian, Hindi, Vietnamese and Japanese.
+- Automatic by default. With nothing picked, Android resolves every string against the phone's own language list, so the app opens in the phone's language and follows it when it changes. A phone set to a language Aura doesn't ship falls through its list to the next one Aura does, then to English.
+- Settings → Appearance → Language overrides that for Aura alone, with each language listed in its own name. On Android 13+ the choice is the system's per-app language, so it also appears in Settings → Apps → Aura → Language (the list comes from `res/xml/locales_config.xml`). On Android 12 and below the app stores the choice and applies it as each screen and service starts (`Language.kt`).
+- Library placeholders ("Unknown artist", "Untitled", recorder titles, EQ preset names) are stored in English and translated only where they are shown, so matching, keys and saved choices never depend on the language. Recording dates are formatted in the chosen language.
+- The Terms of Use stay in English, the governing text; the other languages show a one-line note saying so.
+- Every language ships in the base APK (`bundle.language.enableSplit = false`). Play would otherwise install only the phone's own languages from the bundle, and a language picked in the app would have nothing to switch to.
+
 ### Privacy
 The app collects nothing itself: no accounts, no analytics. Settings → Privacy has "Ad privacy choices" wherever Google's consent SDK says the law requires it (EEA, UK, Switzerland, and the US states configured in AdMob): Google's own form, to change or withdraw consent or opt out of sale/sharing. It also links to Android's advertising-ID settings and the privacy policy. All edits, history, and preferences stay in the app's private storage. The free version shows one adaptive banner in Settings from Google AdMob, requested only after Google's consent flow says ads may be requested (UMP `canRequestAds()`), sized to the card it sits in so it is never cropped, and paused with the app. A one-time purchase removes it. Policy source: `docs/privacy.html`; the app links to https://mebs.app/privacy/aura.
 
@@ -145,6 +153,14 @@ The `Release check` GitHub workflow builds both release (R8) and debug on
 every push and runs this check on each. Run by hand (Actions, Release check,
 Run workflow) it takes a commit to build, so any older version can be checked.
 
+### Translations
+
+English is `res/values/strings.xml`; each language is `res/values-xx/strings.xml` (`values-in` is Indonesian, Android's legacy code for it, and `values-pt` is Brazilian Portuguese). `tools/check_translations.py` checks every language against English: every string and plural present and nothing extra, exactly the same format placeholders, the plural forms each language's rules use, and escaping. It exits 1 on any problem:
+
+    python3 tools/check_translations.py
+
+The `Release check` workflow runs it on every push.
+
 ---
 
 ## Known limitations
@@ -152,6 +168,7 @@ Run workflow) it takes a commit to build, so any older version can be checked.
 - Notification artwork tracks the song correctly on standard Android and Samsung; some OEM skins (e.g. Tecno/HiOS) cache the notification bitmap and may not refresh per song — device-side behavior outside the app's control.
 - Podcasts/audiobooks are local-first (classified from on-device audio), not an online RSS client.
 - Video notification artwork is not yet handled like audio album art.
+- Right-to-left languages (Arabic, Hebrew, Persian, Urdu) are not shipped: the layouts have not been mirrored and checked.
 
 ---
 

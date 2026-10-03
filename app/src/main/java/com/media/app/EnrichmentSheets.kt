@@ -56,6 +56,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.media.app.Matching.isUsable
+import androidx.compose.ui.res.stringResource
 
 // ============================================================================
 //  ENRICHMENT SHEETS
@@ -99,7 +100,7 @@ private fun SheetHeader(item: AppMediaItem, subtitle: String) {
         CoverArt(item, Modifier.size(46.dp), corner = 10, targetPx = 144)
         Spacer(Modifier.width(Space.md))
         Column(Modifier.weight(1f)) {
-            Text(item.title, style = Typo.Section, color = MediaColors.Cream,
+            Text(shownTitle(item.title), style = Typo.Section, color = MediaColors.Cream,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(subtitle, style = Typo.Secondary, color = MediaColors.CreamFaint,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -142,16 +143,17 @@ private fun Fact(name: String, value: String?, accent: Boolean = false) {
     }
 }
 
+@Composable
 private fun issueText(s: ArtStatus?): String = when {
-    s == null -> "Checking the cover…"
+    s == null -> stringResource(R.string.art_checking)
     s.fixed != null -> when (s.fixed.source) {
-        "custom" -> "Your own cover"
-        else -> "Fixed from ${providerName(s.fixed.source)} · ${(s.fixed.confidence * 100).toInt()}% match"
+        "custom" -> stringResource(R.string.art_own_cover)
+        else -> stringResource(R.string.art_fixed_from, providerName(s.fixed.source), (s.fixed.confidence * 100).toInt())
     }
-    s.issue == ArtIssue.MISSING -> "No cover in this file"
-    s.issue == ArtIssue.LOW_RES -> "Low resolution · ${s.width}×${s.height}"
-    s.issue == ArtIssue.PLACEHOLDER -> "Blank placeholder cover"
-    else -> "Cover looks fine · ${s.width}×${s.height}"
+    s.issue == ArtIssue.MISSING -> stringResource(R.string.art_missing)
+    s.issue == ArtIssue.LOW_RES -> stringResource(R.string.art_low_res, s.width, s.height)
+    s.issue == ArtIssue.PLACEHOLDER -> stringResource(R.string.art_placeholder)
+    else -> stringResource(R.string.art_fine, s.width, s.height)
 }
 
 // ------------------------------------------------------------------ ARTWORK
@@ -176,7 +178,8 @@ fun ArtworkSheet(
     var failed by remember { mutableStateOf(false) }
     var candidates by remember { mutableStateOf<List<ArtCandidate>>(emptyList()) }
     var applying by remember { mutableStateOf<String?>(null) }
-    var message by remember { mutableStateOf<String?>(null) }
+    // A string resource: set from callbacks, shown in the current language.
+    var message by remember { mutableStateOf<Int?>(null) }
     val ids = remember(scope) { scope.map { it.id }.ifEmpty { listOf(item.id) } }
 
     fun search() {
@@ -194,7 +197,7 @@ fun ArtworkSheet(
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) launch.launch {
             val ok = ArtworkRepair.applyCustom(context, item, ids, uri)
-            message = if (ok) "Cover updated" else "That image couldn't be read"
+            message = if (ok) R.string.art_cover_updated else R.string.art_image_unreadable
         }
     }
 
@@ -202,38 +205,38 @@ fun ArtworkSheet(
         SheetHeader(item, issueText(status))
         if (scope.size > 1) {
             Spacer(Modifier.height(Space.xs))
-            Text("Applies to all ${scope.size} tracks of ${item.album}", style = Typo.Tertiary,
+            Text(plural(R.plurals.art_applies_album, scope.size, scope.size, item.album), style = Typo.Tertiary,
                 color = MediaColors.CreamFaint)
         }
         Spacer(Modifier.height(Space.lg))
         Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
-            TileAction(Icons.Filled.Search, if (searched) "Search again" else "Find cover",
+            TileAction(Icons.Filled.Search, stringResource(if (searched) R.string.action_search_again else R.string.art_find_cover),
                 Modifier.weight(1f), enabled = !searching) { search() }
-            TileAction(Icons.Filled.Image, "From gallery", Modifier.weight(1f)) {
+            TileAction(Icons.Filled.Image, stringResource(R.string.art_from_gallery), Modifier.weight(1f)) {
                 picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
             }
-            TileAction(Icons.Filled.Restore, "File's own", Modifier.weight(1f),
+            TileAction(Icons.Filled.Restore, stringResource(R.string.art_files_own), Modifier.weight(1f),
                 enabled = status?.fixed != null) {
                 ArtworkStore.remove(ids)
-                message = "Back to the file's own cover"
+                message = R.string.art_back_to_own
             }
         }
         message?.let {
             Spacer(Modifier.height(Space.md))
-            Text(it, style = Typo.Secondary, color = MediaColors.Accent)
+            Text(stringResource(it), style = Typo.Secondary, color = MediaColors.Accent)
         }
         Spacer(Modifier.height(Space.md))
         Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
             when {
-                searching -> Text("Searching MusicBrainz, Deezer and Apple Music…", style = Typo.Secondary, color = MediaColors.CreamFaint,
+                searching -> Text(stringResource(R.string.art_searching), style = Typo.Secondary, color = MediaColors.CreamFaint,
                     modifier = Modifier.padding(vertical = Space.md))
-                failed -> Text("Couldn't reach any cover service. Check the connection and search again.",
+                failed -> Text(stringResource(R.string.art_unreachable),
                     style = Typo.Secondary, color = MediaColors.CreamFaint, modifier = Modifier.padding(vertical = Space.md))
                 searched && candidates.isEmpty() -> Text(
-                    "No covers found. Correct the title, artist or album in Edit details and search again, or pick one from your gallery.",
+                    stringResource(R.string.art_none_found),
                     style = Typo.Secondary, color = MediaColors.CreamFaint, modifier = Modifier.padding(vertical = Space.md))
                 candidates.isNotEmpty() -> {
-                    Label("Covers found", top = false)
+                    Label(stringResource(R.string.art_covers_found), top = false)
                     candidates.chunked(3).forEach { row ->
                         Row(horizontalArrangement = Arrangement.spacedBy(Space.sm),
                             modifier = Modifier.padding(bottom = Space.sm)) {
@@ -244,7 +247,7 @@ fun ArtworkSheet(
                                     launch.launch {
                                         val ok = ArtworkRepair.apply(item, ids, c)
                                         applying = null
-                                        message = if (ok) "Cover updated" else "That one has no full-size cover. Try another."
+                                        message = if (ok) R.string.art_cover_updated else R.string.art_no_full_size
                                     }
                                 }
                             }
@@ -279,14 +282,14 @@ private fun CandidateTile(c: ArtCandidate, busy: Boolean, modifier: Modifier, on
             }
             if (busy) {
                 Box(Modifier.fillMaxSize().background(MediaColors.Scrim), contentAlignment = Alignment.Center) {
-                    Text("Applying…", style = Typo.Tertiary, color = MediaColors.Cream)
+                    Text(stringResource(R.string.art_applying), style = Typo.Tertiary, color = MediaColors.Cream)
                 }
             }
         }
         Spacer(Modifier.height(Space.xs))
         Text(c.title, style = Typo.Tertiary, color = MediaColors.Cream, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(
-            listOfNotNull(c.providerLabel, c.year, "${(c.score * 100).toInt()}%").joinToString(" · "),
+            listOfNotNull(c.providerLabel, c.year, stringResource(R.string.percent_value, (c.score * 100).toInt())).joinToString(" · "),
             style = Typo.Tertiary, color = if (confident) MediaColors.Accent else MediaColors.CreamFaint, maxLines = 1
         )
     }
@@ -318,105 +321,112 @@ fun TrackDetailsSheet(
     }
     var identifying by remember { mutableStateOf(false) }
     var match by remember { mutableStateOf<Pair<MbRecording, Float>?>(null) }
-    var identifyNote by remember { mutableStateOf<String?>(null) }
+    var identifyNote by remember { mutableStateOf<Int?>(null) }
 
     GlassSheet(onDismiss) {
-        SheetHeader(item, item.artist)
+        SheetHeader(item, shownArtist(item.artist))
         Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState())) {
             val (fmt, tags) = info ?: (null to null)
-            Label("Audio")
-            Fact("Format", fmt?.badge ?: "Reading…")
-            Fact("Quality", when {
+            Label(stringResource(R.string.label_audio))
+            Fact(stringResource(R.string.fact_format), fmt?.badge ?: stringResource(R.string.reading))
+            Fact(stringResource(R.string.fact_quality), when {
                 fmt == null -> null
-                fmt.hiRes -> "Hi-Res lossless"
-                fmt.lossless == true -> "Lossless"
-                fmt.lossless == false -> "Lossy"
+                fmt.hiRes -> stringResource(R.string.quality_hires_lossless)
+                fmt.lossless == true -> stringResource(R.string.quality_lossless)
+                fmt.lossless == false -> stringResource(R.string.quality_lossy)
                 else -> null
             }, accent = fmt?.hiRes == true)
-            Fact("Channels", fmt?.channels?.let { if (it == 1) "Mono" else if (it == 2) "Stereo" else "$it channels" })
-            Fact("Bitrate", fmt?.bitrateKbps?.let { "$it kbps" })
-            Fact("Length", fmt?.durationMs?.let { fmtClock(it) })
-            Fact("Size", fmt?.sizeBytes?.let { "%.1f MB".format(java.util.Locale.ROOT, it / 1048576.0) })
-            Fact("Container", tags?.container)
-            Fact("ReplayGain", listOfNotNull(
-                tags?.replayGainTrack?.let { "track %+.2f dB".format(java.util.Locale.ROOT, it) },
-                tags?.replayGainAlbum?.let { "album %+.2f dB".format(java.util.Locale.ROOT, it) }
+            Fact(stringResource(R.string.fact_channels), fmt?.channels?.let {
+                if (it == 1) stringResource(R.string.channels_mono)
+                else if (it == 2) stringResource(R.string.channels_stereo)
+                else plural(R.plurals.channels_count, it)
+            })
+            Fact(stringResource(R.string.fact_bitrate), fmt?.bitrateKbps?.let { "$it kbps" })
+            Fact(stringResource(R.string.fact_length), fmt?.durationMs?.let { fmtClock(it) })
+            Fact(stringResource(R.string.fact_size), fmt?.sizeBytes?.let { "%.1f MB".format(java.util.Locale.ROOT, it / 1048576.0) })
+            Fact(stringResource(R.string.fact_container), tags?.container)
+            Fact(stringResource(R.string.fact_replaygain), listOfNotNull(
+                tags?.replayGainTrack?.let { stringResource(R.string.rg_track, it) },
+                tags?.replayGainAlbum?.let { stringResource(R.string.rg_album, it) }
             ).joinToString(" · ").ifEmpty { null })
 
-            Label("Tags in the file")
-            Fact("Title", tags?.title)
-            Fact("Artist", tags?.artist)
-            Fact("Album", tags?.album)
-            Fact("Album artist", tags?.albumArtist)
-            Fact("Year", tags?.date)
-            Fact("Genre", tags?.genre)
-            Fact("Composer", tags?.composer)
-            Fact("Track", listOfNotNull(tags?.track?.let { "Track $it" }, tags?.disc?.let { "disc $it" })
-                .joinToString(", ").ifEmpty { null })
+            Label(stringResource(R.string.label_tags_in_file))
+            Fact(stringResource(R.string.field_title), tags?.title)
+            Fact(stringResource(R.string.field_artist), tags?.artist)
+            Fact(stringResource(R.string.fact_album), tags?.album)
+            Fact(stringResource(R.string.fact_album_artist), tags?.albumArtist)
+            Fact(stringResource(R.string.fact_year), tags?.date)
+            Fact(stringResource(R.string.fact_genre), tags?.genre)
+            Fact(stringResource(R.string.fact_composer), tags?.composer)
+            Fact(stringResource(R.string.fact_track), listOfNotNull(
+                tags?.track?.let { stringResource(R.string.track_number, it) },
+                tags?.disc?.let { stringResource(R.string.disc_number, it) }
+            ).joinToString(", ").ifEmpty { null })
             Fact("ISRC", tags?.isrc)
             if (tags != null && tags.title == null && tags.artist == null) {
-                Text("This file carries no readable tags; the library shows what Android indexed.",
+                Text(stringResource(R.string.tags_none_note),
                     style = Typo.Tertiary, color = MediaColors.CreamFaint)
             }
-            Fact("File", item.relPath.ifBlank { null })
+            Fact(stringResource(R.string.fact_file), item.relPath.ifBlank { null })
 
-            Label("Identifiers")
-            Fact("Recording", tags?.mbRecordingId)
-            Fact("Release", tags?.mbReleaseId)
-            Fact("Release group", tags?.mbReleaseGroupId)
+            Label(stringResource(R.string.label_identifiers))
+            Fact(stringResource(R.string.fact_recording), tags?.mbRecordingId)
+            Fact(stringResource(R.string.fact_release), tags?.mbReleaseId)
+            Fact(stringResource(R.string.fact_release_group), tags?.mbReleaseGroupId)
             if (tags?.mbRecordingId == null && tags?.mbReleaseId == null) {
-                Text("No MusicBrainz identifiers in the file.", style = Typo.Tertiary, color = MediaColors.CreamFaint)
+                Text(stringResource(R.string.ids_none), style = Typo.Tertiary, color = MediaColors.CreamFaint)
             }
 
-            Label("Artwork")
+            Label(stringResource(R.string.label_artwork))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(issueText(art), style = Typo.Secondary,
                     color = if (art?.issue == ArtIssue.NONE) MediaColors.Cream else MediaColors.Warning,
                     modifier = Modifier.weight(1f))
-                Text("Fix", style = Typo.Label, color = MediaColors.Accent,
+                Text(stringResource(R.string.action_fix), style = Typo.Label, color = MediaColors.Accent,
                     modifier = Modifier.pressScale(haptic = true) { onFixArtwork() })
             }
 
-            Label("Lyrics")
+            Label(stringResource(R.string.label_lyrics))
             Text(when (val l = lyrics) {
-                LyricsState.Loading -> "Checking…"
-                is LyricsState.Synced -> "Synced · ${l.source.label}" +
-                    (l.confidence?.let { " · ${(it * 100).toInt()}% match" } ?: "")
-                is LyricsState.Plain -> "Plain text · ${l.source.label}"
-                LyricsState.Instrumental -> "Instrumental"
-                is LyricsState.None -> "None stored for this track"
+                LyricsState.Loading -> stringResource(R.string.lyrics_checking)
+                is LyricsState.Synced -> l.confidence?.let {
+                    stringResource(R.string.lyrics_synced_from_match, stringResource(l.source.labelRes), (it * 100).toInt())
+                } ?: stringResource(R.string.lyrics_synced_from, stringResource(l.source.labelRes))
+                is LyricsState.Plain -> stringResource(R.string.lyrics_plain_from, stringResource(l.source.labelRes))
+                LyricsState.Instrumental -> stringResource(R.string.lyrics_instrumental)
+                is LyricsState.None -> stringResource(R.string.lyrics_none_stored)
             }, style = Typo.Secondary, color = MediaColors.Cream)
 
-            Label("Identify")
+            Label(stringResource(R.string.label_identify))
             val m = match
             when {
-                identifying -> Text("Asking MusicBrainz…", style = Typo.Secondary, color = MediaColors.CreamFaint)
+                identifying -> Text(stringResource(R.string.identify_asking), style = Typo.Secondary, color = MediaColors.CreamFaint)
                 m != null -> {
                     val (rec, score) = m
                     Text("${rec.title} — ${rec.artist}", style = Typo.Primary, color = MediaColors.Cream)
                     val rel = rec.releases.firstOrNull()
-                    Text(listOfNotNull(rel?.title, rel?.year, "${(score * 100).toInt()}% match").joinToString(" · "),
+                    Text(listOfNotNull(rel?.title, rel?.year, stringResource(R.string.match_percent, (score * 100).toInt())).joinToString(" · "),
                         style = Typo.Tertiary,
                         color = if (score >= Matching.CONFIDENT) MediaColors.Accent else MediaColors.CreamFaint)
                     val changes = rec.title != item.title || rec.artist != item.artist
                     Spacer(Modifier.height(Space.sm))
                     if (changes) {
-                        Text("Use this title and artist", style = Typo.Label, color = MediaColors.Accent,
+                        Text(stringResource(R.string.identify_use), style = Typo.Label, color = MediaColors.Accent,
                             modifier = Modifier.pressScale(haptic = true) { onApply(rec.title, rec.artist) })
-                        Text("Saved as your own edit. The file is not changed.", style = Typo.Tertiary,
+                        Text(stringResource(R.string.identify_saved_note), style = Typo.Tertiary,
                             color = MediaColors.CreamFaint)
                     } else {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Filled.Check, null, tint = MediaColors.Success, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(Space.xs))
-                            Text("The library already matches MusicBrainz", style = Typo.Tertiary, color = MediaColors.CreamDim)
+                            Text(stringResource(R.string.identify_already), style = Typo.Tertiary, color = MediaColors.CreamDim)
                         }
                     }
                 }
                 else -> {
-                    identifyNote?.let { Text(it, style = Typo.Tertiary, color = MediaColors.CreamFaint) }
+                    identifyNote?.let { Text(stringResource(it), style = Typo.Tertiary, color = MediaColors.CreamFaint) }
                     Text(
-                        if (onlineAllowed) "Look this track up on MusicBrainz" else "Look this track up on MusicBrainz (sends title, artist and length)",
+                        stringResource(if (onlineAllowed) R.string.identify_lookup else R.string.identify_lookup_consent),
                         style = Typo.Label, color = MediaColors.Accent,
                         modifier = Modifier.padding(top = Space.xs).pressScale(haptic = true) {
                             identifying = true; identifyNote = null
@@ -426,11 +436,11 @@ fun TrackDetailsSheet(
                                 val artist = item.artist.takeIf { it.isUsable() } ?: t?.artist
                                 val recs = if (title != null) MusicBrainz.searchRecordings(title, artist) else emptyList()
                                 identifying = false
-                                if (recs == null) { identifyNote = "Couldn't reach MusicBrainz."; return@launch }
+                                if (recs == null) { identifyNote = R.string.identify_unreachable; return@launch }
                                 val q = Matching.Query(title, artist, item.album, item.durationMs.takeIf { it > 0 })
                                 val best = recs.map { it to Matching.score(q, Matching.Candidate(it.title, it.artist, it.releases.firstOrNull()?.title, it.lengthMs)) }
                                     .maxByOrNull { it.second }
-                                if (best == null || best.second < Matching.PLAUSIBLE) identifyNote = "No confident match found."
+                                if (best == null || best.second < Matching.PLAUSIBLE) identifyNote = R.string.identify_no_match
                                 else match = best
                             }
                         }
@@ -456,41 +466,50 @@ fun AudioPathSheet(item: AppMediaItem, onOpenSound: () -> Unit, onDismiss: () ->
     val fmt = info?.first
 
     GlassSheet(onDismiss) {
-        Text("Audio path", style = Typo.Section, color = MediaColors.Cream)
+        Text(stringResource(R.string.path_title), style = Typo.Section, color = MediaColors.Cream)
         Spacer(Modifier.height(Space.xxs))
-        Text("From the file to your ears, as it plays now", style = Typo.Secondary, color = MediaColors.CreamFaint)
+        Text(stringResource(R.string.path_subtitle), style = Typo.Secondary, color = MediaColors.CreamFaint)
         Spacer(Modifier.height(Space.md))
         Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState())) {
-            Stage("Source", fmt?.badge ?: "Reading…",
+            Stage(stringResource(R.string.stage_source), fmt?.badge ?: stringResource(R.string.reading),
                 listOfNotNull(
-                    if (fmt?.hiRes == true) "Hi-Res lossless" else if (fmt?.lossless == true) "Lossless" else if (fmt?.lossless == false) "Lossy" else null,
-                    fmt?.channels?.let { if (it == 2) "Stereo" else if (it == 1) "Mono" else "$it ch" }
+                    if (fmt?.hiRes == true) stringResource(R.string.quality_hires_lossless)
+                    else if (fmt?.lossless == true) stringResource(R.string.quality_lossless)
+                    else if (fmt?.lossless == false) stringResource(R.string.quality_lossy) else null,
+                    fmt?.channels?.let {
+                        if (it == 2) stringResource(R.string.channels_stereo)
+                        else if (it == 1) stringResource(R.string.channels_mono)
+                        else plural(R.plurals.channels_count, it)
+                    }
                 ).joinToString(" · "), highlight = fmt?.hiRes == true)
-            Stage("Decoder",
-                if ((fmt?.bitDepth ?: 16) > 16) "32-bit float" else "16-bit PCM",
-                if ((fmt?.bitDepth ?: 16) > 16) "Full resolution kept through to the mixer" else "Integer path")
+            Stage(stringResource(R.string.stage_decoder),
+                stringResource(if ((fmt?.bitDepth ?: 16) > 16) R.string.decoder_float else R.string.decoder_pcm16),
+                stringResource(if ((fmt?.bitDepth ?: 16) > 16) R.string.decoder_float_note else R.string.decoder_int_note))
             val chain = buildList {
-                if (sound.gainDb != 0f) add("Gain %+.1f dB".format(java.util.Locale.ROOT, sound.gainDb) +
-                    (sound.replayGainDb?.let { " (ReplayGain %+.1f)".format(java.util.Locale.ROOT, it) } ?: ""))
-                if (settings.eqEnabled && sound.equalizer) add("EQ: ${settings.preset}")
-                if (sound.limiterOn) add("Limiter")
-                if (settings.bass > 0 && sound.bass) add("Bass ${settings.bass / 10}%")
-                if (settings.spatial > 0 && sound.spatial) add("Spatial ${settings.spatial / 10}%")
+                if (sound.gainDb != 0f) add(sound.replayGainDb?.let {
+                    stringResource(R.string.chain_gain_rg, sound.gainDb, it)
+                } ?: stringResource(R.string.chain_gain, sound.gainDb))
+                if (settings.eqEnabled && sound.equalizer) add(stringResource(R.string.chain_eq, presetLabel(settings.preset)))
+                if (sound.limiterOn) add(stringResource(R.string.chain_limiter))
+                if (settings.bass > 0 && sound.bass) add(stringResource(R.string.chain_bass, settings.bass / 10))
+                if (settings.spatial > 0 && sound.spatial) add(stringResource(R.string.chain_spatial, settings.spatial / 10))
             }
-            Stage("Sound", if (chain.isEmpty()) "Bit-perfect to the mixer" else chain.joinToString(" → "),
-                if (chain.isEmpty()) "No processing is applied" else "Applied in the system audio mixer",
-                action = "Adjust", onAction = onOpenSound)
+            Stage(stringResource(R.string.stage_sound),
+                if (chain.isEmpty()) stringResource(R.string.sound_bitperfect) else chain.joinToString(" → "),
+                stringResource(if (chain.isEmpty()) R.string.sound_none_note else R.string.sound_applied_note),
+                action = stringResource(R.string.action_adjust), onAction = onOpenSound)
             val resampled = route.mixerRate != null && fmt?.sampleRate != null && fmt.sampleRate != route.mixerRate
-            Stage("Mixer",
-                route.mixerRate?.let { "Android mixer · ${khz(it)}" } ?: "Android mixer",
-                if (resampled) "Resampled from ${khz(fmt?.sampleRate ?: 0)}" else "No resampling needed")
-            Stage("Output", route.name,
-                buildString {
-                    append(route.kind)
-                    if (route.bluetooth) append(" · re-encoded by the Bluetooth codec")
+            Stage(stringResource(R.string.stage_mixer),
+                route.mixerRate?.let { stringResource(R.string.mixer_rate, khz(it)) } ?: stringResource(R.string.mixer),
+                if (resampled) stringResource(R.string.mixer_resampled, khz(fmt?.sampleRate ?: 0))
+                else stringResource(R.string.mixer_no_resample))
+            Stage(stringResource(R.string.stage_output), route.name,
+                listOfNotNull(
+                    route.kindLabel,
+                    if (route.bluetooth) stringResource(R.string.output_bt_reencoded) else null,
                     if (route.usb && route.deviceRates.isNotEmpty())
-                        append(" · up to ${khz(route.deviceRates.max())}")
-                }, last = true)
+                        stringResource(R.string.output_up_to, khz(route.deviceRates.max())) else null
+                ).joinToString(" · "), last = true)
         }
     }
 }

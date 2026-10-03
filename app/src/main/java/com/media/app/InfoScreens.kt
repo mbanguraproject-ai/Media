@@ -21,7 +21,7 @@ private fun InfoScaffold(title: String, onClose: () -> Unit, content: @Composabl
             Modifier.fillMaxWidth().padding(Space.sm, Space.sm),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MediaColors.Cream) }
+            IconButton(onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back), tint = MediaColors.Cream) }
             Text(title, style = MaterialTheme.typography.titleLarge, color = MediaColors.Cream)
         }
         Column(
@@ -46,44 +46,48 @@ private fun Heading(text: String) {
 
 @Composable
 fun AboutScreen(version: String, onClose: () -> Unit) {
-    InfoScaffold("About", onClose) {
+    InfoScaffold(stringResource(R.string.about_title), onClose) {
         Text(stringResource(R.string.app_name), style = MaterialTheme.typography.displaySmall,
             color = MediaColors.Cream, modifier = Modifier.padding(bottom = Space.xs))
-        Text("Your library, lit by what\'s playing.", style = MaterialTheme.typography.bodyLarge,
+        Text(stringResource(R.string.tagline), style = MaterialTheme.typography.bodyLarge,
             color = MediaColors.CreamDim, modifier = Modifier.padding(bottom = Space.xl))
 
-        Para("Your library shouldn\'t be scattered across a dozen apps. Aura gathers everything that plays on your phone into one place — and then gets out of the way so you can just listen and watch.")
+        Para(stringResource(R.string.about_intro))
 
-        Heading("Four kinds of media, one place")
-        Para("Music for your songs. Podcasts for long-form talk. Audiobooks for the books you listen to. And video, in any format your phone understands. Aura sorts them automatically, and you can always reorganize anything by hand.")
+        Heading(stringResource(R.string.about_h1))
+        Para(stringResource(R.string.about_p1))
 
-        Heading("Yours, and only yours")
-        Para("Everything plays locally, straight from your device. There are no accounts to make and nothing to sign in to. Your library, your listening history and your edits never leave your phone. The one exception is yours to switch on: looking up missing artwork and lyrics online, which sends only a track's title, artist, album and length.")
+        Heading(stringResource(R.string.about_h2))
+        Para(stringResource(R.string.about_p2))
 
-        Heading("Covers and lyrics, repaired")
-        Para("Missing, blurry or blank covers are found and replaced: matched to the right release through MusicBrainz and Cover Art Archive first, then Deezer and Apple Music when that comes up short. You can always choose another or use a picture of your own. Synced lyrics follow the song line by line in Now Playing, from the file itself, a .lrc file beside it, your lyrics folder, LRCLIB or NetEase, and you can add your own from a file or by pasting. Nothing is ever written back into your files.")
+        Heading(stringResource(R.string.about_h3))
+        Para(stringResource(R.string.about_p3))
 
-        Heading("Sound, shown honestly")
-        Para("A ten-band equalizer, preamp, ReplayGain, a limiter, bass and spatial sound. The audio path shows exactly what happens between the file and your headphones: the real format, whether it is lossless or hi-res, what the chain changes, and where the phone resamples.")
+        Heading(stringResource(R.string.about_h4))
+        Para(stringResource(R.string.about_p4))
 
-        Heading("It reacts to what you play")
-        Para("Artwork pulses with the bass, analysed from the file itself — no microphone, no network. The background takes its colour from the cover that\'s playing, and moods retint the whole app. Tracks without cover art get their own generated artwork instead of a letter in a box.")
+        Heading(stringResource(R.string.about_h5))
+        Para(stringResource(R.string.about_p5))
 
-        Heading("Little things that matter")
-        Para("A sleep timer that fades out gently. Audiobooks and podcasts that remember exactly where you stopped, and the speed you like them at. A now-playing screen you can drag down to dismiss. The details you\'d expect from a player that respects your time.")
+        Heading(stringResource(R.string.about_h6))
+        Para(stringResource(R.string.about_p6))
 
         Spacer(Modifier.height(Space.lg))
-        Text("Version $version", style = MaterialTheme.typography.bodyMedium,
+        Text(stringResource(R.string.version_value, version), style = MaterialTheme.typography.bodyMedium,
             color = MediaColors.CreamFaint)
         Spacer(Modifier.height(Space.sm))
-        Text("Made with care for people who love their media.",
+        Text(stringResource(R.string.about_made_with_care),
             style = MaterialTheme.typography.bodyMedium, color = MediaColors.CreamFaint)
     }
 }
 
 @Composable
 fun TermsScreen(onClose: () -> Unit) {
-    InfoScaffold("Terms of Use", onClose) {
+    InfoScaffold(stringResource(R.string.terms_title), onClose) {
+        // The terms themselves stay in English, the version that governs: a
+        // machine-made translation of legal text can change what it says.
+        // Every other language says so here; in English this is empty.
+        stringResource(R.string.terms_english_note).takeIf { it.isNotBlank() }?.let { Para(it) }
         Para(
             "These terms cover your use of Aura. They are written to be read, " +
             "not to be got past."

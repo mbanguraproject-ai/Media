@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
 
 private val G_FILL = MediaColors.FillSubtle
 private val G_BORDER = MediaColors.Fill
@@ -54,7 +55,7 @@ fun PlaylistsScreen(
                 Modifier.fillMaxWidth().padding(Space.xl, Space.lg, Space.lg, Space.md),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Playlists", style = Typo.Display,
+                Text(stringResource(R.string.playlists_title), style = Typo.Display,
                     color = MediaColors.Cream, modifier = Modifier.weight(1f))
                 Row(
                     Modifier.clip(RoundedCornerShape(20.dp))
@@ -65,7 +66,7 @@ fun PlaylistsScreen(
                 ) {
                     Icon(Icons.Filled.Add, null, tint = Color.White, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("New", style = Typo.Label, color = Color.White)
+                    Text(stringResource(R.string.action_new), style = Typo.Label, color = Color.White)
                 }
             }
 
@@ -77,7 +78,7 @@ fun PlaylistsScreen(
                     .border(1.dp, G_BORDER, RoundedCornerShape(14.dp))
                     .padding(4.dp)
             ) {
-                listOf("My playlists", "Smart").forEachIndexed { i, label ->
+                listOf(stringResource(R.string.playlists_tab_mine), stringResource(R.string.playlists_tab_smart)).forEachIndexed { i, label ->
                     val sel = tab == i
                     Box(
                         Modifier.weight(1f).clip(RoundedCornerShape(11.dp))
@@ -119,9 +120,9 @@ private fun MyPlaylistsTab(
     if (playlists.isEmpty()) {
         EmptyBlock(
             icon = Icons.AutoMirrored.Filled.QueueMusic,
-            title = "No playlists yet",
-            subtitle = "Create your first playlist",
-            cta = "Create playlist",
+            title = stringResource(R.string.playlists_empty_title),
+            subtitle = stringResource(R.string.playlists_empty_body),
+            cta = stringResource(R.string.action_create_playlist),
             onCta = onCreate
         )
     } else {
@@ -146,7 +147,7 @@ private fun MyPlaylistsTab(
                         color = MediaColors.Cream, modifier = Modifier.weight(1f),
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                     IconButton({ onDelete(pl) }) {
-                        Icon(Icons.Filled.DeleteOutline, "Delete", tint = MediaColors.CreamFaint, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Filled.DeleteOutline, stringResource(R.string.action_delete), tint = MediaColors.CreamFaint, modifier = Modifier.size(20.dp))
                     }
                 }
             }
@@ -160,7 +161,7 @@ private fun SmartTab(moodCounts: Map<String, Int>, onOpenMood: (Mood) -> Unit) {
     val moods = Mood.values().filter { it.holdsSongs } // exclude ALL
     LazyColumn(contentPadding = PaddingValues(bottom = 170.dp)) {
         item {
-            Text("Tap a mood to play it on Home", style = Typo.Tertiary, color = MediaColors.CreamFaint,
+            Text(stringResource(R.string.playlists_moods_hint), style = Typo.Tertiary, color = MediaColors.CreamFaint,
                 modifier = Modifier.padding(Space.xl, 0.dp, Space.xl, Space.sm))
         }
         items(moods) { mood ->
@@ -187,10 +188,10 @@ private fun SmartTab(moodCounts: Map<String, Int>, onOpenMood: (Mood) -> Unit) {
                 ) { Icon(icon, null, tint = mood.accent, modifier = Modifier.size(22.dp)) }
                 Spacer(Modifier.width(Space.md))
                 Column(Modifier.weight(1f)) {
-                    Text(mood.label, style = Typo.Primary, color = MediaColors.Cream)
-                    Text(if (count == 1) "1 song" else "$count songs", style = Typo.Tertiary, color = MediaColors.CreamFaint)
+                    Text(stringResource(mood.labelRes), style = Typo.Primary, color = MediaColors.Cream)
+                    Text(plural(R.plurals.count_songs, count), style = Typo.Tertiary, color = MediaColors.CreamFaint)
                 }
-                Icon(Icons.Filled.PlayArrow, "Play", tint = mood.accent, modifier = Modifier.size(22.dp))
+                Icon(Icons.Filled.PlayArrow, stringResource(R.string.action_play), tint = mood.accent, modifier = Modifier.size(22.dp))
             }
         }
     }
@@ -219,12 +220,12 @@ fun PlaylistDetailScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClose) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MediaColors.Cream)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back), tint = MediaColors.Cream)
             }
             Column(Modifier.weight(1f)) {
                 Text(playlist.name, style = Typo.Display, color = MediaColors.Cream,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(if (tracks.size == 1) "1 song" else "${tracks.size} songs",
+                Text(plural(R.plurals.count_songs, tracks.size),
                     style = Typo.Tertiary, color = MediaColors.CreamFaint)
             }
         }
@@ -244,7 +245,7 @@ fun PlaylistDetailScreen(
                 ) {
                     Icon(Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Play", style = Typo.Label, color = Color.White)
+                    Text(stringResource(R.string.action_play), style = Typo.Label, color = Color.White)
                 }
                 Row(
                     Modifier.weight(1f).clip(RoundedCornerShape(20.dp))
@@ -256,7 +257,7 @@ fun PlaylistDetailScreen(
                 ) {
                     Icon(Icons.Filled.Shuffle, null, tint = MediaColors.Accent, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Shuffle", style = Typo.Label, color = MediaColors.Accent)
+                    Text(stringResource(R.string.action_shuffle), style = Typo.Label, color = MediaColors.Accent)
                 }
             }
         }
@@ -264,8 +265,8 @@ fun PlaylistDetailScreen(
         if (tracks.isEmpty()) {
             EmptyBlock(
                 icon = Icons.AutoMirrored.Filled.QueueMusic,
-                title = "Nothing here yet",
-                subtitle = "Long-press any track to add it",
+                title = stringResource(R.string.playlist_empty_title),
+                subtitle = stringResource(R.string.playlist_empty_body),
                 cta = null, onCta = {}
             )
         } else {
@@ -336,14 +337,14 @@ private fun CreatePlaylistSheet(onCreate: (String) -> Unit, onDismiss: () -> Uni
                 .background(MediaColors.Modal).border(1.dp, G_BORDER, RoundedCornerShape(20.dp))
                 .padding(Space.xl),
         ) {
-            Text("New playlist", style = Typo.Section, color = MediaColors.Cream)
+            Text(stringResource(R.string.new_playlist_title), style = Typo.Section, color = MediaColors.Cream)
             Spacer(Modifier.height(Space.lg))
             Box(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
                     .background(G_FILL).border(1.dp, G_BORDER, RoundedCornerShape(12.dp))
                     .padding(Space.lg, 14.dp)
             ) {
-                if (name.isEmpty()) Text("Playlist name", style = Typo.Body, color = MediaColors.CreamFaint)
+                if (name.isEmpty()) Text(stringResource(R.string.playlist_name_hint), style = Typo.Body, color = MediaColors.CreamFaint)
                 BasicTextField(
                     value = name, onValueChange = { name = it },
                     singleLine = true,
@@ -361,7 +362,7 @@ private fun CreatePlaylistSheet(onCreate: (String) -> Unit, onDismiss: () -> Uni
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 Box(Modifier.clip(RoundedCornerShape(18.dp)).clickable(onClick = onDismiss)
                     .padding(horizontal = Space.lg, vertical = 10.dp)) {
-                    Text("Cancel", style = Typo.Label, color = MediaColors.CreamDim)
+                    Text(stringResource(R.string.action_cancel), style = Typo.Label, color = MediaColors.CreamDim)
                 }
                 Spacer(Modifier.width(Space.sm))
                 Box(
@@ -369,7 +370,7 @@ private fun CreatePlaylistSheet(onCreate: (String) -> Unit, onDismiss: () -> Uni
                         .background(if (name.isBlank()) MediaColors.Accent.copy(alpha = 0.4f) else MediaColors.Accent)
                         .clickable(enabled = name.isNotBlank()) { submit() }
                         .padding(horizontal = Space.lg, vertical = 10.dp)
-                ) { Text("Create", style = Typo.Label, color = Color.White) }
+                ) { Text(stringResource(R.string.action_create), style = Typo.Label, color = Color.White) }
             }
         }
         // Straight to typing: the keyboard comes up with the box. Inside the

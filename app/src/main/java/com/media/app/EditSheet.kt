@@ -20,11 +20,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 
-private enum class PillarChoice(val label: String, val stored: String, val fieldLabel: String) {
-    SONG("Song", "MUSIC", "Artist"),
-    PODCAST("Podcast", "PODCAST", "Show / Host"),
-    AUDIOBOOK("Audiobook", "AUDIOBOOK", "Author")
+private enum class PillarChoice(val label: Int, val stored: String, val fieldLabel: Int) {
+    SONG(R.string.kind_song, "MUSIC", R.string.field_artist),
+    PODCAST(R.string.kind_podcast, "PODCAST", R.string.field_show_host),
+    AUDIOBOOK(R.string.kind_audiobook, "AUDIOBOOK", R.string.field_author)
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -88,25 +89,25 @@ fun EditSheet(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CoverArt(item, Modifier.size(56.dp), corner = 10)
                 Spacer(Modifier.width(Space.md))
-                Text("Edit details", style = MaterialTheme.typography.titleLarge, color = MediaColors.Cream)
+                Text(stringResource(R.string.action_edit_details), style = MaterialTheme.typography.titleLarge, color = MediaColors.Cream)
             }
             Spacer(Modifier.height(Space.xl))
 
-            FieldLabel("Title")
-            EditField(title, { title = it }, "Title")
+            FieldLabel(stringResource(R.string.field_title))
+            EditField(title, { title = it }, stringResource(R.string.field_title))
             Spacer(Modifier.height(Space.lg))
 
-            val whoLabel = if (isVideo) "Creator" else choice.fieldLabel
+            val whoLabel = stringResource(if (isVideo) R.string.field_creator else choice.fieldLabel)
             FieldLabel(whoLabel)
             EditField(artist, { artist = it }, whoLabel)
             Spacer(Modifier.height(Space.lg))
 
-            FieldLabel("Details")
-            EditField(details, { details = it }, "Notes, description…", minHeight = 72)
+            FieldLabel(stringResource(R.string.field_details))
+            EditField(details, { details = it }, stringResource(R.string.field_details_hint), minHeight = 72)
             Spacer(Modifier.height(Space.xl))
 
             if (!isVideo) {
-            FieldLabel("This is a")
+            FieldLabel(stringResource(R.string.field_this_is_a))
             Spacer(Modifier.height(Space.sm))
             Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
                 PillarChoice.values().forEach { pc ->
@@ -127,7 +128,7 @@ fun EditSheet(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            pc.label,
+                            stringResource(pc.label),
                             style = MaterialTheme.typography.titleMedium,
                             color = if (selected) MediaColors.Ink else MediaColors.CreamDim
                         )
@@ -148,7 +149,7 @@ fun EditSheet(
                     .padding(vertical = 15.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Save", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                Text(stringResource(R.string.action_save), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = MediaColors.OnAccent)
             }
 
@@ -160,7 +161,7 @@ fun EditSheet(
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Reset to automatic",
+                    Text(stringResource(R.string.action_reset_automatic),
                         style = MaterialTheme.typography.bodyLarge, color = MediaColors.CreamDim)
                 }
             }

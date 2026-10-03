@@ -44,8 +44,8 @@ object LyricsFolder {
     fun label(context: Context): String? = folder(context)?.let { uri ->
         runCatching {
             DocumentsContract.getTreeDocumentId(uri).substringAfterLast(':').substringAfterLast('/')
-                .ifBlank { "Selected folder" }
-        }.getOrDefault("Selected folder")
+                .ifBlank { context.getString(R.string.lyrics_folder_selected) }
+        }.getOrDefault(context.getString(R.string.lyrics_folder_selected))
     }
 
     /** Stores the picked tree and keeps read access across restarts. */

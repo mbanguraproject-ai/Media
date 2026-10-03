@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 
 private val G_FILL = MediaColors.FillSubtle
 private val G_BORDER = MediaColors.Fill
@@ -95,9 +96,9 @@ fun AddToSheet(
                     targetPx = 144)
                 Spacer(Modifier.width(Space.md))
                 Column(Modifier.weight(1f)) {
-                    Text(item.title, style = Typo.Section, color = MediaColors.Cream,
+                    Text(shownTitle(item.title), style = Typo.Section, color = MediaColors.Cream,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(item.artist, style = Typo.Secondary, color = MediaColors.CreamFaint,
+                    Text(shownArtist(item.artist), style = Typo.Secondary, color = MediaColors.CreamFaint,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
@@ -106,23 +107,24 @@ fun AddToSheet(
             // §26 primary actions, surfaced first; the toggles below are
             // progressive disclosure for the less frequent choices.
             Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
-                QuickAction(Icons.AutoMirrored.Filled.PlaylistPlay, "Play next", Modifier.weight(1f)) {
+                QuickAction(Icons.AutoMirrored.Filled.PlaylistPlay, stringResource(R.string.action_play_next), Modifier.weight(1f)) {
                     onPlayNext(); onDismiss()
                 }
-                QuickAction(Icons.AutoMirrored.Filled.QueueMusic, "Add to queue", Modifier.weight(1f)) {
+                QuickAction(Icons.AutoMirrored.Filled.QueueMusic, stringResource(R.string.action_add_to_queue), Modifier.weight(1f)) {
                     onAddToQueue(); onDismiss()
                 }
-                QuickAction(Icons.Filled.Edit, "Edit info", Modifier.weight(1f)) {
+                QuickAction(Icons.Filled.Edit, stringResource(R.string.action_edit_info), Modifier.weight(1f)) {
                     onEditDetails()
                 }
-                QuickAction(Icons.Filled.Share, "Share", Modifier.weight(1f)) {
+                val shareTitle = stringResource(R.string.share_track_title)
+                QuickAction(Icons.Filled.Share, stringResource(R.string.action_share), Modifier.weight(1f)) {
                     runCatching {
                         context.startActivity(Intent.createChooser(
                             Intent(Intent.ACTION_SEND).apply {
                                 type = item.mimeType.ifBlank { "audio/*" }
                                 putExtra(Intent.EXTRA_STREAM, item.uri)
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            }, "Share track"
+                            }, shareTitle
                         ))
                     }
                     onDismiss()
@@ -135,7 +137,7 @@ fun AddToSheet(
                     .verticalScroll(rememberScrollState())
             ) {
                 // Moods (song-holding only)
-                Text("MOODS", style = Typo.Micro,
+                Text(stringResource(R.string.label_moods_caps), style = Typo.Micro,
                     color = MediaColors.CreamFaint, modifier = Modifier.padding(bottom = Space.sm))
                 Mood.values().filter { it.holdsSongs }.forEach { mood ->
                     val inList = memberMoods.contains(mood.key)
@@ -145,11 +147,11 @@ fun AddToSheet(
                         Mood.FOCUS -> Icons.Filled.TrackChanges
                         else -> Icons.Filled.Favorite
                     }
-                    ToggleRow(icon, mood.label, mood.accent, inList) { onToggleMood(mood, !inList) }
+                    ToggleRow(icon, stringResource(mood.labelRes), mood.accent, inList) { onToggleMood(mood, !inList) }
                 }
 
                 if (playlists.isNotEmpty()) {
-                    Text("PLAYLISTS", style = Typo.Micro,
+                    Text(stringResource(R.string.label_playlists_caps), style = Typo.Micro,
                         color = MediaColors.CreamFaint,
                         modifier = Modifier.padding(top = Space.md, bottom = Space.sm))
                     playlists.forEach { pl ->
@@ -165,19 +167,19 @@ fun AddToSheet(
                 Box(Modifier.fillMaxWidth().height(1.dp).background(G_BORDER))
                 Spacer(Modifier.height(Space.sm))
                 if (onViewAlbum != null) {
-                    ActionRow(Icons.Filled.Album, "View album") { onViewAlbum(); onDismiss() }
+                    ActionRow(Icons.Filled.Album, stringResource(R.string.action_view_album)) { onViewAlbum(); onDismiss() }
                 }
                 if (onViewArtist != null) {
-                    ActionRow(Icons.Filled.Person, "View artist") { onViewArtist(); onDismiss() }
+                    ActionRow(Icons.Filled.Person, stringResource(R.string.action_view_artist)) { onViewArtist(); onDismiss() }
                 }
-                ActionRow(Icons.Filled.Edit, "Edit details") { onEditDetails() }
+                ActionRow(Icons.Filled.Edit, stringResource(R.string.action_edit_details)) { onEditDetails() }
                 if (onArtwork != null) {
-                    ActionRow(Icons.Filled.Image, "Fix artwork") { onArtwork(); onDismiss() }
+                    ActionRow(Icons.Filled.Image, stringResource(R.string.action_fix_artwork)) { onArtwork(); onDismiss() }
                 }
                 if (onDetails != null) {
-                    ActionRow(Icons.Filled.Info, "Track details") { onDetails(); onDismiss() }
+                    ActionRow(Icons.Filled.Info, stringResource(R.string.action_track_details)) { onDetails(); onDismiss() }
                 }
-                ActionRow(Icons.AutoMirrored.Filled.OpenInNew, "Open file") {
+                ActionRow(Icons.AutoMirrored.Filled.OpenInNew, stringResource(R.string.action_open_file)) {
                     runCatching {
                         context.startActivity(Intent(Intent.ACTION_VIEW).apply {
                             setDataAndType(item.uri, item.mimeType.ifBlank { "*/*" })
@@ -189,7 +191,7 @@ fun AddToSheet(
                 // Last, and the only red thing on the sheet. A destructive row
                 // that looks like every other row is a mis-tap waiting to happen.
                 ActionRow(
-                    Icons.Filled.DeleteOutline, "Delete from device",
+                    Icons.Filled.DeleteOutline, stringResource(R.string.action_delete_from_device),
                     tint = MediaColors.Danger
                 ) { onDelete(); onDismiss() }
             }

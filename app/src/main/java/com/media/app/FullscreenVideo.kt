@@ -36,6 +36,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
+import androidx.compose.ui.res.stringResource
 
 // ============================================================================
 //  FULLSCREEN VIDEO
@@ -165,7 +166,7 @@ fun FullscreenVideo(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack, "Exit fullscreen",
+                        Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.video_exit_fullscreen),
                         tint = Color.White,
                         modifier = Modifier.size(26.dp).pressScale(haptic = true, onClick = onExit)
                     )
@@ -177,7 +178,7 @@ fun FullscreenVideo(
                     )
                     if (Pip.isSupported(context)) {
                         Icon(
-                            Icons.Filled.PictureInPictureAlt, "Picture in picture",
+                            Icons.Filled.PictureInPictureAlt, stringResource(R.string.action_pip),
                             tint = Color.White,
                             modifier = Modifier.size(24.dp).pressScale(haptic = true) {
                                 activity?.let { Pip.enter(it, state.videoWidth, state.videoHeight) }
@@ -187,7 +188,7 @@ fun FullscreenVideo(
                     }
                     Icon(
                         Icons.Filled.AspectRatio,
-                        if (fillScreen) "Fit to screen" else "Fill screen",
+                        stringResource(if (fillScreen) R.string.video_fit else R.string.video_fill),
                         tint = if (fillScreen) MediaColors.Accent else Color.White,
                         modifier = Modifier.size(24.dp).pressScale(haptic = true) {
                             fillScreen = !fillScreen
@@ -202,14 +203,14 @@ fun FullscreenVideo(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Filled.Replay10, "Back 10 seconds", tint = Color.White,
+                        Icons.Filled.Replay10, stringResource(R.string.video_back_10), tint = Color.White,
                         modifier = Modifier.size(34.dp).pressScale(haptic = true) {
                             vm.seekTo((state.positionMs - 10_000L).coerceAtLeast(0L))
                             interactionTick++
                         }
                     )
                     Icon(
-                        Icons.Filled.SkipPrevious, "Previous", tint = Color.White,
+                        Icons.Filled.SkipPrevious, stringResource(R.string.action_previous), tint = Color.White,
                         modifier = Modifier.size(30.dp).pressScale(haptic = true) {
                             vm.previous(); interactionTick++
                         }
@@ -222,16 +223,16 @@ fun FullscreenVideo(
                             },
                         contentAlignment = Alignment.Center
                     ) {
-                        PlayPauseIcon(state.isPlaying, Color.White, Modifier.size(36.dp), "Play/Pause")
+                        PlayPauseIcon(state.isPlaying, Color.White, Modifier.size(36.dp), stringResource(R.string.action_play_pause))
                     }
                     Icon(
-                        Icons.Filled.SkipNext, "Next", tint = Color.White,
+                        Icons.Filled.SkipNext, stringResource(R.string.action_next), tint = Color.White,
                         modifier = Modifier.size(30.dp).pressScale(haptic = true) {
                             vm.next(); interactionTick++
                         }
                     )
                     Icon(
-                        Icons.Filled.Forward10, "Forward 10 seconds", tint = Color.White,
+                        Icons.Filled.Forward10, stringResource(R.string.video_forward_10), tint = Color.White,
                         modifier = Modifier.size(34.dp).pressScale(haptic = true) {
                             vm.seekTo((state.positionMs + 10_000L).coerceAtMost(state.durationMs))
                             interactionTick++

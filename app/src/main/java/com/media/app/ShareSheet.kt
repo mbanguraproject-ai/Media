@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 
 // ============================================================================
 //  AURA SHARE - the sheet
@@ -69,20 +70,20 @@ fun ShareSheet(
                 .verticalScroll(rememberScrollState())
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Aura Share", style = Typo.Section, color = MediaColors.Cream)
+                Text(stringResource(R.string.share_name), style = Typo.Section, color = MediaColors.Cream)
                 Spacer(Modifier.weight(1f))
                 when {
                     s.scanning -> CircularProgressIndicator(
                         Modifier.size(18.dp), color = MediaColors.Accent, strokeWidth = 2.dp
                     )
-                    !s.sharing -> RoundIcon(Icons.Filled.Refresh, "Search again") {
+                    !s.sharing -> RoundIcon(Icons.Filled.Refresh, stringResource(R.string.action_search_again)) {
                         ShareSession.scan()
                     }
                 }
             }
             Spacer(Modifier.height(Space.xs))
             Text(
-                "Plays on the other device, controlled from here. Both need the same Wi-Fi.",
+                stringResource(R.string.share_sheet_sub),
                 style = Typo.Secondary, color = MediaColors.CreamFaint
             )
             Spacer(Modifier.height(Space.lg))
@@ -93,7 +94,7 @@ fun ShareSheet(
             } else {
                 if (queue.isEmpty()) {
                     Text(
-                        "Start something playing first, then pick where to send it.",
+                        stringResource(R.string.share_start_first),
                         style = Typo.Secondary, color = MediaColors.CreamDim
                     )
                     Spacer(Modifier.height(Space.md))
@@ -107,7 +108,7 @@ fun ShareSheet(
 
             s.note?.let {
                 Spacer(Modifier.height(Space.md))
-                Text(it, style = Typo.Secondary, color = MediaColors.CreamDim)
+                Text(it.resolve(), style = Typo.Secondary, color = MediaColors.CreamDim)
             }
             Spacer(Modifier.height(Space.md))
         }
@@ -169,13 +170,13 @@ private fun Playing(s: ShareState, r: Renderer) {
         Column(Modifier.weight(1f)) {
             Text(r.name, style = Typo.Primary, color = MediaColors.Cream, maxLines = 1)
             Text(
-                s.item?.title.orEmpty(), style = Typo.Secondary,
+                s.item?.title?.let { shownTitle(it) }.orEmpty(), style = Typo.Secondary,
                 color = MediaColors.CreamDim, maxLines = 1, overflow = TextOverflow.Ellipsis
             )
         }
         if (s.queue.size > 1) {
             Text(
-                "${s.index + 1} of ${s.queue.size}",
+                stringResource(R.string.share_queue_position, s.index + 1, s.queue.size),
                 style = Typo.Micro, color = MediaColors.CreamFaint
             )
         }
@@ -194,12 +195,12 @@ private fun Playing(s: ShareState, r: Renderer) {
             style = Typo.Micro, color = MediaColors.CreamFaint
         )
         Spacer(Modifier.weight(1f))
-        Transport(Icons.Filled.SkipPrevious, "Previous", s.hasPrevious) { ShareSession.previous() }
+        Transport(Icons.Filled.SkipPrevious, stringResource(R.string.action_previous), s.hasPrevious) { ShareSession.previous() }
         Transport(
             if (s.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-            if (s.playing) "Pause" else "Play", true
+            stringResource(if (s.playing) R.string.action_pause else R.string.action_play), true
         ) { ShareSession.toggle() }
-        Transport(Icons.Filled.SkipNext, "Next", s.hasNext) { ShareSession.next() }
+        Transport(Icons.Filled.SkipNext, stringResource(R.string.action_next), s.hasNext) { ShareSession.next() }
     }
 
     // Only renderers that advertise RenderingControl get a slider. A control
@@ -223,7 +224,7 @@ private fun Playing(s: ShareState, r: Renderer) {
 
     Spacer(Modifier.height(Space.md))
     Text(
-        "Stop",
+        stringResource(R.string.action_stop),
         style = Typo.Label, color = MediaColors.Accent,
         modifier = Modifier
             .clip(RoundedCornerShape(Radius.pill))

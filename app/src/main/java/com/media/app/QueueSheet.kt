@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import kotlin.math.roundToInt
+import androidx.compose.ui.res.stringResource
 
 // ============================================================================
 //  QUEUE (§25)
@@ -74,16 +75,16 @@ fun QueueSheet(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
-                Text("Queue", style = Typo.Section, color = MediaColors.Cream)
+                Text(stringResource(R.string.action_queue), style = Typo.Section, color = MediaColors.Cream)
                 val upNext = (queue.size - currentIndex - 1).coerceAtLeast(0)
                 Text(
-                    if (upNext == 1) "1 track up next" else "$upNext tracks up next",
+                    plural(R.plurals.queue_up_next, upNext),
                     style = Typo.Tertiary, color = MediaColors.CreamFaint
                 )
             }
             if (queue.size > currentIndex + 1) {
                 Text(
-                    "Clear", style = Typo.Label, color = MediaColors.Accent,
+                    stringResource(R.string.action_clear), style = Typo.Label, color = MediaColors.Accent,
                     modifier = Modifier.pressScale(haptic = true, onClick = onClearUpNext)
                         .padding(Space.sm)
                 )
@@ -95,7 +96,7 @@ fun QueueSheet(
                 Modifier.fillMaxWidth().padding(vertical = 48.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Nothing queued", style = Typo.Body, color = MediaColors.CreamFaint)
+                Text(stringResource(R.string.queue_empty), style = Typo.Body, color = MediaColors.CreamFaint)
             }
             return@ModalBottomSheet
         }
@@ -222,7 +223,7 @@ private fun QueueRow(
         Spacer(Modifier.width(Space.md))
         Column(Modifier.weight(1f)) {
             Text(
-                entry.title, style = Typo.Primary,
+                shownTitle(entry.title), style = Typo.Primary,
                 color = when {
                     isCurrent -> MediaColors.Accent
                     isPast -> MediaColors.CreamFaint
@@ -231,19 +232,19 @@ private fun QueueRow(
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             Text(
-                entry.artist.ifBlank { UNKNOWN_ARTIST }, style = Typo.Secondary,
+                shownArtist(entry.artist.ifBlank { UNKNOWN_ARTIST }), style = Typo.Secondary,
                 color = MediaColors.CreamFaint, maxLines = 1, overflow = TextOverflow.Ellipsis
             )
         }
         Icon(
-            Icons.Filled.Delete, "Remove from queue", tint = MediaColors.CreamFaint,
+            Icons.Filled.Delete, stringResource(R.string.queue_remove), tint = MediaColors.CreamFaint,
             modifier = Modifier.size(IconSize.md).pressScale(haptic = true, onClick = onRemove)
         )
         Spacer(Modifier.width(Space.md))
         // Dedicated grip: keeps the reorder gesture off the row itself, so tap
         // to play and drag to reorder can't fight each other.
         Icon(
-            Icons.Filled.DragHandle, "Reorder", tint = MediaColors.CreamDim,
+            Icons.Filled.DragHandle, stringResource(R.string.queue_reorder), tint = MediaColors.CreamDim,
             modifier = Modifier.size(IconSize.lg).then(dragModifier)
         )
     }

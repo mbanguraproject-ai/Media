@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 
 // §9's filter set. SONGS/ALBUMS/ARTISTS are three views of the same music
 // pillar; the rest map straight to a pillar.
@@ -15,9 +16,9 @@ import androidx.compose.ui.Modifier
 // you. Songs, Podcasts, Audiobooks, Recordings and Video all left when the
 // pillar strip landed on Home: the same list in two places is not two
 // features, it is one feature and a decision nobody made.
-private enum class LibTab(val label: String) {
-    ALBUMS("Albums"),
-    ARTISTS("Artists")
+private enum class LibTab(val label: Int) {
+    ALBUMS(R.string.label_albums),
+    ARTISTS(R.string.label_artists)
 }
 
 @Composable
@@ -53,15 +54,15 @@ fun LibraryScreen(
             Modifier.fillMaxWidth().padding(Space.sm, Space.sm),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MediaColors.Cream) }
-            Text("Library", style = Typo.Section, color = MediaColors.Cream,
+            IconButton(onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back), tint = MediaColors.Cream) }
+            Text(stringResource(R.string.library_title), style = Typo.Section, color = MediaColors.Cream,
                 modifier = Modifier.weight(1f))
             // Sorting went with the flat lists. Albums and artists
             // carry an order of their own.
         }
 
         TabStrip(
-            labels = LibTab.values().map { it.label },
+            labels = LibTab.values().map { stringResource(it.label) },
             selected = LibTab.values().indexOf(tab)
         ) { tab = LibTab.values()[it] }
 

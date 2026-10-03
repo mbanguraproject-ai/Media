@@ -38,6 +38,11 @@ import kotlinx.coroutines.launch
 
 class ShareService : Service() {
 
+    // The language picked in Settings, on Android 12 and below (Language.kt).
+    override fun attachBaseContext(base: android.content.Context) {
+        super.attachBaseContext(AppLanguage.wrap(base))
+    }
+
     companion object {
         private const val CHANNEL = "aura_share"
         private const val ID = 0xA124
@@ -122,9 +127,9 @@ class ShareService : Service() {
         val existing = notifier()?.getNotificationChannel(CHANNEL)
         if (existing != null) return
         val ch = NotificationChannel(
-            CHANNEL, "Aura Share", NotificationManager.IMPORTANCE_LOW
+            CHANNEL, getString(R.string.share_name), NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "Shown while something is playing on another device"
+            description = getString(R.string.share_channel_desc)
             setShowBadge(false)
             enableVibration(false)
         }
@@ -147,12 +152,12 @@ class ShareService : Service() {
                 .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val title = state.item?.title ?: "Aura Share"
+        val title = state.item?.title ?: getString(R.string.share_name)
         val where = state.active?.name ?: ""
         val builder = NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_launcher_monochrome)
             .setContentTitle(title)
-            .setContentText(if (where.isEmpty()) "" else "Playing on $where")
+            .setContentText(if (where.isEmpty()) "" else getString(R.string.share_playing_on, where))
             .setContentIntent(open)
             .setOngoing(true)
             .setSilent(true)
@@ -164,14 +169,14 @@ class ShareService : Service() {
                     ACTION_TOGGLE,
                     if (state.playing) android.R.drawable.ic_media_pause
                     else android.R.drawable.ic_media_play,
-                    if (state.playing) "Pause" else "Play"
+                    getString(if (state.playing) R.string.action_pause else R.string.action_play)
                 )
             )
         if (state.hasNext) {
-            builder.addAction(action(ACTION_NEXT, android.R.drawable.ic_media_next, "Next"))
+            builder.addAction(action(ACTION_NEXT, android.R.drawable.ic_media_next, getString(R.string.action_next)))
         }
         builder.addAction(
-            action(ACTION_STOP, android.R.drawable.ic_menu_close_clear_cancel, "Stop")
+            action(ACTION_STOP, android.R.drawable.ic_menu_close_clear_cancel, getString(R.string.action_stop))
         )
         return builder.build()
     }

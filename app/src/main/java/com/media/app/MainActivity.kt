@@ -108,6 +108,16 @@ class MainActivity : ComponentActivity() {
 
     private val inPip = mutableStateOf(false)
 
+    // The language picked in Settings, on Android 12 and below (Language.kt).
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(AppLanguage.wrap(newBase))
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        AppLanguage.keepProcessDefault(this)
+    }
+
     override fun onPictureInPictureModeChanged(
         isInPictureInPictureMode: Boolean,
         newConfig: android.content.res.Configuration
@@ -301,14 +311,14 @@ private fun WelcomePage(onContinue: () -> Unit) {
             Text(stringResource(R.string.app_name),
                 style = MaterialTheme.typography.displayLarge, color = MediaColors.Cream)
             Spacer(Modifier.height(Space.md))
-            Text("Your library, lit by what's playing.",
+            Text(stringResource(R.string.tagline),
                 style = MaterialTheme.typography.titleLarge, color = MediaColors.CreamDim)
             Spacer(Modifier.height(Space.xl))
-            WelcomeLine("Music, podcasts, audiobooks and video — together.")
+            WelcomeLine(stringResource(R.string.welcome_line_1))
             Spacer(Modifier.height(Space.md))
-            WelcomeLine("Artwork moves with the beat. Moods retint the whole app.")
+            WelcomeLine(stringResource(R.string.welcome_line_2))
             Spacer(Modifier.height(Space.md))
-            WelcomeLine("Everything plays locally. No accounts, nothing to sign in to.")
+            WelcomeLine(stringResource(R.string.welcome_line_3))
         }
         Box(
             Modifier.align(Alignment.BottomEnd)
@@ -316,7 +326,7 @@ private fun WelcomePage(onContinue: () -> Unit) {
                 .clickable(onClick = onContinue)
                 .padding(horizontal = 28.dp, vertical = 14.dp)
         ) {
-            Text("Got it", style = MaterialTheme.typography.titleMedium, color = MediaColors.Ink)
+            Text(stringResource(R.string.action_got_it), style = MaterialTheme.typography.titleMedium, color = MediaColors.Ink)
         }
     }
 }
@@ -330,17 +340,15 @@ private fun WelcomeLine(text: String) {
 private fun PermissionExplainerPage(onContinue: () -> Unit) {
     Box(Modifier.fillMaxSize().background(MediaColors.Ink).systemBarsPadding().padding(Space.xl)) {
         Column(Modifier.align(Alignment.CenterStart)) {
-            Text("One quick thing", style = MaterialTheme.typography.displaySmall, color = MediaColors.Cream)
+            Text(stringResource(R.string.perm_explainer_title), style = MaterialTheme.typography.displaySmall, color = MediaColors.Cream)
             Spacer(Modifier.height(Space.lg))
             Text(
-                stringResource(R.string.app_name) +
-                " plays the songs, podcasts, audiobooks and videos already on your phone. " +
-                "To find them, it needs permission to read your media.",
+                stringResource(R.string.perm_explainer_body),
                 style = MaterialTheme.typography.bodyLarge, color = MediaColors.CreamDim
             )
             Spacer(Modifier.height(Space.md))
             Text(
-                "Nothing leaves your device, and nothing is uploaded anywhere.",
+                stringResource(R.string.perm_explainer_privacy),
                 style = MaterialTheme.typography.bodyLarge, color = MediaColors.CreamDim
             )
         }
@@ -350,7 +358,7 @@ private fun PermissionExplainerPage(onContinue: () -> Unit) {
                 .clickable(onClick = onContinue)
                 .padding(horizontal = 28.dp, vertical = 14.dp)
         ) {
-            Text("Understood", style = MaterialTheme.typography.titleMedium, color = MediaColors.Ink)
+            Text(stringResource(R.string.action_understood), style = MaterialTheme.typography.titleMedium, color = MediaColors.Ink)
         }
     }
 }
@@ -380,18 +388,13 @@ private fun PermissionGate(
             )
             Spacer(Modifier.height(Space.xl))
             Text(
-                if (blocked) "Access is turned off" else "Aura needs your library",
+                stringResource(if (blocked) R.string.perm_blocked_title else R.string.perm_needed_title),
                 style = Typo.Section, color = MediaColors.Cream,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
             Spacer(Modifier.height(Space.sm))
             Text(
-                if (blocked)
-                    "Android is no longer showing the permission prompt. " +
-                        "Open Settings, allow access to music and audio, then come back."
-                else
-                    "Aura only plays files already on this phone. " +
-                        "It needs permission to read them - nothing is uploaded anywhere.",
+                stringResource(if (blocked) R.string.perm_blocked_body else R.string.perm_needed_body),
                 style = Typo.Secondary, color = MediaColors.CreamDim,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
@@ -402,7 +405,7 @@ private fun PermissionGate(
                     .padding(horizontal = Space.xxl, vertical = Space.md)
             ) {
                 Text(
-                    if (blocked) "Open settings" else "Allow access",
+                    stringResource(if (blocked) R.string.action_open_settings else R.string.action_allow_access),
                     style = Typo.Label, color = Color.White
                 )
             }
@@ -921,7 +924,7 @@ private fun HomeFeed(
             // Present only while a collection opened from Playlists is actually
             // filtering the list, so the filter can never be invisible state.
             if (nav.homePillar == Pillar.MUSIC && mood.holdsSongs) {
-                FilterBar(mood.label, shown.size) { setMood(Mood.ALL) }
+                FilterBar(stringResource(mood.labelRes), shown.size) { setMood(Mood.ALL) }
             }
 
             if (scanning) {
@@ -953,7 +956,7 @@ private fun HomeFeed(
                         // defined in HomeContent.kt for when it comes back.
                         CountAndShuffle(
                             count = shown.size,
-                            noun = pillarNoun(nav.homePillar),
+                            nounPlural = pillarCountRes(nav.homePillar),
                             onShuffle = {
                                 if (shown.isNotEmpty()) {
                                     if (!state.shuffle) vm.toggleShuffle()
@@ -1349,11 +1352,10 @@ private fun HomePlayer(
                     .border(1.dp, MediaColors.Fill, RoundedCornerShape(Radius.lg))
                     .padding(Space.lg)
             ) {
-                Text("Reactive artwork is off", style = Typo.Primary, color = MediaColors.Cream)
+                Text(stringResource(R.string.reactive_hint_title), style = Typo.Primary, color = MediaColors.Cream)
                 Spacer(Modifier.height(Space.xxs))
                 Text(
-                    "Cover art can move with the music. It's off by default - " +
-                        "you can turn it on any time in Settings.",
+                    stringResource(R.string.reactive_hint_body),
                     style = Typo.Secondary, color = MediaColors.CreamDim
                 )
                 Spacer(Modifier.height(Space.md))
@@ -1367,7 +1369,7 @@ private fun HomePlayer(
                                 }
                             }
                             .padding(horizontal = Space.lg, vertical = Space.sm)
-                    ) { Text("Turn it on", style = Typo.Label, color = Color.White) }
+                    ) { Text(stringResource(R.string.action_turn_it_on), style = Typo.Label, color = Color.White) }
                     Box(
                         Modifier.clip(CircleShape)
                             .border(1.dp, MediaColors.Fill, CircleShape)
@@ -1375,7 +1377,7 @@ private fun HomePlayer(
                                 scope.launch { SettingsStore.setPlayerHintSeen(context) }
                             }
                             .padding(horizontal = Space.lg, vertical = Space.sm)
-                    ) { Text("Not now", style = Typo.Label, color = MediaColors.CreamDim) }
+                    ) { Text(stringResource(R.string.action_not_now), style = Typo.Label, color = MediaColors.CreamDim) }
                 }
             }
         }
@@ -1518,15 +1520,15 @@ private fun EmptyState(mood: Mood, onRescan: () -> Unit, onClearMood: () -> Unit
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            if (filtered) "Nothing in ${mood.label} yet" else "Your library is waiting",
+            if (filtered) stringResource(R.string.empty_mood_title, stringResource(mood.labelRes)) else stringResource(R.string.empty_library_title),
             style = Typo.Section, color = MediaColors.Cream
         )
         Spacer(Modifier.height(Space.sm))
         Text(
             when {
-                mood == Mood.FAVORITES -> "Save songs you love and they'll appear here."
-                filtered -> "Add tracks to this mood from any track's menu."
-                else -> "Add music to your device, then rescan to build your library."
+                mood == Mood.FAVORITES -> stringResource(R.string.empty_favorites_body)
+                filtered -> stringResource(R.string.empty_mood_body)
+                else -> stringResource(R.string.empty_library_body)
             },
             style = Typo.Secondary, color = MediaColors.CreamDim
         )
@@ -1537,7 +1539,7 @@ private fun EmptyState(mood: Mood, onRescan: () -> Unit, onClearMood: () -> Unit
                 .padding(horizontal = Space.xl, vertical = Space.md)
         ) {
             Text(
-                if (filtered) "Show all tracks" else "Rescan library",
+                stringResource(if (filtered) R.string.action_show_all_tracks else R.string.action_rescan_library),
                 style = Typo.Label, color = Color.White
             )
         }
@@ -1577,16 +1579,16 @@ private fun BottomBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             val tab = Modifier.width(68.dp)
-            NavTab(Icons.Filled.Home, Icons.Outlined.Home, "Home", current == 0, tab) { onSelect(0) }
+            NavTab(Icons.Filled.Home, Icons.Outlined.Home, stringResource(R.string.nav_home), current == 0, tab) { onSelect(0) }
             // Was LibraryBooks - a stack of BOOKS, in a music app. The core
             // set has a music-library icon; nothing exotic was needed.
             NavTab(Icons.Filled.LibraryMusic, Icons.Outlined.LibraryMusic,
-                "Library", current == 1, tab) { onSelect(1) }
-            NavTab(Icons.AutoMirrored.Filled.QueueMusic, Icons.AutoMirrored.Outlined.QueueMusic, "Playlists", current == 2, tab) { onSelect(2) }
+                stringResource(R.string.nav_library), current == 1, tab) { onSelect(1) }
+            NavTab(Icons.AutoMirrored.Filled.QueueMusic, Icons.AutoMirrored.Outlined.QueueMusic, stringResource(R.string.nav_playlists), current == 2, tab) { onSelect(2) }
             // Tune is the EQUALISER glyph (sliders) - in a music app that
             // reads as an EQ feature, not "more". Menu (hamburger) signals a
             // drawer that doesn't exist. The tab is settings; show a gear.
-            NavTab(Icons.Filled.Settings, Icons.Outlined.Settings, "More", current == 3, tab) { onSelect(3) }
+            NavTab(Icons.Filled.Settings, Icons.Outlined.Settings, stringResource(R.string.nav_more), current == 3, tab) { onSelect(3) }
         }
     }
 }
@@ -1662,19 +1664,19 @@ fun SleepTimerSheet(
         dragHandle = { BottomSheetDefaults.DragHandle(color = MediaColors.CreamFaint) }
     ) {
         Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(Space.xl, Space.sm, Space.xl, Space.xl)) {
-            Text("Sleep timer", style = MaterialTheme.typography.titleLarge, color = MediaColors.Cream)
+            Text(stringResource(R.string.sleep_title), style = MaterialTheme.typography.titleLarge, color = MediaColors.Cream)
             Spacer(Modifier.height(Space.lg))
             listOf(15, 30, 45, 60).forEach { m ->
-                SleepRow("$m minutes", active = state.sleepActive && !state.sleepEndOfTrack) { onPick(m) }
+                SleepRow(plural(R.plurals.sleep_minutes, m), active = state.sleepActive && !state.sleepEndOfTrack) { onPick(m) }
             }
-            SleepRow("End of current track", active = state.sleepEndOfTrack) { onEndOfTrack() }
+            SleepRow(stringResource(R.string.sleep_end_of_track), active = state.sleepEndOfTrack) { onEndOfTrack() }
             if (state.sleepActive) {
                 Spacer(Modifier.height(Space.sm))
                 Box(
                     Modifier.fillMaxWidth().clickable { onCancelTimer() }.padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Turn off timer", style = MaterialTheme.typography.bodyLarge, color = MediaColors.CreamDim)
+                    Text(stringResource(R.string.sleep_turn_off), style = MaterialTheme.typography.bodyLarge, color = MediaColors.CreamDim)
                 }
             }
         }
@@ -1689,7 +1691,7 @@ private fun SleepRow(label: String, active: Boolean, onClick: () -> Unit) {
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge,
             color = if (active) MediaColors.Accent else MediaColors.Cream, modifier = Modifier.weight(1f))
-        if (active) Icon(Icons.Filled.Check, "Active", tint = MediaColors.Accent, modifier = Modifier.size(20.dp))
+        if (active) Icon(Icons.Filled.Check, stringResource(R.string.cd_active), tint = MediaColors.Accent, modifier = Modifier.size(20.dp))
     }
 }
 

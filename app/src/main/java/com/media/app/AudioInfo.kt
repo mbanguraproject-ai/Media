@@ -49,7 +49,10 @@ data class SourceFormat(
 
 data class OutputRoute(
     val name: String,
+    // A stable English key ("Phone speaker"): playback logic compares it.
     val kind: String,
+    // The same thing in the app's language, for the screen.
+    val kindLabel: String,
     val mixerRate: Int?,
     val deviceRates: List<Int>,
     val bluetooth: Boolean,
@@ -165,10 +168,14 @@ object AudioInfo {
         } else null
         val chosen = device ?: guess(am)
         val kind = chosen?.let { kindOf(it.type) } ?: "Phone speaker"
-        val name = chosen?.productName?.toString()?.takeIf { it.isNotBlank() && it != Build.MODEL } ?: kind
+        val kindLabel = context.getString(
+            chosen?.let { kindLabelRes(it.type) } ?: R.string.route_phone_speaker
+        )
+        val name = chosen?.productName?.toString()?.takeIf { it.isNotBlank() && it != Build.MODEL } ?: kindLabel
         return OutputRoute(
             name = name,
             kind = kind,
+            kindLabel = kindLabel,
             mixerRate = mixer,
             deviceRates = chosen?.sampleRates?.toList()?.sorted().orEmpty(),
             bluetooth = chosen != null && chosen.type in BT_TYPES,
@@ -203,5 +210,20 @@ object AudioInfo {
         26 -> "Bluetooth LE Audio"          // TYPE_BLE_HEADSET
         27 -> "Bluetooth LE Audio"          // TYPE_BLE_SPEAKER
         else -> "Audio output"
+    }
+
+    /** [kindOf], in the app's language. */
+    private fun kindLabelRes(type: Int): Int = when (type) {
+        AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> R.string.route_phone_speaker
+        AudioDeviceInfo.TYPE_BUILTIN_EARPIECE -> R.string.route_earpiece
+        AudioDeviceInfo.TYPE_WIRED_HEADPHONES -> R.string.route_wired_headphones
+        AudioDeviceInfo.TYPE_WIRED_HEADSET -> R.string.route_wired_headset
+        AudioDeviceInfo.TYPE_BLUETOOTH_A2DP -> R.string.route_bluetooth
+        AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> R.string.route_bluetooth_sco
+        AudioDeviceInfo.TYPE_USB_DEVICE, AudioDeviceInfo.TYPE_USB_ACCESSORY -> R.string.route_usb_dac
+        AudioDeviceInfo.TYPE_USB_HEADSET -> R.string.route_usb_headset
+        AudioDeviceInfo.TYPE_HDMI -> R.string.route_hdmi
+        26, 27 -> R.string.route_ble
+        else -> R.string.route_other
     }
 }

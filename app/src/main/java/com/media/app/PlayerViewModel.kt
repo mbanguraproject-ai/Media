@@ -51,8 +51,10 @@ enum class ErrorKind { MISSING, FORMAT, PERMISSION, GENERIC }
 
 data class PlaybackError(
     val kind: ErrorKind,
-    val headline: String,
-    val detail: String,
+    // String resources: the banner shows them in the app's language.
+    @androidx.annotation.StringRes val headline: Int,
+    @androidx.annotation.StringRes val detail: Int,
+    // Blank when the session had no title; the banner says "this track".
     val trackTitle: String,
     val uri: String?
 )
@@ -61,14 +63,12 @@ internal fun playbackErrorFrom(e: PlaybackException, title: String, uri: String?
     when (e.errorCode) {
         PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND ->
             PlaybackError(
-                ErrorKind.MISSING, "This file is no longer available",
-                "It may have been moved, renamed, or deleted since your library was scanned.",
+                ErrorKind.MISSING, R.string.error_missing_title, R.string.error_missing_detail,
                 title, uri
             )
         PlaybackException.ERROR_CODE_IO_NO_PERMISSION ->
             PlaybackError(
-                ErrorKind.PERMISSION, "Couldn't open this file",
-                "Access to this file was denied. Check the app's media permission.",
+                ErrorKind.PERMISSION, R.string.error_permission_title, R.string.error_permission_detail,
                 title, uri
             )
         PlaybackException.ERROR_CODE_DECODING_FAILED,
@@ -76,14 +76,12 @@ internal fun playbackErrorFrom(e: PlaybackException, title: String, uri: String?
         PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
         PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED ->
             PlaybackError(
-                ErrorKind.FORMAT, "Couldn't play this track",
-                "This device can't decode the file, or it's damaged.",
+                ErrorKind.FORMAT, R.string.error_play_title, R.string.error_format_detail,
                 title, uri
             )
         else ->
             PlaybackError(
-                ErrorKind.GENERIC, "Couldn't play this track",
-                "Something went wrong starting playback.",
+                ErrorKind.GENERIC, R.string.error_play_title, R.string.error_generic_detail,
                 title, uri
             )
     }
@@ -137,7 +135,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             val c = controller
             _error.value = playbackErrorFrom(
                 error,
-                c?.mediaMetadata?.title?.toString() ?: "this track",
+                c?.mediaMetadata?.title?.toString() ?: "",
                 c?.currentMediaItem?.localConfiguration?.uri?.toString()
             )
             refresh()
@@ -332,7 +330,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             val mi = c.getMediaItemAt(i)
             QueueEntry(
                 mediaId = mi.mediaId.toLongOrNull() ?: 0L,
-                title = mi.mediaMetadata.title?.toString() ?: "Untitled",
+                title = mi.mediaMetadata.title?.toString() ?: UNTITLED,
                 artist = mi.mediaMetadata.artist?.toString() ?: "",
                 uri = mi.localConfiguration?.uri?.toString() ?: ""
             )

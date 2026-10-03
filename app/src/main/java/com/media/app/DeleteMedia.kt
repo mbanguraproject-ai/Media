@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.res.stringResource
 
 // ============================================================================
 //  DELETING A FILE
@@ -116,22 +117,21 @@ fun rememberMediaDeleter(onDeleted: (AppMediaItem) -> Unit): (AppMediaItem) -> U
     confirm?.let { item ->
         AlertDialog(
             onDismissRequest = { confirm = null },
-            title = { Text("Delete this file?", color = MediaColors.Cream) },
+            title = { Text(stringResource(R.string.delete_confirm_title), color = MediaColors.Cream) },
             text = {
                 Text(
-                    "\"${item.title}\" will be removed from this device. " +
-                        "This cannot be undone.",
+                    stringResource(R.string.delete_confirm_body, item.title),
                     color = MediaColors.CreamDim
                 )
             },
             containerColor = MediaColors.Modal,
             confirmButton = {
                 TextButton({ confirm = null; remove(item) }) {
-                    Text("Delete", color = MediaColors.Danger)
+                    Text(stringResource(R.string.action_delete), color = MediaColors.Danger)
                 }
             },
             dismissButton = {
-                TextButton({ confirm = null }) { Text("Cancel", color = MediaColors.CreamDim) }
+                TextButton({ confirm = null }) { Text(stringResource(R.string.action_cancel), color = MediaColors.CreamDim) }
             }
         )
     }
@@ -139,18 +139,16 @@ fun rememberMediaDeleter(onDeleted: (AppMediaItem) -> Unit): (AppMediaItem) -> U
     failed?.let { item ->
         AlertDialog(
             onDismissRequest = { failed = null },
-            title = { Text("Could not delete", color = MediaColors.Cream) },
+            title = { Text(stringResource(R.string.delete_failed_title), color = MediaColors.Cream) },
             text = {
                 Text(
-                    "Android would not let this app remove \"${item.title}\". " +
-                        "It may be on a card the system protects, or owned by " +
-                        "another app.",
+                    stringResource(R.string.delete_failed_body, item.title),
                     color = MediaColors.CreamDim
                 )
             },
             containerColor = MediaColors.Modal,
             confirmButton = {
-                TextButton({ failed = null }) { Text("OK", color = MediaColors.Accent) }
+                TextButton({ failed = null }) { Text(stringResource(R.string.action_ok), color = MediaColors.Accent) }
             }
         )
     }

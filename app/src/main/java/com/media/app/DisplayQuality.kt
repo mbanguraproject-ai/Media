@@ -29,39 +29,45 @@ import androidx.compose.ui.unit.dp
 // tier you would not ship as the whole app is not a tier, it is a penalty, so
 // the floor is Enhanced and the work of protecting a slow phone is left to
 // the frame monitor, which measures instead of guessing.
-enum class QualityLevel(val label: String, val goal: String, val features: List<String>) {
+// Names, goals and feature lines are string resources: Settings shows them
+// in the app's language.
+enum class QualityLevel(
+    @androidx.annotation.StringRes val label: Int,
+    @androidx.annotation.StringRes val goal: Int,
+    val features: List<Int>
+) {
     ENHANCED(
-        "Enhanced", "Your cover lights the room",
+        R.string.quality_enhanced, R.string.quality_enhanced_goal,
         listOf(
-            "Now Playing sits on your cover, blurred into coloured light, all the way to the screen's edge",
-            "The whole app takes the playing song's colour: Home, Library, Playlists, Search and Settings sit on the same light, and go back to dark when nothing is playing",
-            "Colour from the cover: the waveform, the glow behind the art and its shadow match each song",
-            "Fine grain that stops colour banding on the dark gradients",
-            "Reactive artwork: the cover pulses and its glow swells on the beat",
-            "56-bar waveform scrubber"
+            R.string.quality_enhanced_feature_1,
+            R.string.quality_enhanced_feature_2,
+            R.string.quality_enhanced_feature_3,
+            R.string.quality_enhanced_feature_4,
+            R.string.quality_enhanced_feature_5,
+            R.string.quality_enhanced_feature_6
         )
     ),
     PREMIUM(
-        "Premium", "A living backdrop that moves with the music",
+        R.string.quality_premium, R.string.quality_premium_goal,
         listOf(
-            "Everything in Enhanced",
-            "The backdrop slowly drifts, in Now Playing and across the app, with a real blur in Now Playing on Android 12+",
-            "A light field: three pools of the cover's own colours drift across it, on every screen",
-            "Reactive artwork: shockwave rings, and the backdrop breathes with the bass",
-            "Lyrics in focus: lines away from the one being sung go soft",
-            "Sharper artwork, 72-bar waveform"
+            R.string.quality_premium_feature_1,
+            R.string.quality_premium_feature_2,
+            R.string.quality_premium_feature_3,
+            R.string.quality_premium_feature_4,
+            R.string.quality_premium_feature_5,
+            R.string.quality_premium_feature_6
         )
     ),
     ULTRA(
-        "Ultra", "Artwork you can tilt, light that follows the beat",
+        R.string.quality_ultra, R.string.quality_ultra_goal,
         listOf(
-            "Everything in Premium",
-            "Parallax: the cover tilts with your phone and light slides across it",
-            "The backdrop turns, here and across the app, and a fourth pool joins the light field; with Reactive artwork the pools swell on the bass in Now Playing",
-            "Reactive artwork: a flash of light sweeps the cover on hard hits",
-            "The sung lyric line glows",
-            "Your screen's top refresh rate while Now Playing is open",
-            "Full-resolution artwork, 96-bar waveform"
+            R.string.quality_ultra_feature_1,
+            R.string.quality_ultra_feature_2,
+            R.string.quality_ultra_feature_3,
+            R.string.quality_ultra_feature_4,
+            R.string.quality_ultra_feature_5,
+            R.string.quality_ultra_feature_6,
+            R.string.quality_ultra_feature_7
         )
     )
 }

@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.res.stringResource
 
 // ============================================================================
 //  DEFAULT ARTWORK - ONE APPEARANCE
@@ -128,7 +129,7 @@ fun GenerativeArtwork(
     modifier: Modifier = Modifier,
     isVideo: Boolean = false
 ) {
-    val label = "No artwork for $title"
+    val label = stringResource(R.string.artwork_none_for, title)
     Canvas(modifier.semantics { contentDescription = label }) {
         drawDefaultArtwork(isVideo)
     }

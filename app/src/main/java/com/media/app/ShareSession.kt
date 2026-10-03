@@ -49,7 +49,8 @@ data class ShareState(
     val durationMs: Long = 0L,
     val volume: Int = -1,            // -1: this renderer has no volume service
     val host: String? = null,
-    val note: String? = null
+    // Put into words by the sheet, in the app's language (UiText).
+    val note: UiText? = null
 ) {
     val item: AppMediaItem? get() = queue.getOrNull(index)
     val sharing: Boolean get() = active != null
@@ -91,8 +92,7 @@ object ShareSession {
                 _state.update {
                     it.copy(
                         scanning = false, devices = emptyList(), host = null,
-                        note = "Aura Share needs Wi-Fi. This phone is on mobile data, " +
-                            "which has no local network for a TV to be on."
+                        note = UiText(R.string.share_needs_wifi)
                     )
                 }
                 return@launch
@@ -102,12 +102,9 @@ object ShareSession {
             _state.update {
                 it.copy(
                     scanning = false, devices = found, host = host,
-                    note = if (found.isNotEmpty()) null else
-                        "Nothing answered on this network" +
-                            (host?.let { h -> " (this phone is $h)" } ?: "") +
-                            ". The TV has to be on the same Wi-Fi with its media sharing " +
-                            "turned on - it is called DLNA, Screen Share or AllShare " +
-                            "depending on the brand."
+                    note = if (found.isNotEmpty()) null
+                        else if (host != null) UiText(R.string.share_nothing_answered_host, listOf(host))
+                        else UiText(R.string.share_nothing_answered)
                 )
             }
         }
@@ -119,7 +116,7 @@ object ShareSession {
         scope.launch {
             val host = AuraShare.localAddress(ctx)
             if (host == null) {
-                _state.update { it.copy(note = "This phone has no address on the network right now.") }
+                _state.update { it.copy(note = UiText(R.string.share_no_address)) }
                 return@launch
             }
             val start = at.coerceIn(0, (items.size - 1).coerceAtLeast(0))
@@ -128,9 +125,7 @@ object ShareSession {
                 server?.stop()
                 _state.update {
                     it.copy(
-                        note = "${renderer.name} would not take that file. Some devices " +
-                            "refuse formats they cannot decode - MKV and HEVC are the two " +
-                            "that usually fail."
+                        note = UiText(R.string.share_refused, listOf(renderer.name))
                     )
                 }
                 return@launch
@@ -175,7 +170,7 @@ object ShareSession {
         if (AuraShare.setVolume(r, value)) _state.update { it.copy(volume = value.coerceIn(0, 100)) }
     }
 
-    fun stop(reason: String? = null) {
+    fun stop(reason: UiText? = null) {
         val ctx = app
         val r = _state.value.active
         poller?.cancel()
@@ -221,7 +216,7 @@ object ShareSession {
         _state.update {
             it.copy(index = target, positionMs = 0L, durationMs = media.durationMs, playing = true)
         }
-        if (!load(r, media, host)) stop("${r.name} could not play ${media.title}.")
+        if (!load(r, media, host)) stop(UiText(R.string.share_could_not_play, listOf(r.name, media.title)))
     }
 
     /**
@@ -307,7 +302,7 @@ object ShareSession {
             .build()
         val cb = object : ConnectivityManager.NetworkCallback() {
             override fun onLost(network: Network) {
-                if (_state.value.sharing) stop("Wi-Fi dropped, so sharing stopped.")
+                if (_state.value.sharing) stop(UiText(R.string.share_wifi_dropped))
             }
         }
         watcher = cb

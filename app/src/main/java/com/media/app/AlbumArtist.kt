@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 
 // ============================================================================
 //  ALBUMS & ARTISTS (§9, §15, §45)
@@ -36,9 +37,11 @@ import androidx.compose.ui.unit.dp
 //  the same LRU cache and generative fallback as everywhere else.
 // ============================================================================
 
+@Composable
 private fun fmtTotal(ms: Long): String {
-    val min = ms / 60000
-    return if (min >= 60) "${min / 60} hr ${min % 60} min" else "$min min"
+    val min = (ms / 60000).toInt()
+    return if (min >= 60) stringResource(R.string.duration_hours_minutes, min / 60, min % 60)
+        else stringResource(R.string.duration_minutes, min)
 }
 
 internal fun fmtTrack(ms: Long): String {
@@ -51,7 +54,7 @@ internal fun fmtTrack(ms: Long): String {
 @Composable
 fun AlbumGrid(albums: List<Album>, onOpen: (Album) -> Unit) {
     if (albums.isEmpty()) {
-        CenterNote("No albums yet")
+        CenterNote(stringResource(R.string.albums_empty))
         return
     }
     LazyVerticalGrid(
@@ -78,9 +81,9 @@ fun AlbumGrid(albums: List<Album>, onOpen: (Album) -> Unit) {
                     )
                 }
                 Spacer(Modifier.height(Space.md))
-                Text(a.name, style = Typo.Primary, color = MediaColors.Cream,
+                Text(shownAlbum(a.name), style = Typo.Primary, color = MediaColors.Cream,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(a.artist, style = Typo.Secondary, color = MediaColors.CreamFaint,
+                Text(shownArtist(a.artist), style = Typo.Secondary, color = MediaColors.CreamFaint,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
@@ -90,7 +93,7 @@ fun AlbumGrid(albums: List<Album>, onOpen: (Album) -> Unit) {
 @Composable
 fun ArtistList(artists: List<Artist>, onOpen: (Artist) -> Unit) {
     if (artists.isEmpty()) {
-        CenterNote("No artists yet")
+        CenterNote(stringResource(R.string.artists_empty))
         return
     }
     LazyColumn(contentPadding = PaddingValues(bottom = bottomSafePadding(gap = 100.dp))) {
@@ -109,13 +112,13 @@ fun ArtistList(artists: List<Artist>, onOpen: (Artist) -> Unit) {
                 }
                 Spacer(Modifier.width(Space.md))
                 Column(Modifier.weight(1f)) {
-                    Text(a.name, style = Typo.Primary, color = MediaColors.Cream,
+                    Text(shownArtist(a.name), style = Typo.Primary, color = MediaColors.Cream,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
                         buildString {
-                            append(if (a.albumCount == 1) "1 album" else "${a.albumCount} albums")
+                            append(plural(R.plurals.count_albums, a.albumCount))
                             append(" \u00b7 ")
-                            append(if (a.trackCount == 1) "1 song" else "${a.trackCount} songs")
+                            append(plural(R.plurals.count_songs, a.trackCount))
                         },
                         style = Typo.Secondary, color = MediaColors.CreamFaint
                     )
@@ -138,11 +141,11 @@ fun AlbumDetailScreen(
     onClose: () -> Unit
 ) {
     DetailScaffold(
-        title = album.name,
-        subtitle = album.artist,
+        title = shownAlbum(album.name),
+        subtitle = shownArtist(album.artist),
         meta = buildString {
             if (album.year > 0) append("${album.year} \u00b7 ")
-            append(if (album.trackCount == 1) "1 song" else "${album.trackCount} songs")
+            append(plural(R.plurals.count_songs, album.trackCount))
             append(" \u00b7 ").append(fmtTotal(album.durationMs))
         },
         artItem = album.tracks.firstOrNull(),
@@ -159,8 +162,8 @@ fun AlbumDetailScreen(
             val playing = state.currentUri == t.uri.toString()
             NumberedRow(
                 number = if (t.trackNo > 0) t.trackNo else i + 1,
-                title = t.title,
-                subtitle = if (t.artist != album.artist) t.artist else null,
+                title = shownTitle(t.title),
+                subtitle = if (t.artist != album.artist) shownArtist(t.artist) else null,
                 duration = fmtTrack(t.durationMs),
                 playing = playing,
                 onClick = { onPlay(i) },
@@ -188,12 +191,10 @@ private fun RenameArtistSheet(
         dragHandle = { BottomSheetDefaults.DragHandle(color = MediaColors.FillStrong) }
     ) {
         Column(Modifier.fillMaxWidth().imePadding().padding(Space.xl, 0.dp, Space.xl, Space.xxl)) {
-            Text("Rename artist", style = Typo.Section, color = MediaColors.Cream)
+            Text(stringResource(R.string.rename_artist), style = Typo.Section, color = MediaColors.Cream)
             Spacer(Modifier.height(Space.xs))
             Text(
-                "Applies to all " + trackCount +
-                    " tracks currently filed under this artist. Download sites often " +
-                    "tag a whole batch with one name, so this fixes them together.",
+                plural(R.plurals.rename_artist_note, trackCount),
                 style = Typo.Secondary, color = MediaColors.CreamDim
             )
             Spacer(Modifier.height(Space.xl))
@@ -204,7 +205,7 @@ private fun RenameArtistSheet(
                     .padding(Space.md, 12.dp)
             ) {
                 if (name.isEmpty()) {
-                    Text("Artist name", style = Typo.Body, color = MediaColors.CreamFaint)
+                    Text(stringResource(R.string.artist_name_hint), style = Typo.Body, color = MediaColors.CreamFaint)
                 }
                 BasicTextField(
                     value = name,
@@ -229,7 +230,7 @@ private fun RenameArtistSheet(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "Rename",
+                    stringResource(R.string.action_rename),
                     style = Typo.Label,
                     color = if (name.isBlank()) MediaColors.CreamFaint else Color.White
                 )
@@ -253,12 +254,12 @@ fun ArtistDetailScreen(
     var renaming by remember { mutableStateOf(false) }
 
     DetailScaffold(
-        title = artist.name,
+        title = shownArtist(artist.name),
         subtitle = null,
         meta = buildString {
-            append(if (artist.albumCount == 1) "1 album" else "${artist.albumCount} albums")
+            append(plural(R.plurals.count_albums, artist.albumCount))
             append(" \u00b7 ")
-            append(if (artist.trackCount == 1) "1 song" else "${artist.trackCount} songs")
+            append(plural(R.plurals.count_songs, artist.trackCount))
             append(" \u00b7 ").append(fmtTotal(artist.durationMs))
         },
         artItem = artist.tracks.firstOrNull(),
@@ -272,7 +273,7 @@ fun ArtistDetailScreen(
             // wrong tracks are already grouped here under the wrong name.
             // Fixing them together is the only humane way to do it.
             Icon(
-                Icons.Filled.Edit, "Rename artist",
+                Icons.Filled.Edit, stringResource(R.string.rename_artist),
                 tint = MediaColors.Cream,
                 modifier = Modifier.size(22.dp).pressScale(haptic = true) { renaming = true }
             )
@@ -281,7 +282,7 @@ fun ArtistDetailScreen(
         if (albums.size > 1) {
             item {
                 Column {
-                    Text("Albums", style = Typo.Section, color = MediaColors.Cream,
+                    Text(stringResource(R.string.label_albums), style = Typo.Section, color = MediaColors.Cream,
                         modifier = Modifier.padding(Space.xl, Space.md, Space.xl, Space.sm))
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = Space.xl),
@@ -295,12 +296,12 @@ fun ArtistDetailScreen(
                                         corner = 12, targetPx = 384)
                                 }
                                 Spacer(Modifier.height(Space.xs))
-                                Text(a.name, style = Typo.Secondary, color = MediaColors.CreamDim,
+                                Text(shownAlbum(a.name), style = Typo.Secondary, color = MediaColors.CreamDim,
                                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                         }
                     }
-                    Text("Songs", style = Typo.Section, color = MediaColors.Cream,
+                    Text(stringResource(R.string.label_songs), style = Typo.Section, color = MediaColors.Cream,
                         modifier = Modifier.padding(Space.xl, Space.lg, Space.xl, Space.sm))
                 }
             }
@@ -309,7 +310,7 @@ fun ArtistDetailScreen(
             val t = artist.tracks[i]
             NumberedRow(
                 number = i + 1,
-                title = t.title,
+                title = shownTitle(t.title),
                 subtitle = t.album.takeIf { it != UNKNOWN_ALBUM },
                 duration = fmtTrack(t.durationMs),
                 playing = state.currentUri == t.uri.toString(),
@@ -350,7 +351,7 @@ private fun DetailScaffold(
     Column(Modifier.fillMaxSize().screenBackground().statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(Space.sm, Space.sm), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClose) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MediaColors.Cream)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back), tint = MediaColors.Cream)
             }
             if (action != null) {
                 Spacer(Modifier.weight(1f))
@@ -392,9 +393,9 @@ private fun DetailScaffold(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(Space.sm)
                     ) {
-                        ActionButton("Play", Icons.Filled.PlayArrow, filled = true,
+                        ActionButton(stringResource(R.string.action_play), Icons.Filled.PlayArrow, filled = true,
                             modifier = Modifier.weight(1f), onClick = onPlay)
-                        ActionButton("Shuffle", Icons.Filled.Shuffle, filled = false,
+                        ActionButton(stringResource(R.string.action_shuffle), Icons.Filled.Shuffle, filled = false,
                             modifier = Modifier.weight(1f), onClick = onShuffle)
                     }
                     Spacer(Modifier.height(Space.md))

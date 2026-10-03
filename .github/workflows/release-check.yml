@@ -5,6 +5,9 @@
 #
 # Run it by hand on any commit (Actions > Release check > Run workflow) to
 # check an older build: the tool always comes from this branch.
+#
+# A third job checks every translation against the English strings
+# (tools/check_translations.py) in seconds, before the builds get far.
 name: Release check
 
 on:
@@ -17,6 +20,15 @@ on:
         required: false
 
 jobs:
+  strings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    name: translations
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check every translation against English
+        run: python3 tools/check_translations.py
+
   dex:
     runs-on: ubuntu-latest
     timeout-minutes: 40

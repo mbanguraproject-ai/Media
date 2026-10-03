@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 
 // ============================================================================
 //  ERROR BANNER (§22)
@@ -68,17 +69,17 @@ fun ErrorBanner(
                 )
                 Spacer(Modifier.width(Space.md))
                 Column(Modifier.weight(1f)) {
-                    Text(e.headline, style = Typo.Primary, color = MediaColors.Cream)
+                    Text(stringResource(e.headline), style = Typo.Primary, color = MediaColors.Cream)
                     Spacer(Modifier.height(Space.xxs))
-                    Text(e.detail, style = Typo.Secondary, color = MediaColors.CreamDim)
+                    Text(stringResource(e.detail), style = Typo.Secondary, color = MediaColors.CreamDim)
                     Spacer(Modifier.height(Space.xxs))
                     Text(
-                        e.trackTitle, style = Typo.Tertiary, color = MediaColors.CreamFaint,
+                        e.trackTitle.ifBlank { stringResource(R.string.error_this_track) }, style = Typo.Tertiary, color = MediaColors.CreamFaint,
                         maxLines = 1, overflow = TextOverflow.Ellipsis
                     )
                 }
                 Icon(
-                    Icons.Filled.Close, "Dismiss", tint = MediaColors.CreamFaint,
+                    Icons.Filled.Close, stringResource(R.string.action_dismiss), tint = MediaColors.CreamFaint,
                     modifier = Modifier.size(IconSize.md).pressScale(onClick = onDismiss)
                 )
             }
@@ -87,13 +88,13 @@ fun ErrorBanner(
             Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
                 when (e.kind) {
                     ErrorKind.MISSING -> {
-                        BannerAction("Skip track", primary = true, onClick = onSkip)
-                        BannerAction("Rescan library", primary = false, onClick = onRescan)
+                        BannerAction(stringResource(R.string.action_skip_track), primary = true, onClick = onSkip)
+                        BannerAction(stringResource(R.string.action_rescan_library), primary = false, onClick = onRescan)
                     }
                     ErrorKind.FORMAT -> {
-                        BannerAction("Skip track", primary = true, onClick = onSkip)
+                        BannerAction(stringResource(R.string.action_skip_track), primary = true, onClick = onSkip)
                         if (e.uri != null) {
-                            BannerAction("Open file", primary = false) {
+                            BannerAction(stringResource(R.string.action_open_file), primary = false) {
                                 // Hand it to something that can play it. Wrapped:
                                 // plenty of devices have no handler for the type.
                                 runCatching {
@@ -109,12 +110,12 @@ fun ErrorBanner(
                         }
                     }
                     ErrorKind.PERMISSION -> {
-                        BannerAction("Try again", primary = true, onClick = onRetry)
-                        BannerAction("Rescan library", primary = false, onClick = onRescan)
+                        BannerAction(stringResource(R.string.action_try_again), primary = true, onClick = onRetry)
+                        BannerAction(stringResource(R.string.action_rescan_library), primary = false, onClick = onRescan)
                     }
                     ErrorKind.GENERIC -> {
-                        BannerAction("Try again", primary = true, onClick = onRetry)
-                        BannerAction("Skip track", primary = false, onClick = onSkip)
+                        BannerAction(stringResource(R.string.action_try_again), primary = true, onClick = onRetry)
+                        BannerAction(stringResource(R.string.action_skip_track), primary = false, onClick = onSkip)
                     }
                 }
             }

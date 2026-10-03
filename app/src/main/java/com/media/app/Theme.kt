@@ -70,6 +70,15 @@ enum class Mood(
     val key: String get() = name.lowercase()
     val holdsSongs: Boolean get() = this != ALL
 
+    /** The name on screen, in the app's language. [label] stays the stable English name. */
+    val labelRes: Int get() = when (this) {
+        ALL -> R.string.mood_all
+        LATE_NIGHT -> R.string.mood_late_night
+        WORKOUT -> R.string.mood_workout
+        FOCUS -> R.string.mood_focus
+        FAVORITES -> R.string.mood_favorites
+    }
+
     companion object {
         val default = ALL
         fun fromKey(k: String): Mood = values().firstOrNull { it.key == k } ?: ALL

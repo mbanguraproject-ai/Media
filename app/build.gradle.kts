@@ -21,8 +21,8 @@ android {
         applicationId = "app.devbangs.media"
         minSdk = 24
         targetSdk = 36
-        versionCode = 22
-        versionName = "4.6"
+        versionCode = 23
+        versionName = "4.7"
     }
 
     signingConfigs {
@@ -49,6 +49,14 @@ android {
             reset()
             include("arm64-v8a", "armeabi-v7a")
             isUniversalApk = false
+        }
+    }
+    // Every language ships in the base APK. Play otherwise installs only the
+    // phone's own languages from the bundle, and a language picked in
+    // Settings > Language would have no strings on the device to switch to.
+    bundle {
+        language {
+            enableSplit = false
         }
     }
     compileOptions {

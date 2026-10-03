@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import androidx.compose.ui.res.stringResource
 
 // ============================================================================
 //  FIRST-RUN REVEAL (§29, §42)
@@ -55,17 +56,17 @@ fun FirstScanReveal(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            "Building your library",
+            stringResource(R.string.reveal_building),
             style = Typo.Display, color = MediaColors.Cream,
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(Space.xxl))
 
-        RevealLine("tracks discovered", trackCount, visible = stage >= 1, reduced = reduced)
+        RevealLine(plural(R.plurals.reveal_tracks, trackCount), trackCount, visible = stage >= 1, reduced = reduced)
         Spacer(Modifier.height(Space.lg))
-        RevealLine("albums organised", albumCount, visible = stage >= 2, reduced = reduced)
+        RevealLine(plural(R.plurals.reveal_albums, albumCount), albumCount, visible = stage >= 2, reduced = reduced)
         Spacer(Modifier.height(Space.lg))
-        RevealLine("artists identified", artistCount, visible = stage >= 3, reduced = reduced)
+        RevealLine(plural(R.plurals.reveal_artists, artistCount), artistCount, visible = stage >= 3, reduced = reduced)
 
         Spacer(Modifier.height(Space.xxxl))
         Box(
@@ -76,7 +77,7 @@ fun FirstScanReveal(
                 .pressScale(haptic = true, onClick = onDone)
                 .padding(horizontal = Space.xxl, vertical = Space.md)
         ) {
-            Text("Start listening", style = Typo.Label, color = Color.White)
+            Text(stringResource(R.string.reveal_start), style = Typo.Label, color = Color.White)
         }
     }
 }

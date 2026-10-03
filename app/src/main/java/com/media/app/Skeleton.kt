@@ -19,6 +19,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 
 // ============================================================================
 //  SKELETON LOADING (§21)
@@ -102,13 +103,14 @@ fun TrackRowSkeleton(index: Int) {
 fun LibrarySkeleton(rows: Int = 8) {
     // One announcement for the whole block; the placeholder bars themselves
     // carry no information and must not be read out row by row.
+    val reading = stringResource(R.string.library_reading)
     Column(
         Modifier.fillMaxWidth().semantics(mergeDescendants = true) {
-            contentDescription = "Reading your library"
+            contentDescription = reading
         }
     ) {
         Text(
-            "Reading your library\u2026",
+            "$reading\u2026",
             style = Typo.Secondary, color = MediaColors.CreamFaint,
             modifier = Modifier.padding(Space.xl, Space.md, Space.xl, Space.sm)
                 .alpha(0.9f)
