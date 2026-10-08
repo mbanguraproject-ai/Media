@@ -67,7 +67,7 @@
     <string name="quality_enhanced_feature_3">Trường ánh sáng: ba đốm màu lấy từ chính ảnh bìa trôi trên mọi màn hình</string>
     <string name="quality_enhanced_feature_4">Ánh sáng viền: màu ở mỗi cạnh ảnh bìa tràn ra phía sau nó</string>
     <string name="quality_enhanced_feature_5">Màu lấy từ ảnh bìa: dạng sóng, ánh sáng quanh hình và bóng của nó khớp với từng bài</string>
-    <string name="quality_enhanced_feature_6">Ảnh bìa phản ứng: mỗi tiếng trống kick đánh vào ảnh bìa như màng loa – bật ra rồi nảy về –, mỗi nhịp đánh tỏa ra những vòng sóng, và nền thở theo tiếng bass</string>
+    <string name="quality_enhanced_feature_6">Ảnh bìa phản ứng, tiếng kick: ảnh bìa chuyển động như màng loa – bật ra theo mỗi tiếng trống kick rồi trở về –, ánh sáng của nó và những vòng sóng nó tỏa ra cũng chuyển động theo. Nền phồng lên chậm rãi theo tiếng bass</string>
     <string name="quality_enhanced_feature_7">Lời bài hát theo tiêu điểm: các dòng xa dòng đang hát sẽ mờ đi</string>
     <string name="quality_enhanced_feature_8">Ảnh bìa sắc nét hơn, dạng sóng 72 vạch, và hạt nhiễu mịn giúp dải màu không bị phân tầng</string>
     <string name="quality_premium">Premium</string>
@@ -75,7 +75,7 @@
     <string name="quality_premium_feature_1">Mọi thứ trong Nâng cao</string>
     <string name="quality_premium_feature_2">Thị sai có chiều sâu: ảnh bìa nghiêng theo điện thoại, ánh sáng lướt trên bề mặt, và phông nền chuyển động phía sau như một lớp riêng</string>
     <string name="quality_premium_feature_3">Phông nền vừa trôi vừa xoay, ở đây và khắp ứng dụng, và trường ánh sáng có thêm đốm thứ tư; với Ảnh bìa phản ứng, các đốm phồng lên theo tiếng bass trong Đang phát</string>
-    <string name="quality_premium_feature_4">Ảnh bìa phản ứng nghe cả bộ trống: cú đẩy mạnh hơn và bóng sâu hơn khi có kick, một tia sáng và một vòng sắc nét với mỗi tiếng snare, và những đốm sáng lấp lánh theo hi-hat</string>
+    <string name="quality_premium_feature_4">Ảnh bìa phản ứng thêm tiếng snare, bằng ánh sáng: mỗi tiếng snare một tia sáng lướt qua ảnh bìa, và bóng của ảnh bìa đậm hơn khi tiếng kick đẩy nó ra. Mỗi trống chỉ có một việc, nên chúng không bao giờ tranh nhau</string>
     <string name="quality_premium_feature_5">Dòng đang hát phát sáng</string>
     <string name="quality_premium_feature_6">Tần số làm mới cao nhất của màn hình khi Đang phát đang mở</string>
     <string name="quality_premium_feature_7">Ảnh bìa độ phân giải đầy đủ, dạng sóng 96 vạch</string>
@@ -83,7 +83,7 @@
     <string name="quality_ultra_goal">Ảnh bìa của bạn như ánh sáng lỏng</string>
     <string name="quality_ultra_feature_1">Mọi thứ trong Premium</string>
     <string name="quality_ultra_feature_2">Ảnh bìa chảy: các màu của ảnh bìa hòa vào nhau như chất lỏng, trong Đang phát và khắp ứng dụng (Android 13 trở lên)</string>
-    <string name="quality_ultra_feature_3">Ảnh bìa phản ứng trở thành màng loa: chính ảnh bìa phồng lên và rung theo mỗi tiếng kick, những gợn sóng lan trên bề mặt, và hi-hat làm bề mặt lung linh (Android 13 trở lên). Dòng chảy dâng lên theo tiếng bass</string>
+    <string name="quality_ultra_feature_3">Ảnh bìa phản ứng thêm hi-hat, bằng kết cấu: ảnh bìa biến dạng như màng loa thật theo tiếng kick, một gợn sóng lan qua, và bề mặt lung linh theo hi-hat (Android 13 trở lên). Dòng chảy dâng lên theo tiếng bass</string>
     <string name="quality_ultra_feature_4">Đốm sáng thứ năm trong trường ánh sáng</string>
     <string name="quality_ultra_feature_5">Dạng sóng mịn nhất: 120 vạch</string>
     <string name="quality_ultra_feature_6">Ảnh bìa lớn hơn trong danh sách bản nhạc</string>
@@ -411,7 +411,7 @@
     <string name="settings_storage_value">%1$d + %2$d mục</string>
     <string name="settings_playback">Phát lại</string>
     <string name="settings_reactive">Ảnh bìa phản ứng</string>
-    <string name="settings_reactive_sub">Ảnh bìa phản ứng với nhạc khi đang phát. Những gì nó làm tăng dần theo Chất lượng hiển thị.</string>
+    <string name="settings_reactive_sub">Ảnh bìa chuyển động theo trống kick, sáng lên theo snare và lung linh theo hi-hat. Lượng bộ trống được thể hiện tùy theo Chất lượng hiển thị.</string>
     <string name="settings_sound">Âm thanh</string>
     <string name="settings_sound_sub">Bộ chỉnh âm, ReplayGain, bộ giới hạn, bass và không gian</string>
     <string name="settings_art_lyrics">Ảnh bìa và lời bài hát</string>

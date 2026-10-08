@@ -67,7 +67,7 @@
     <string name="quality_enhanced_feature_3">Medan cahaya: tiga genangan warna dari sampul itu sendiri melayang di atasnya, di setiap layar</string>
     <string name="quality_enhanced_feature_4">Cahaya tepi: warna di setiap tepi sampul meluber di belakangnya</string>
     <string name="quality_enhanced_feature_5">Warna dari sampul: gelombang suara, cahaya di sekitar gambar, dan bayangannya menyesuaikan setiap lagu</string>
-    <string name="quality_enhanced_feature_6">Artwork reaktif: setiap kick drum memukul sampul seperti kerucut speaker – menyentak keluar lalu memantul kembali – cincin lepas darinya di setiap pukulan, dan latar bernapas mengikuti bass</string>
+    <string name="quality_enhanced_feature_6">Artwork reaktif, kick: sampul bergerak seperti kerucut speaker – keluar di setiap kick drum lalu kembali – dan cahayanya serta cincin yang dilepaskannya ikut bergerak bersamanya. Latar membesar perlahan mengikuti bass</string>
     <string name="quality_enhanced_feature_7">Lirik terfokus: baris yang jauh dari yang sedang dinyanyikan menjadi lembut</string>
     <string name="quality_enhanced_feature_8">Sampul lebih tajam, gelombang 72 batang, dan butiran halus yang mencegah pita warna</string>
     <string name="quality_premium">Premium</string>
@@ -75,7 +75,7 @@
     <string name="quality_premium_feature_1">Semua yang ada di Ditingkatkan</string>
     <string name="quality_premium_feature_2">Paralaks dengan kedalaman: sampul miring mengikuti ponselmu, cahaya meluncur di atasnya, dan latar bergerak di belakangnya sebagai lapisan sendiri</string>
     <string name="quality_premium_feature_3">Latar berputar sambil bergeser, di sini dan di seluruh aplikasi, dan genangan keempat bergabung ke medan cahaya; dengan sampul reaktif genangan membesar mengikuti bass di Sedang diputar</string>
-    <string name="quality_premium_feature_4">Artwork reaktif mendengar seluruh drum: dorongan lebih keras dan bayangan lebih dalam pada kick, kilatan dan cincin tajam di setiap snare, serta percikan cahaya pada hi-hat</string>
+    <string name="quality_premium_feature_4">Artwork reaktif menambahkan snare, sebagai cahaya: satu kilatan melintasi sampul di setiap snare, dan bayangan sampul makin dalam saat kick mendorongnya keluar. Setiap drum punya satu tugas, jadi tidak pernah saling berebut</string>
     <string name="quality_premium_feature_5">Baris lirik yang dinyanyikan bercahaya</string>
     <string name="quality_premium_feature_6">Refresh rate tertinggi layarmu saat Sedang diputar terbuka</string>
     <string name="quality_premium_feature_7">Sampul resolusi penuh, gelombang 96 batang</string>
@@ -83,7 +83,7 @@
     <string name="quality_ultra_goal">Sampulmu sebagai cahaya cair</string>
     <string name="quality_ultra_feature_1">Semua yang ada di Premium</string>
     <string name="quality_ultra_feature_2">Sampul cair: warna sampul mengalir satu sama lain seperti cairan, di Sedang diputar dan di seluruh aplikasi (Android 13 dan yang lebih baru)</string>
-    <string name="quality_ultra_feature_3">Artwork reaktif menjadi kerucut speaker: sampul itu sendiri menggembung dan bergetar di setiap kick, riak menjalar di atasnya, dan hi-hat membuat permukaannya berkilau (Android 13 ke atas). Alirannya melonjak mengikuti bass</string>
+    <string name="quality_ultra_feature_3">Artwork reaktif menambahkan hi-hat, sebagai tekstur: sampul melengkung seperti kerucut speaker sungguhan saat kick, riak menjalar di atasnya, dan permukaannya berkilau pada hi-hat (Android 13 ke atas). Alirannya membesar mengikuti bass</string>
     <string name="quality_ultra_feature_4">Genangan cahaya kelima di medan cahaya</string>
     <string name="quality_ultra_feature_5">Gelombang paling halus: 120 batang</string>
     <string name="quality_ultra_feature_6">Sampul lebih besar di daftar lagu</string>
@@ -411,7 +411,7 @@
     <string name="settings_storage_value">%1$d + %2$d item</string>
     <string name="settings_playback">Pemutaran</string>
     <string name="settings_reactive">Sampul reaktif</string>
-    <string name="settings_reactive_sub">Sampul merespons musik saat diputar. Apa yang dilakukannya bertambah seiring Kualitas tampilan.</string>
+    <string name="settings_reactive_sub">Sampul bergerak mengikuti kick drum, menyala saat snare, dan berkilau saat hi-hat. Seberapa banyak drum yang ditampilkan bergantung pada Kualitas tampilan.</string>
     <string name="settings_sound">Suara</string>
     <string name="settings_sound_sub">Equalizer, ReplayGain, limiter, bass, dan spasial</string>
     <string name="settings_art_lyrics">Sampul &amp; lirik</string>

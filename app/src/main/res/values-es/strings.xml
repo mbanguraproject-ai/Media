@@ -70,7 +70,7 @@
     <string name="quality_enhanced_feature_3">Un campo de luz: tres focos con los colores de la propia portada flotan sobre él, en todas las pantallas</string>
     <string name="quality_enhanced_feature_4">Luz de borde: el color de cada borde de la portada se derrama por detrás de ella</string>
     <string name="quality_enhanced_feature_5">Color de la portada: la forma de onda, la luz alrededor de la imagen y su sombra combinan con cada canción</string>
-    <string name="quality_enhanced_feature_6">Portada reactiva: cada bombo golpea la portada como el cono de un altavoz (sale hacia fuera y rebota), en cada golpe salen anillos de ella y el fondo respira con los graves</string>
+    <string name="quality_enhanced_feature_6">Portada reactiva, el bombo: la portada se mueve como el cono de un altavoz (sale con cada bombo y vuelve), y su brillo y los anillos que lanza se mueven con ella. El fondo crece despacio con los graves</string>
     <string name="quality_enhanced_feature_7">Letras enfocadas: las líneas alejadas de la que se canta se suavizan</string>
     <string name="quality_enhanced_feature_8">Portadas más nítidas, forma de onda de 72 barras y un grano fino que evita las bandas de color</string>
     <string name="quality_premium">Premium</string>
@@ -78,7 +78,7 @@
     <string name="quality_premium_feature_1">Todo lo de Mejorado</string>
     <string name="quality_premium_feature_2">Paralaje con profundidad: la portada se inclina con tu teléfono, la luz se desliza sobre ella y el fondo se mueve detrás como una capa propia</string>
     <string name="quality_premium_feature_3">El fondo gira mientras se desplaza, aquí y en toda la app, y un cuarto foco se suma al campo de luz; con la portada reactiva los focos crecen con los graves en Reproduciendo</string>
-    <string name="quality_premium_feature_4">La portada reactiva oye toda la batería: un empuje más fuerte y una sombra más honda con el bombo, un destello y un anillo nítido con cada caja, y chispas de luz con los hi-hats</string>
+    <string name="quality_premium_feature_4">La portada reactiva suma la caja, como luz: un destello cruza la portada con cada caja, y su sombra se hace más honda cuando el bombo la empuja. Cada tambor tiene una tarea, así que nunca compiten</string>
     <string name="quality_premium_feature_5">La línea que se canta brilla</string>
     <string name="quality_premium_feature_6">La frecuencia de actualización máxima de tu pantalla mientras Reproduciendo está abierto</string>
     <string name="quality_premium_feature_7">Portadas a resolución completa, forma de onda de 96 barras</string>
@@ -86,7 +86,7 @@
     <string name="quality_ultra_goal">Tu portada como luz líquida</string>
     <string name="quality_ultra_feature_1">Todo lo de Premium</string>
     <string name="quality_ultra_feature_2">Portada fluida: los colores de la portada fluyen unos en otros como un líquido, en Reproduciendo y en toda la app (Android 13 y posteriores)</string>
-    <string name="quality_ultra_feature_3">La portada reactiva se convierte en el cono de un altavoz: la propia portada se abomba y vibra con cada bombo, las ondas la recorren y los hi-hats hacen titilar su superficie (Android 13 y posterior). El flujo crece con los graves</string>
+    <string name="quality_ultra_feature_3">La portada reactiva suma los hi-hats, como textura: la portada se deforma como el cono de un altavoz real con el bombo, una onda la recorre y su superficie titila con los hi-hats (Android 13 y posterior). El flujo crece con los graves</string>
     <string name="quality_ultra_feature_4">Un quinto foco de luz en el campo de luz</string>
     <string name="quality_ultra_feature_5">La forma de onda más fina: 120 barras</string>
     <string name="quality_ultra_feature_6">Portadas más grandes en las listas de pistas</string>
@@ -426,7 +426,7 @@
     <string name="settings_storage_value">%1$d + %2$d elementos</string>
     <string name="settings_playback">Reproducción</string>
     <string name="settings_reactive">Portada reactiva</string>
-    <string name="settings_reactive_sub">La portada responde a la música mientras suena. Lo que hace aumenta con la Calidad de pantalla.</string>
+    <string name="settings_reactive_sub">La portada se mueve con el bombo, se ilumina con la caja y titila con los hi-hats. Cuánto de la batería muestra depende de la Calidad de pantalla.</string>
     <string name="settings_sound">Sonido</string>
     <string name="settings_sound_sub">Ecualizador, ReplayGain, limitador, graves y espacial</string>
     <string name="settings_art_lyrics">Portadas y letras</string>

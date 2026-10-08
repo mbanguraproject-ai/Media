@@ -9,9 +9,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.delay
 
@@ -23,26 +20,40 @@ import kotlinx.coroutines.delay
 //  ever runs.
 //
 //  5.2 - THE CONE. The idea is a reactive speaker: watch the woofer and you
-//  see the music. The cover is driven like one now: a spring (stiff, lightly
+//  see the music. The cover is driven like one: a spring (stiff, lightly
 //  damped) that each kick drum strikes. It punches out within ~35ms, swings
-//  back past rest on the rebound and settles in ~300ms, so a kick reads as a
-//  thump with a physical after-ring instead of a swell. Between hits the bass
-//  holds it out a little, as a bass line moves a cone.
+//  back past rest on the rebound and settles in ~300ms, and between kicks it
+//  is still - so every movement you see is a kick.
 //
-//  And it hears the kit, not one number (SoundShape.kt): the moment of every
-//  kick, snare and hi-hat, each fired on the exact frame playback crosses it,
-//  plus each band's level. Which of those a tier draws is the tier's call
-//  (PlayerSurface.kt): Enhanced the kick, Premium the whole kit, Ultra the
-//  cover deforming like a cone (Phantom.kt).
+//  ONE SYSTEM, ONE JOB PER DRUM. The first 5.2 build gave every drum several
+//  effects, each on its own smoothing, so a single kick set off six things
+//  slightly out of step and the snare and hats piled more on top. Now:
+//
+//    KICK   -> MOTION   the cone. Its glow, its shadow, the rings it sends
+//                       out and the waveform's playhead all read the SAME
+//                       spring, so they move as one body, in phase.
+//    SNARE  -> LIGHT    one flash across the cover. A kick landing with it
+//                       has priority (it is the same moment; motion wins),
+//                       unless the snare is an accent.
+//    HATS   -> TEXTURE  a fine shimmer on the cover's surface, each hat a
+//                       short decay; it ducks under the kick.
+//    ROOM               the backdrop swells slowly with the bass over a bar
+//                       or so. It is the ambience, never a hit.
+//
+//  Tiers add drums, not effects: Enhanced the kick, Premium the snare,
+//  Ultra the hats and the cone's true deformation (Phantom.kt).
 // ============================================================================
 
-private const val RINGS = 6
+private const val RINGS = 4
 private const val RING_LIFE_NS = 520_000_000f
-private const val SNARE_RING_LIFE_NS = 340_000_000f
-internal const val SPARK_LIFE_NS = 300_000_000L
-private const val SPARKS = 8
-internal const val RING_KICK = 0
-internal const val RING_SNARE = 1
+
+/** A snare within this of a kick is the kick's moment, unless it is an accent. */
+private const val DUCK_NS = 70_000_000L
+private const val ACCENT = 0.85f
+/** How long the snare's flash lasts. */
+internal const val FLASH_NS = 420_000_000L
+/** How fast one hat's shimmer dies away. */
+private const val TEXTURE_TAU_S = 0.09f
 
 // The cone spring: w = 33 rad/s (5.3 Hz), damping ratio 0.2. Simulated: a
 // kick peaks at +0.8 after ~33ms, rebounds to -0.24 at ~117ms and settles by
@@ -50,7 +61,9 @@ internal const val RING_SNARE = 1
 private const val CONE_K = 1100f
 private const val CONE_D = 13.3f
 private const val CONE_STRIKE = 30f
-private const val CONE_HOLD = 0.25f
+// How much the bass line holds the cone out between kicks: a little, so a
+// held bass reads as weight without blurring the kicks.
+private const val CONE_HOLD = 0.08f
 
 /** Floor cut + smoothstep. Crushes the mush, keeps the peaks. */
 private fun punch(v: Float): Float {
@@ -60,30 +73,33 @@ private fun punch(v: Float): Float {
 
 @Stable
 class BeatState {
-    /** The bass, smoothed 0..1: fast attack, slow release. Backdrop, edge light, flow. */
-    var level by mutableStateOf(0f)
-        internal set
-
-    /** Snare/voice and hi-hat bands, smoothed 0..1. */
-    var mid by mutableStateOf(0f)
-        internal set
-    var high by mutableStateOf(0f)
+    /**
+     * The room: the bass, smoothed slowly (a swell over a bar or so, not a
+     * hit). The backdrop, the light field and the flow read this.
+     */
+    var room by mutableStateOf(0f)
         internal set
 
     /** The cone: about 0..1 out on a kick, below 0 on the rebound. */
     var cone by mutableStateOf(0f)
         internal set
 
+    /** The hats' shimmer, 0..1: each hat a short decay, ducked under the kick. */
+    var texture by mutableStateOf(0f)
+        internal set
+
     /** Frame clock. Reading it in a Canvas is what drives ring redraw. */
     var frameNanos by mutableStateOf(0L)
         internal set
 
+    /** The cone's push, 0..1: what the glow, the shadow and the playhead follow. */
+    val push: Float get() = cone.coerceIn(0f, 1f)
+
     internal val born = LongArray(RINGS)
     internal val power = FloatArray(RINGS)
-    internal val kind = IntArray(RINGS)
     private var next = 0
 
-    /** The latest kick and snare: the cone's ripple and the light flash. 0 = none yet. */
+    /** The latest kick (the cone's ripple) and snare (the flash). 0 = none yet. */
     var kickNanos = 0L
         private set
     var kickPower = 0f
@@ -93,53 +109,51 @@ class BeatState {
     var snarePower = 0f
         private set
 
-    /** Hi-hat glints: when, how hard, and a seed that places each one. */
-    internal val sparkBorn = LongArray(SPARKS)
-    internal val sparkPower = FloatArray(SPARKS)
-    internal val sparkSeed = IntArray(SPARKS)
-    private var nextSpark = 0
-
+    private var hat = 0f
     internal var coneVelocity = 0f
     /** The last analysis frame whose hits have fired, so a resync never fires one twice. */
     internal var firedFrame = Int.MIN_VALUE
 
-    internal fun ring(now: Long, p: Float, k: Int) {
-        born[next] = now
-        power[next] = p
-        kind[next] = k
-        next = (next + 1) % RINGS
-    }
-
     internal fun kick(now: Long, p: Float) {
         kickNanos = now; kickPower = p
-        ring(now, p, RING_KICK)
+        born[next] = now
+        power[next] = p
+        next = (next + 1) % RINGS
         coneVelocity += CONE_STRIKE * p
     }
 
     internal fun snare(now: Long, p: Float) {
+        // Same moment as a kick: the kick's. An accent still flashes.
+        if (kickNanos != 0L && now - kickNanos in 0..DUCK_NS && p < ACCENT) return
         snareNanos = now; snarePower = p
-        ring(now, p, RING_SNARE)
     }
 
-    internal fun spark(now: Long, p: Float, seed: Int) {
-        sparkBorn[nextSpark] = now
-        sparkPower[nextSpark] = p
-        sparkSeed[nextSpark] = seed
-        nextSpark = (nextSpark + 1) % SPARKS
+    internal fun hat(p: Float) {
+        if (p > hat) hat = p
     }
 
-    internal fun step(dt: Float, bass: Float) {
+    internal fun step(dt: Float, bass: Float, now: Long) {
         val a = CONE_K * (bass * CONE_HOLD - cone) - CONE_D * coneVelocity
         coneVelocity += a * dt
         cone = (cone + coneVelocity * dt).coerceIn(-0.6f, 1.4f)
+        hat *= kotlin.math.exp(-dt / TEXTURE_TAU_S)
+        // The snare's light, as it fades: what the hats duck under.
+        val since = now - snareNanos
+        val light = if (snareNanos != 0L && since in 0..FLASH_NS) {
+            val f = 1f - since / FLASH_NS.toFloat()
+            f * f * snarePower
+        } else 0f
+        // The hats give way to the cone and to the flash: one thing at a time.
+        texture = hat * (1f - push * 0.85f) * (1f - light * 0.8f)
+        room += (bass - room) * if (bass > room) 0.05f else 0.02f
     }
 
     internal fun reset() {
-        level = 0f; mid = 0f; high = 0f; cone = 0f
+        room = 0f; cone = 0f; texture = 0f
+        hat = 0f
         coneVelocity = 0f
         firedFrame = Int.MIN_VALUE
         for (i in 0 until RINGS) born[i] = 0L
-        for (i in 0 until SPARKS) sparkBorn[i] = 0L
         kickNanos = 0L; snareNanos = 0L
     }
 }
@@ -213,19 +227,12 @@ fun rememberBeatPulse(
                 // Every hit playback has crossed since the last frame, on
                 // this frame. Volume scales them: quieter means softer.
                 if (frame > beat.firedFrame) {
-                    fire(shape.lowHits, beat.firedFrame, frame) { _, p -> beat.kick(now, p * power) }
-                    fire(shape.midHits, beat.firedFrame, frame) { _, p -> beat.snare(now, p * power) }
-                    fire(shape.highHits, beat.firedFrame, frame) { f, p -> beat.spark(now, p * power, f) }
+                    fire(shape.lowHits, beat.firedFrame, frame) { p -> beat.kick(now, p * power) }
+                    fire(shape.midHits, beat.firedFrame, frame) { p -> beat.snare(now, p * power) }
+                    fire(shape.highHits, beat.firedFrame, frame) { p -> beat.hat(p * power) }
                     beat.firedFrame = frame
                 }
-
-                val bass = punch(shape.low.levelAt(ms)) * power
-                beat.level += (bass - beat.level) * if (bass > beat.level) 0.72f else 0.13f
-                val m = punch(shape.mid.levelAt(ms)) * power
-                beat.mid += (m - beat.mid) * if (m > beat.mid) 0.8f else 0.2f
-                val h = shape.high.levelAt(ms) * power
-                beat.high += (h - beat.high) * if (h > beat.high) 0.85f else 0.3f
-                beat.step(dt, bass)
+                beat.step(dt, punch(shape.low.levelAt(ms)) * power, now)
                 beat.frameNanos = now
             }
         }
@@ -234,10 +241,10 @@ fun rememberBeatPulse(
 }
 
 /** Calls [action] for each hit in [hits] after frame [from], up to and including [to]. */
-private inline fun fire(hits: Hits, from: Int, to: Int, action: (frame: Int, power: Float) -> Unit) {
+private inline fun fire(hits: Hits, from: Int, to: Int, action: (power: Float) -> Unit) {
     var i = hits.firstAtOrAfter(from + 1)
     while (i < hits.size && hits.frames[i] <= to) {
-        action(hits.frames[i], hits.power[i])
+        action(hits.power[i])
         i++
     }
 }
@@ -262,9 +269,7 @@ fun BeatRings(
     modifier: Modifier,
     centerPx: Offset,
     baseRadiusPx: Float,
-    strength: Float = 1f,
-    // Premium and Ultra: the snare's own rings, thinner, brighter, quicker.
-    snare: Boolean = false
+    strength: Float = 1f
 ) {
     // The frame clock is read inside the draw, never here: read in
     // composition it recomposed this every frame for as long as music
@@ -275,76 +280,21 @@ fun BeatRings(
         for (i in 0 until RINGS) {
             val b = beat.born[i]
             if (b == 0L) continue
-            val isSnare = beat.kind[i] == RING_SNARE
-            if (isSnare && !snare) continue
-            val life = if (isSnare) SNARE_RING_LIFE_NS else RING_LIFE_NS
-            val p = (now - b) / life
+            val p = (now - b) / RING_LIFE_NS
             if (p < 0f || p >= 1f) continue
-            // Ease-out: fast off the mark, decelerating. A kick's ring
-            // reaches 2.1x the artwork radius, so it genuinely leaves the
-            // cover behind; a snare's is a sharp crack that stays close.
+            // Ease-out: fast off the mark, decelerating. Reaches 2.1x the
+            // artwork radius so it genuinely leaves the cover behind - the
+            // air the cone pushed.
             val e = 1f - (1f - p) * (1f - p)
-            val radius = baseRadiusPx * (if (isSnare) 1.02f + 0.5f * e else 1f + 1.1f * e)
-            val alpha = (1f - p) * (1f - p) * beat.power[i] * strength * (if (isSnare) 0.85f else 0.7f)
+            val radius = baseRadiusPx * (1f + 1.1f * e)
+            val alpha = (1f - p) * (1f - p) * beat.power[i] * 0.7f * strength
             drawCircle(
-                color = if (isSnare) Color.White else color,
+                color = color,
                 radius = radius,
                 center = centerPx,
                 alpha = alpha,
-                style = Stroke(
-                    width = baseRadiusPx * (if (isSnare) 0.018f else 0.055f) * (1f - p * 0.6f)
-                )
+                style = Stroke(width = baseRadiusPx * 0.055f * (1f - p * 0.6f))
             )
         }
     }
-}
-
-/**
- * Hi-hat glints on the cover (Premium and Ultra): a small four-point star of
- * light for each hit, gone in 300ms. Where it lands comes from the hit's own
- * frame, so a song glints in the same places every time it plays.
- */
-fun DrawScope.drawSparks(beat: BeatState, strength: Float) {
-    val now = beat.frameNanos
-    if (now == 0L || strength <= 0f) return
-    val m = size.minDimension
-    for (i in 0 until SPARKS) {
-        val b = beat.sparkBorn[i]
-        if (b == 0L) continue
-        val t = (now - b).toFloat() / SPARK_LIFE_NS
-        if (t < 0f || t >= 1f) continue
-        val seed = beat.sparkSeed[i]
-        val c = Offset(
-            size.width * (0.14f + 0.72f * hash01(seed * 73 + 11)),
-            size.height * (0.12f + 0.62f * hash01(seed * 151 + 7))
-        )
-        val p = beat.sparkPower[i]
-        val a = ((1f - t) * (1f - t) * p * strength).coerceIn(0f, 1f)
-        val r = m * (0.026f + 0.02f * p) * (0.75f + 0.5f * t)
-        drawCircle(
-            Brush.radialGradient(listOf(Color.White.copy(alpha = 0.85f * a), Color.Transparent), c, r),
-            radius = r, center = c
-        )
-        val arm = r * 2.3f
-        val w = (r * 0.14f).coerceAtLeast(1f)
-        for ((dx, dy) in arrayOf(arm to 0f, 0f to arm)) {
-            val s0 = Offset(c.x - dx, c.y - dy)
-            val s1 = Offset(c.x + dx, c.y + dy)
-            drawLine(
-                Brush.linearGradient(
-                    listOf(Color.Transparent, Color.White.copy(alpha = a), Color.Transparent),
-                    start = s0, end = s1
-                ),
-                s0, s1, strokeWidth = w, cap = StrokeCap.Round
-            )
-        }
-    }
-}
-
-/** A fixed pseudo-random 0..1 from [n]. */
-private fun hash01(n: Int): Float {
-    var x = n * 0x45d9f3b
-    x = (x xor (x ushr 16)) * 0x45d9f3b
-    x = x xor (x ushr 16)
-    return (x and 0xFFFF) / 65535f
 }

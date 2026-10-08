@@ -175,7 +175,8 @@ fun Scrubber(
             val headX = insetPx + span * frac
             // Read inside draw: level changes 60x a second, so reading it in
             // composition would recompose the whole player every frame.
-            val lv = beat?.level ?: 0f
+            // The cone's push: the playhead's bar thumps with the cover, in phase.
+            val lv = beat?.push ?: 0f
 
             // The loop, under everything: a soft band from A to B, and a
             // hairline at each end. With only A set, just A's line.

@@ -21,17 +21,16 @@ import androidx.compose.ui.graphics.graphicsLayer
 //               in its surround; on the rebound it sinks back past rest.
 //    RIPPLES    each kick sends a ring wave out from the centre across the
 //               surface, decaying as it travels.
-//    SHIMMER    the hi-hats set a fine standing ripple trembling over it.
+//    SHIMMER    the hi-hats set a fine standing ripple trembling over it -
+//               their texture, the one thing the hats do (BeatPulse.kt).
 //    LIGHT      the surface is lit from the top left by its own slope, so the
 //               swell has a bright shoulder and a shaded one and reads as a
 //               shape in depth, not a zoom.
-//    SPLIT      on the hardest kicks the colour channels part at the rim for
-//               a frame or two.
 //
 //  The edge of the cover never moves (the displacement falls to zero at the
 //  rim), so the deformation stays inside the rounded tile.
 //
-//  Cost: three texture reads and a handful of sines per pixel of the cover,
+//  Cost: one texture read and a handful of sines per pixel of the cover,
 //  only while it is moving - at rest the effect is removed. A driver that
 //  rejects the shader turns it off for good and Ultra draws as Premium.
 // ============================================================================
@@ -44,7 +43,6 @@ uniform float ripple;
 uniform float age;
 uniform float shimmer;
 uniform float time;
-uniform float split;
 
 half4 main(float2 p) {
     float2 c = size * 0.5;
@@ -73,16 +71,7 @@ half4 main(float2 p) {
     float2 g = dir * slope;
     float light = clamp(1.0 + 1.6 * dot(g, float2(0.55, 0.83)), 0.72, 1.38);
 
-    half4 col;
-    if (split > 0.001) {
-        float2 o = dir * split * 0.012 * R * r;
-        half4 cr = content.eval(q + o);
-        half4 cg = content.eval(q);
-        half4 cb = content.eval(q - o);
-        col = half4(cr.r, cg.g, cb.b, cg.a);
-    } else {
-        col = content.eval(q);
-    }
+    half4 col = content.eval(q);
     return half4(col.rgb * light, col.a);
 }
 """
@@ -107,7 +96,7 @@ class PhantomCone {
         if (now == 0L) return null
         val age = if (beat.kickNanos == 0L) 9f else (now - beat.kickNanos) / 1e9f
         val push = beat.cone
-        val shimmer = (beat.high * 0.9f).coerceIn(0f, 1f)
+        val shimmer = beat.texture.coerceIn(0f, 1f)
         val ripple = if (age < 1.3f) beat.kickPower else 0f
         if (kotlin.math.abs(push) < 0.01f && ripple == 0f && shimmer < 0.02f) return null
         return try {
@@ -118,8 +107,7 @@ class PhantomCone {
                 ripple = ripple,
                 age = age,
                 shimmer = shimmer,
-                time = (now % 600_000_000_000L) / 1e9f,
-                split = ((push - 0.75f) * 2.4f).coerceIn(0f, 1f)
+                time = (now % 600_000_000_000L) / 1e9f
             )
         } catch (t: Throwable) {
             failed = true
@@ -137,7 +125,7 @@ private class PhantomShader {
 
     fun effect(
         width: Float, height: Float,
-        push: Float, ripple: Float, age: Float, shimmer: Float, time: Float, split: Float
+        push: Float, ripple: Float, age: Float, shimmer: Float, time: Float
     ): androidx.compose.ui.graphics.RenderEffect {
         shader.setFloatUniform("size", width, height)
         shader.setFloatUniform("push", push)
@@ -145,7 +133,6 @@ private class PhantomShader {
         shader.setFloatUniform("age", age)
         shader.setFloatUniform("shimmer", shimmer)
         shader.setFloatUniform("time", time)
-        shader.setFloatUniform("split", split)
         return RenderEffect.createRuntimeShaderEffect(shader, "content").asComposeRenderEffect()
     }
 }

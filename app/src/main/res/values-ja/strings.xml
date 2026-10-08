@@ -67,7 +67,7 @@
     <string name="quality_enhanced_feature_3">ライトフィールド：アートワーク自身の色の3つの光がすべての画面の上を漂います</string>
     <string name="quality_enhanced_feature_4">エッジライト：アートワークの各辺の色が、その後ろからあふれ出します</string>
     <string name="quality_enhanced_feature_5">アートワークからの配色：波形、画像のまわりの光、その影が曲ごとに合わせて変わります</string>
-    <string name="quality_enhanced_feature_6">リアクティブアートワーク：キックドラムが鳴るたびに、スピーカーのコーンのようにカバーが打ち出されて跳ね返り、打撃ごとにリングが広がり、背景は低音に合わせて呼吸します</string>
+    <string name="quality_enhanced_feature_6">リアクティブアートワーク・キック：カバーがスピーカーのコーンのように、キックドラムのたびに前に出て戻ります。その光と、放たれるリングも一緒に動きます。背景は低音に合わせてゆっくりふくらみます</string>
     <string name="quality_enhanced_feature_7">フォーカス歌詞：歌っている行から離れた行はやわらかく表示されます</string>
     <string name="quality_enhanced_feature_8">より鮮明なアートワーク、72本のバーの波形、色の縞模様を防ぐ細かな粒子</string>
     <string name="quality_premium">Premium</string>
@@ -75,7 +75,7 @@
     <string name="quality_premium_feature_1">高品質のすべての機能</string>
     <string name="quality_premium_feature_2">奥行きのある視差効果：アートワークがスマートフォンの傾きに合わせて傾き、表面を光が滑り、背景がその後ろで別のレイヤーとして動きます</string>
     <string name="quality_premium_feature_3">ここでもアプリ全体でも背景が流れながら回転し、ライトフィールドに4つ目の光が加わります。リアクティブアートワークをオンにした再生中画面では、光が低音に合わせて膨らみます</string>
-    <string name="quality_premium_feature_4">リアクティブアートワークがドラムキット全体を聴き分けます。キックではより強い押し出しと深い影、スネアごとに閃光と鋭いリング、ハイハットには光のきらめき</string>
+    <string name="quality_premium_feature_4">リアクティブアートワークにスネアが光として加わります。スネアのたびに閃光がカバーを横切り、キックに押し出されるたびにカバーの影が深くなります。ドラムごとに役割は一つなので、互いに競い合いません</string>
     <string name="quality_premium_feature_5">歌っている行が光ります</string>
     <string name="quality_premium_feature_6">再生中画面を開いている間は画面の最大リフレッシュレートで表示</string>
     <string name="quality_premium_feature_7">フル解像度のアートワーク、96本のバーの波形</string>
@@ -83,7 +83,7 @@
     <string name="quality_ultra_goal">アートワークを、液体の光に</string>
     <string name="quality_ultra_feature_1">Premiumのすべての機能</string>
     <string name="quality_ultra_feature_2">フルイドアートワーク：アートワークの色が液体のように溶け合いながら流れます。再生中画面とアプリ全体で（Android 13以降）</string>
-    <string name="quality_ultra_feature_3">リアクティブアートワークがスピーカーのコーンになります。キックのたびにカバー自体が膨らんで震え、波紋が表面を走り、ハイハットが表面をきらめかせます（Android 13 以降）。低音に合わせて流れが高まります</string>
+    <string name="quality_ultra_feature_3">リアクティブアートワークにハイハットが質感として加わります。キックでカバーが本物のスピーカーコーンのように変形し、波紋が走り、ハイハットで表面がきらめきます（Android 13 以降）。低音に合わせて流れがふくらみます</string>
     <string name="quality_ultra_feature_4">ライトフィールドに5つ目の光</string>
     <string name="quality_ultra_feature_5">最も細かい波形：120本のバー</string>
     <string name="quality_ultra_feature_6">トラックリストのアートワークをより大きく</string>
@@ -411,7 +411,7 @@
     <string name="settings_storage_value">%1$d + %2$d件</string>
     <string name="settings_playback">再生</string>
     <string name="settings_reactive">リアクティブアートワーク</string>
-    <string name="settings_reactive_sub">再生中、アートワークが音楽に反応します。その動きは表示品質に応じて豊かになります。</string>
+    <string name="settings_reactive_sub">カバーはキックドラムで動き、スネアで光り、ハイハットできらめきます。ドラムキットをどこまで見せるかは表示品質によって変わります。</string>
     <string name="settings_sound">サウンド</string>
     <string name="settings_sound_sub">イコライザー、ReplayGain、リミッター、低音、空間オーディオ</string>
     <string name="settings_art_lyrics">アートワークと歌詞</string>

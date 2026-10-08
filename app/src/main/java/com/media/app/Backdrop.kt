@@ -267,7 +267,7 @@ fun LivingBackdrop(
     Box(modifier) {
         // Light: the cover and the light field.
         Canvas(Modifier.fillMaxSize()) {
-            val level = if (reactive) beat.level else 0f
+            val level = if (reactive) beat.room else 0f
             val mid = center
             val scale = 1f + 0.06f * level
             // Depth: the deepest layer moves against the tilt.
@@ -311,7 +311,7 @@ fun LivingBackdrop(
         // black, so the colour runs on under the navigation bar instead of
         // ending in a black band.
         Canvas(Modifier.fillMaxSize()) {
-            val level = if (reactive) beat.level else 0f
+            val level = if (reactive) beat.room else 0f
             val lift = 0.14f * level
             drawRect(
                 Brush.verticalGradient(

@@ -70,7 +70,7 @@
     <string name="quality_enhanced_feature_3">Un champ de lumière : trois halos aux couleurs de la pochette flottent dessus, sur chaque écran</string>
     <string name="quality_enhanced_feature_4">Lumière des bords : la couleur de chaque bord de la pochette déborde derrière elle</string>
     <string name="quality_enhanced_feature_5">La couleur de la pochette : la forme d\'onde, la lumière autour de l\'image et son ombre s\'accordent à chaque titre</string>
-    <string name="quality_enhanced_feature_6">Pochette réactive : chaque grosse caisse frappe la pochette comme la membrane d\'un haut-parleur – elle bondit puis revient –, des anneaux s\'en échappent à chaque coup et le fond respire avec les basses</string>
+    <string name="quality_enhanced_feature_6">Pochette réactive, la grosse caisse : la pochette bouge comme la membrane d\'un haut-parleur – elle sort à chaque coup puis revient –, et sa lueur et les anneaux qu\'elle émet bougent avec elle. Le fond enfle doucement avec les basses</string>
     <string name="quality_enhanced_feature_7">Paroles mises au point : les lignes éloignées de celle qui est chantée s\'adoucissent</string>
     <string name="quality_enhanced_feature_8">Pochettes plus nettes, forme d\'onde de 72 barres et un grain fin qui évite les bandes de couleur</string>
     <string name="quality_premium">Premium</string>
@@ -78,7 +78,7 @@
     <string name="quality_premium_feature_1">Tout ce qu\'offre Améliorée</string>
     <string name="quality_premium_feature_2">Parallaxe en profondeur : la pochette s\'incline avec votre téléphone, la lumière glisse dessus et le fond bouge derrière comme un calque à part</string>
     <string name="quality_premium_feature_3">Le fond tourne en dérivant, ici et dans toute l\'appli, et un quatrième halo rejoint le champ de lumière ; avec la pochette réactive, les halos gonflent sur les basses dans En cours de lecture</string>
-    <string name="quality_premium_feature_4">La pochette réactive entend toute la batterie : un coup plus fort et une ombre plus profonde sur la grosse caisse, un éclair et un anneau net à chaque caisse claire, et des éclats de lumière sur les charlestons</string>
+    <string name="quality_premium_feature_4">La pochette réactive ajoute la caisse claire, en lumière : un éclair traverse la pochette à chaque caisse claire, et son ombre se creuse quand la grosse caisse la pousse. Chaque fût a un seul rôle, ils ne se gênent jamais</string>
     <string name="quality_premium_feature_5">La ligne chantée brille</string>
     <string name="quality_premium_feature_6">La fréquence d\'affichage maximale de votre écran tant que En cours de lecture est ouvert</string>
     <string name="quality_premium_feature_7">Pochettes en pleine résolution, forme d\'onde de 96 barres</string>
@@ -86,7 +86,7 @@
     <string name="quality_ultra_goal">Votre pochette en lumière liquide</string>
     <string name="quality_ultra_feature_1">Tout ce qu\'offre Premium</string>
     <string name="quality_ultra_feature_2">Pochette fluide : les couleurs de la pochette coulent les unes dans les autres comme un liquide, dans En cours de lecture et dans toute l\'appli (Android 13 et versions ultérieures)</string>
-    <string name="quality_ultra_feature_3">La pochette réactive devient une membrane de haut-parleur : la pochette elle-même se bombe et vibre à chaque grosse caisse, des ondes la parcourent et les charlestons font frémir sa surface (Android 13 et plus). Le flux s\'emballe sur les basses</string>
+    <string name="quality_ultra_feature_3">La pochette réactive ajoute les charlestons, en texture : la pochette se déforme comme une vraie membrane de haut-parleur sur la grosse caisse, une onde la parcourt et sa surface frémit sur les charlestons (Android 13 et plus). Le flux enfle avec les basses</string>
     <string name="quality_ultra_feature_4">Un cinquième halo dans le champ de lumière</string>
     <string name="quality_ultra_feature_5">La forme d\'onde la plus fine : 120 barres</string>
     <string name="quality_ultra_feature_6">Pochettes plus grandes dans les listes de titres</string>
@@ -426,7 +426,7 @@
     <string name="settings_storage_value">%1$d + %2$d éléments</string>
     <string name="settings_playback">Lecture</string>
     <string name="settings_reactive">Pochette réactive</string>
-    <string name="settings_reactive_sub">La pochette réagit à la musique pendant la lecture. Ce qu\'elle fait dépend de la Qualité d\'affichage.</string>
+    <string name="settings_reactive_sub">La pochette bouge avec la grosse caisse, s\'éclaire sur la caisse claire et frémit sur les charlestons. Ce qu\'elle montre de la batterie dépend de la Qualité d\'affichage.</string>
     <string name="settings_sound">Son</string>
     <string name="settings_sound_sub">Égaliseur, ReplayGain, limiteur, basses et spatial</string>
     <string name="settings_art_lyrics">Pochettes et paroles</string>

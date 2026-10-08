@@ -86,7 +86,6 @@ private const val MINI_ART = 44
 // the trailing control mirrors it.
 private const val MINI_INSET = 8
 // How long the light flash (Premium and Ultra) takes to cross the cover.
-private const val FLASH_NS = 420_000_000L
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
@@ -196,7 +195,7 @@ fun PlayerSurface(
     val appAccent = MediaColors.Accent
     val npAccent by animateColorAsState(artColors?.accent ?: appAccent, tween(Motion.Large), label = "npAccent")
     val glow by animateColorAsState(artColors?.glow ?: appAccent, tween(Motion.Large), label = "npGlow")
-    // NOT read here. beat.level updates 60x/second, so reading it in
+    // NOT read here. beat.cone updates 60x/second, so reading it in
     // composition scope recomposed this entire surface every frame - which
     // starved the drag gesture and made the player feel stuck. Every consumer
     // below reads it inside a draw or layer lambda instead, so the pulse costs
@@ -656,7 +655,6 @@ private fun BoxScope.PlayerLight(
             centerPx = Offset(cx, cy),
             baseRadiusPx = r0,
             strength = 1f,
-            snare = q.reactiveLevel >= 3,
             modifier = Modifier.matchParentSize().clearAndSetSemantics { }
         )
     }
@@ -667,7 +665,7 @@ private fun BoxScope.PlayerLight(
         // A Canvas, not a Box with a conditional background: `if
         // (level > 0.01f)` was a COMPOSITION-level branch on a value
         // that changes 60x/second, so this mounted and unmounted every
-        // frame. Reading beat.level inside the draw scope keeps the
+        // frame. Reading the beat inside the draw scope keeps the
         // whole effect in the draw phase, and the layer keeps that redraw
         // to this canvas instead of the whole player.
         //
@@ -684,7 +682,9 @@ private fun BoxScope.PlayerLight(
         val cap = light?.let { edgeLightCap(it, ink.lumaSrgb(), darkTheme) } ?: 1f
         val depth = q.parallax
         Canvas(Modifier.matchParentSize().graphicsLayer().clearAndSetSemantics { }) {
-            val lv = beat.level
+            // The light the cone throws: its push, so it flares and fades
+            // with the cover itself, over a little of the room's swell.
+            val lv = (beat.push * 0.85f + beat.room * 0.25f).coerceIn(0f, 1f)
             if (edge != null) {
                 // With depth the light sits under the cover, so it slides a
                 // little the other way as the cover tilts.
@@ -761,7 +761,8 @@ private fun PlayerArtwork(
                 // beat.cone read HERE, inside the layer lambda: this
                 // re-runs on the draw pass only, never recomposing. The
                 // kick's spring: out on the hit, a little under on the
-                // rebound (BeatPulse.kt).
+                // rebound (BeatPulse.kt). Everything else that moves with
+                // the kick reads this same spring.
                 val s = (1f + beat.cone * coneScale).coerceAtLeast(0.985f)
                 scaleX = s; scaleY = s
                 // Gives way to the lyrics; the pill keeps its cover.
@@ -780,7 +781,7 @@ private fun PlayerArtwork(
                 // A coloured shadow reads as light under the cover on a
                 // dark room; black shadow on black is invisible.
                 shadowElevation = elevationPx *
-                    (if (pump) 1f + beat.cone.coerceAtLeast(0f) * 0.9f else 1f)
+                    (if (pump) 1f + beat.push * 0.9f else 1f)
                 shape = artShape
                 clip = false
                 ambientShadowColor = shadowTint
@@ -794,8 +795,8 @@ private fun PlayerArtwork(
             .drawWithContent {
                 drawContent()
                 if (e > 0.5f && !isVideo && (q.parallax || q.reactiveLevel >= 3)) {
-                    // Premium and Ultra: the flash sweeps the cover on each
-                    // snare, and each hi-hat strikes a glint.
+                    // Premium and Ultra: the snare is light - one flash
+                    // across the cover (BeatPulse.kt ducks it under a kick).
                     val hit = beat.snareNanos
                     val since = beat.frameNanos - hit
                     val flash = if (q.reactiveLevel >= 3 && hit != 0L && since in 0..FLASH_NS) {
@@ -809,7 +810,6 @@ private fun PlayerArtwork(
                         flash = flash * k,
                         flashPos = (since / FLASH_NS.toFloat()).coerceIn(0f, 1f)
                     )
-                    if (q.reactiveLevel >= 3) drawSparks(beat, k)
                 }
             }
     ) {

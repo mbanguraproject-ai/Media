@@ -70,7 +70,7 @@
     <string name="quality_enhanced_feature_3">Um campo de luz: três focos com as cores da própria capa flutuam sobre ele, em todas as telas</string>
     <string name="quality_enhanced_feature_4">Luz de borda: a cor de cada borda da capa se espalha por trás dela</string>
     <string name="quality_enhanced_feature_5">Cor da capa: a forma de onda, a luz ao redor da imagem e a sombra dela combinam com cada música</string>
-    <string name="quality_enhanced_feature_6">Capa reativa: cada bumbo golpeia a capa como o cone de um alto-falante – ela salta para fora e volta –, anéis saem dela a cada batida e o fundo respira com o grave</string>
+    <string name="quality_enhanced_feature_6">Capa reativa, o bumbo: a capa se move como o cone de um alto-falante – sai a cada bumbo e volta –, e o brilho dela e os anéis que ela solta se movem junto. O fundo cresce devagar com o grave</string>
     <string name="quality_enhanced_feature_7">Letras em foco: as linhas distantes da que está sendo cantada ficam suaves</string>
     <string name="quality_enhanced_feature_8">Capas mais nítidas, forma de onda de 72 barras e uma granulação fina que evita faixas de cor</string>
     <string name="quality_premium">Premium</string>
@@ -78,7 +78,7 @@
     <string name="quality_premium_feature_1">Tudo do Aprimorado</string>
     <string name="quality_premium_feature_2">Paralaxe com profundidade: a capa se inclina com o seu celular, a luz desliza sobre ela e o fundo se move atrás como uma camada própria</string>
     <string name="quality_premium_feature_3">O fundo gira enquanto se desloca, aqui e no app todo, e um quarto foco entra no campo de luz; com a capa reativa os focos crescem com os graves no Tocando agora</string>
-    <string name="quality_premium_feature_4">A capa reativa ouve a bateria inteira: um empurrão mais forte e uma sombra mais funda no bumbo, um clarão e um anel nítido em cada caixa, e faíscas de luz nos chimbais</string>
+    <string name="quality_premium_feature_4">A capa reativa acrescenta a caixa, como luz: um clarão atravessa a capa a cada caixa, e a sombra dela fica mais funda quando o bumbo a empurra. Cada tambor tem uma função, então eles nunca competem</string>
     <string name="quality_premium_feature_5">A linha cantada brilha</string>
     <string name="quality_premium_feature_6">A taxa de atualização máxima da sua tela enquanto o Tocando agora está aberto</string>
     <string name="quality_premium_feature_7">Capas em resolução máxima, forma de onda de 96 barras</string>
@@ -86,7 +86,7 @@
     <string name="quality_ultra_goal">A sua capa como luz líquida</string>
     <string name="quality_ultra_feature_1">Tudo do Premium</string>
     <string name="quality_ultra_feature_2">Capa fluida: as cores da capa fluem umas nas outras como um líquido, no Tocando agora e no app todo (Android 13 ou mais recente)</string>
-    <string name="quality_ultra_feature_3">A capa reativa vira o cone de um alto-falante: a própria capa se curva e vibra a cada bumbo, ondulações correm por ela e os chimbais fazem a superfície cintilar (Android 13 ou mais recente). O fluxo cresce com o grave</string>
+    <string name="quality_ultra_feature_3">A capa reativa acrescenta os chimbais, como textura: a capa se deforma como o cone de um alto-falante de verdade no bumbo, uma onda corre por ela e a superfície cintila nos chimbais (Android 13 ou mais recente). O fluxo cresce com o grave</string>
     <string name="quality_ultra_feature_4">Um quinto foco de luz no campo de luz</string>
     <string name="quality_ultra_feature_5">A forma de onda mais fina: 120 barras</string>
     <string name="quality_ultra_feature_6">Capas maiores nas listas de faixas</string>
@@ -426,7 +426,7 @@
     <string name="settings_storage_value">%1$d + %2$d itens</string>
     <string name="settings_playback">Reprodução</string>
     <string name="settings_reactive">Capa reativa</string>
-    <string name="settings_reactive_sub">A capa responde à música enquanto toca. O que ela faz aumenta com a Qualidade de exibição.</string>
+    <string name="settings_reactive_sub">A capa se move com o bumbo, acende na caixa e cintila nos chimbais. Quanto da bateria ela mostra depende da Qualidade de exibição.</string>
     <string name="settings_sound">Som</string>
     <string name="settings_sound_sub">Equalizador, ReplayGain, limitador, grave e espacial</string>
     <string name="settings_art_lyrics">Capas e letras</string>

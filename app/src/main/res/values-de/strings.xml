@@ -70,7 +70,7 @@
     <string name="quality_enhanced_feature_3">Ein Lichtfeld: drei Lichtflecken in den Farben des Covers schweben darüber, auf jedem Bildschirm</string>
     <string name="quality_enhanced_feature_4">Kantenlicht: die Farbe jeder Kante des Covers strahlt hinter ihm hervor</string>
     <string name="quality_enhanced_feature_5">Farbe aus dem Cover: Wellenform, das Licht um das Bild und sein Schatten passen zu jedem Song</string>
-    <string name="quality_enhanced_feature_6">Reaktives Artwork: Jede Bassdrum trifft das Cover wie eine Lautsprechermembran – es schlägt aus und federt zurück –, bei jedem Schlag lösen sich Ringe davon, und der Hintergrund atmet mit dem Bass</string>
+    <string name="quality_enhanced_feature_6">Reaktives Artwork, die Bassdrum: Das Cover bewegt sich wie eine Lautsprechermembran – bei jedem Schlag heraus und zurück –, und sein Leuchten und die Ringe, die es aussendet, bewegen sich mit. Der Hintergrund schwillt langsam mit dem Bass an</string>
     <string name="quality_enhanced_feature_7">Songtext im Fokus: Zeilen fern der gesungenen werden weich</string>
     <string name="quality_enhanced_feature_8">Schärfere Cover, 72-Balken-Wellenform und feine Körnung gegen Farbstreifen</string>
     <string name="quality_premium">Premium</string>
@@ -78,7 +78,7 @@
     <string name="quality_premium_feature_1">Alles aus Erweitert</string>
     <string name="quality_premium_feature_2">Parallaxe mit Tiefe: das Cover neigt sich mit deinem Handy, Licht gleitet darüber und der Hintergrund bewegt sich dahinter als eigene Ebene</string>
     <string name="quality_premium_feature_3">Der Hintergrund dreht sich beim Treiben, hier und in der ganzen App, und ein vierter Lichtfleck kommt ins Lichtfeld; mit reaktivem Cover schwellen die Flecken in „Wird gespielt“ mit dem Bass an</string>
-    <string name="quality_premium_feature_4">Reaktives Artwork hört das ganze Schlagzeug: ein härterer Stoß und ein tieferer Schatten bei der Bassdrum, ein Lichtblitz und ein scharfer Ring bei jeder Snare und Lichtfunken bei den Hi-Hats</string>
+    <string name="quality_premium_feature_4">Reaktives Artwork nimmt die Snare dazu, als Licht: bei jeder Snare ein Lichtblitz über das Cover, und sein Schatten wird tiefer, wenn die Bassdrum es herausdrückt. Jede Trommel hat eine Aufgabe, so kommen sie sich nie in die Quere</string>
     <string name="quality_premium_feature_5">Die gesungene Zeile leuchtet</string>
     <string name="quality_premium_feature_6">Die höchste Bildwiederholrate deines Bildschirms, solange „Wird gespielt“ offen ist</string>
     <string name="quality_premium_feature_7">Cover in voller Auflösung, 96-Balken-Wellenform</string>
@@ -86,7 +86,7 @@
     <string name="quality_ultra_goal">Dein Cover als flüssiges Licht</string>
     <string name="quality_ultra_feature_1">Alles aus Premium</string>
     <string name="quality_ultra_feature_2">Fließendes Cover: die Farben des Covers fließen wie eine Flüssigkeit ineinander, in „Wird gespielt“ und in der ganzen App (ab Android 13)</string>
-    <string name="quality_ultra_feature_3">Reaktives Artwork wird zur Lautsprechermembran: Das Cover selbst wölbt sich und schwingt bei jeder Bassdrum nach, Wellen laufen darüber, und die Hi-Hats lassen seine Oberfläche flirren (ab Android 13). Der Fluss schwillt mit dem Bass an</string>
+    <string name="quality_ultra_feature_3">Reaktives Artwork nimmt die Hi-Hats dazu, als Textur: Das Cover verformt sich bei der Bassdrum wie eine echte Lautsprechermembran, eine Welle läuft darüber, und bei den Hi-Hats flirrt seine Oberfläche (ab Android 13). Der Fluss schwillt mit dem Bass an</string>
     <string name="quality_ultra_feature_4">Ein fünfter Lichtfleck im Lichtfeld</string>
     <string name="quality_ultra_feature_5">Die feinste Wellenform: 120 Balken</string>
     <string name="quality_ultra_feature_6">Größere Cover in Titellisten</string>
@@ -426,7 +426,7 @@
     <string name="settings_storage_value">%1$d + %2$d Elemente</string>
     <string name="settings_playback">Wiedergabe</string>
     <string name="settings_reactive">Reaktives Cover</string>
-    <string name="settings_reactive_sub">Das Cover reagiert beim Abspielen auf die Musik. Was es tut, wächst mit der Anzeigequalität.</string>
+    <string name="settings_reactive_sub">Das Cover bewegt sich mit der Bassdrum, leuchtet bei der Snare auf und flirrt bei den Hi-Hats. Wie viel vom Schlagzeug es zeigt, hängt von der Anzeigequalität ab.</string>
     <string name="settings_sound">Klang</string>
     <string name="settings_sound_sub">Equalizer, ReplayGain, Limiter, Bass und Raumklang</string>
     <string name="settings_art_lyrics">Cover und Songtexte</string>
