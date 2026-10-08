@@ -70,7 +70,7 @@
     <string name="quality_enhanced_feature_3">Bir ışık alanı: kapağın kendi renklerinden üç ışık havuzu her ekranda üzerinde süzülür</string>
     <string name="quality_enhanced_feature_4">Kenar ışığı: kapağın her kenarındaki renk arkasından taşar</string>
     <string name="quality_enhanced_feature_5">Kapaktan gelen renk: dalga formu, görselin çevresindeki ışık ve gölgesi her şarkıya uyar</string>
-    <string name="quality_enhanced_feature_6">Tepki veren kapak: kapak atar, ritimle birlikte ondan şok dalgası halkaları yayılır ve arka plan basla nefes alır</string>
+    <string name="quality_enhanced_feature_6">Tepkili kapak: her kick davulu kapağa bir hoparlör konisi gibi vurur – kapak dışarı fırlar ve geri yaylanır –, her vuruşta ondan halkalar çıkar ve arka plan basla birlikte nefes alır</string>
     <string name="quality_enhanced_feature_7">Odaktaki sözler: söylenen satırdan uzak satırlar yumuşar</string>
     <string name="quality_enhanced_feature_8">Daha net kapaklar, 72 çubuklu dalga formu ve renk bantlanmasını önleyen ince gren</string>
     <string name="quality_premium">Premium</string>
@@ -78,7 +78,7 @@
     <string name="quality_premium_feature_1">Gelişmiş\'teki her şey</string>
     <string name="quality_premium_feature_2">Derinlikli paralaks: kapak telefonunla birlikte eğilir, üzerinde ışık kayar ve arka plan onun arkasında ayrı bir katman olarak hareket eder</string>
     <string name="quality_premium_feature_3">Arka plan süzülürken döner, burada ve tüm uygulamada, ışık alanına dördüncü bir havuz katılır; tepki veren kapakla havuzlar Şimdi Çalıyor\'da basla büyür</string>
-    <string name="quality_premium_feature_4">Tepki veren kapak: sert vuruşlarda kapağın üzerinden bir ışık parlaması geçer</string>
+    <string name="quality_premium_feature_4">Tepkili kapak tüm davul setini duyar: kick\'te daha sert bir itiş ve daha derin bir gölge, her trampette bir parlama ve keskin bir halka, hi-hat\'lerde ışık kıvılcımları</string>
     <string name="quality_premium_feature_5">Söylenen söz satırı parlar</string>
     <string name="quality_premium_feature_6">Şimdi Çalıyor açıkken ekranının en yüksek yenileme hızı</string>
     <string name="quality_premium_feature_7">Tam çözünürlüklü kapaklar, 96 çubuklu dalga formu</string>
@@ -86,7 +86,7 @@
     <string name="quality_ultra_goal">Kapağın sıvı ışık olarak</string>
     <string name="quality_ultra_feature_1">Premium\'daki her şey</string>
     <string name="quality_ultra_feature_2">Akışkan kapak: kapağın renkleri sıvı gibi birbirine akar, Şimdi Çalıyor\'da ve tüm uygulamada (Android 13 ve sonrası)</string>
-    <string name="quality_ultra_feature_3">Tepki veren kapakla akış basla güçlenir</string>
+    <string name="quality_ultra_feature_3">Tepkili kapak bir hoparlör konisine dönüşür: her kick\'te kapağın kendisi şişer ve titreşir, üzerinde dalgalar yayılır, hi-hat\'ler yüzeyini parıldatır (Android 13 ve sonrası). Akış basla birlikte coşar</string>
     <string name="quality_ultra_feature_4">Işık alanında beşinci bir ışık havuzu</string>
     <string name="quality_ultra_feature_5">En ince dalga formu: 120 çubuk</string>
     <string name="quality_ultra_feature_6">Parça listelerinde daha büyük kapaklar</string>

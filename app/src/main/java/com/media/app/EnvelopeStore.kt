@@ -36,19 +36,19 @@ internal fun ByteArray.toEnvelopeFloats(): FloatArray {
 
 // Small: only the current track and whatever you just skipped past need to be
 // resident. The DB is the real cache.
-private val envelopeMemory = LruCache<Long, FloatArray>(8)
-
-internal fun peekEnvelope(mediaId: Long): FloatArray? = envelopeMemory.get(mediaId)
+private val envelopeMemory = LruCache<Long, SoundShape>(8)
 
 /**
- * Bass envelope for [item], or null while it is still being computed (or if
- * the file can't be decoded).
+ * The sound shape of [item] (SoundShape.kt), or null while it is still being
+ * computed (or if the file can't be decoded). Stored interleaved, three
+ * floats a frame, in the same envelope table; a row from before 5.2 has the
+ * old rate in `hz` and is redone.
  *
  * LaunchedEffect keys on the media id, so skipping tracks cancels an
  * in-progress analysis for free — EnvelopeAnalyzer checks ensureActive().
  */
 @Composable
-fun rememberEnvelope(item: AppMediaItem?): FloatArray? {
+fun rememberSoundShape(item: AppMediaItem?): SoundShape? {
     val context = LocalContext.current
     // Seed from memory so returning to a recent track pulses immediately.
     var envelope by remember(item?.id) {
@@ -67,10 +67,14 @@ fun rememberEnvelope(item: AppMediaItem?): FloatArray? {
             cached.hz == EnvelopeAnalyzer.HZ &&
             cached.dateModified == target.dateModified
         ) {
-            val floats = cached.data.toEnvelopeFloats()
-            envelopeMemory.put(target.id, floats)
-            envelope = floats
-            return@LaunchedEffect
+            val shape = withContext(Dispatchers.Default) {
+                SoundShape.fromInterleaved(cached.data.toEnvelopeFloats())
+            }
+            if (shape != null) {
+                envelopeMemory.put(target.id, shape)
+                envelope = shape
+                return@LaunchedEffect
+            }
         }
         // Stale: the file changed under us, or the analysis resolution did.
         if (cached != null) withContext(Dispatchers.IO) {
@@ -87,25 +91,11 @@ fun rememberEnvelope(item: AppMediaItem?): FloatArray? {
                         mediaId = target.id,
                         hz = EnvelopeAnalyzer.HZ,
                         dateModified = target.dateModified,
-                        data = computed.toEnvelopeBlob()
+                        data = computed.interleaved().toEnvelopeBlob()
                     )
                 )
             }
         }
     }
     return envelope
-}
-
-/**
- * Level at [positionMs], linearly interpolated between windows so the value
- * moves smoothly at 60fps rather than stepping 20 times a second.
- */
-fun FloatArray.levelAt(positionMs: Long): Float {
-    if (isEmpty()) return 0f
-    val exact = positionMs / 1000f * EnvelopeAnalyzer.HZ
-    val i = exact.toInt()
-    if (i < 0) return this[0]
-    if (i >= lastIndex) return this[lastIndex]
-    val t = exact - i
-    return this[i] + (this[i + 1] - this[i]) * t
 }

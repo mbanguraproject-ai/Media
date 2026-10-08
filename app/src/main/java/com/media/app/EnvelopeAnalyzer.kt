@@ -11,15 +11,12 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.nio.ByteOrder
 import kotlin.coroutines.coroutineContext
-import kotlin.math.PI
-import kotlin.math.pow
-import kotlin.math.sqrt
 
 // ============================================================================
-//  BASS ENVELOPE ANALYSIS
+//  SOUND ANALYSIS
 //
-//  Precomputes a bass-energy curve for a track so artwork can pulse in time
-//  with the music.
+//  Precomputes a track's sound shape (SoundShape.kt): kick, snare and hi-hat
+//  energy fifty times a second, so artwork moves in time with the music.
 //
 //  WHY NOT android.media.audiofx.Visualizer: it is the obvious tool and it
 //  requires RECORD_AUDIO. Android classifies output capture as recording, with
@@ -34,17 +31,18 @@ import kotlin.math.sqrt
 
 object EnvelopeAnalyzer {
 
-    /** Windows per second. 20Hz = 50ms resolution: smooth, and small to store. */
-    const val HZ = 20
-
-    /** Bass band. Kick drums and bass lines live below this. */
-    private const val BASS_CUTOFF_HZ = 200f
+    /**
+     * Windows per second. 50Hz = 20ms, so a drum hit lands within a frame of
+     * the sound. Until 5.1 it was 20Hz of bass alone; a cached analysis at
+     * the old rate no longer matches this and is redone on next play.
+     */
+    const val HZ = SoundShape.HZ
 
     private const val TIMEOUT_US = 10_000L
 
     /**
-     * Decodes [uri] and returns normalised bass energy per 1/[HZ] second,
-     * or null if the file can't be decoded.
+     * Decodes [uri] and returns its sound shape - each band's energy per
+     * 1/[HZ] second, normalised - or null if the file can't be decoded.
      *
      * Cancellable: skipping tracks mid-analysis aborts the decode rather than
      * burning CPU on a track nobody is listening to any more.
@@ -53,7 +51,7 @@ object EnvelopeAnalyzer {
         context: Context,
         uri: Uri,
         maxDurationMs: Long = 10 * 60 * 1000L
-    ): FloatArray? = withContext(Dispatchers.IO) {
+    ): SoundShape? = withContext(Dispatchers.IO) {
         val extractor = MediaExtractor()
         var codec: MediaCodec? = null
         try {
@@ -79,14 +77,8 @@ object EnvelopeAnalyzer {
             codec.configure(format, null, null, 0)
             codec.start()
 
-            var windowSize = (sampleRate / HZ).coerceAtLeast(1)
-            var alpha = onePoleAlpha(BASS_CUTOFF_HZ, sampleRate)
+            val meter = BandMeter(sampleRate, HZ)
             val maxWindows = (maxDurationMs / 1000L * HZ).toInt()
-
-            val out = ArrayList<Float>(2048)
-            var lp = 0f              // low-pass state, carried across buffers
-            var acc = 0.0            // running sum of squares in this window
-            var accCount = 0
 
             val info = MediaCodec.BufferInfo()
             var inputDone = false
@@ -122,8 +114,7 @@ object EnvelopeAnalyzer {
                         pcmFloat = nf.containsKey(MediaFormat.KEY_PCM_ENCODING) &&
                             nf.getInteger(MediaFormat.KEY_PCM_ENCODING) ==
                             AudioFormat.ENCODING_PCM_FLOAT
-                        windowSize = (sampleRate / HZ).coerceAtLeast(1)
-                        alpha = onePoleAlpha(BASS_CUTOFF_HZ, sampleRate)
+                        meter.configure(sampleRate)
                     }
 
                     MediaCodec.INFO_TRY_AGAIN_LATER -> { /* keep pumping */ }
@@ -142,12 +133,7 @@ object EnvelopeAnalyzer {
                                 while (i < n) {
                                     var sum = 0f; var c = 0
                                     while (c < channels && i < n) { sum += fb.get(i); i++; c++ }
-                                    lp += alpha * (sum / channels - lp)
-                                    acc += (lp * lp).toDouble(); accCount++
-                                    if (accCount >= windowSize) {
-                                        out.add(sqrt(acc / accCount).toFloat())
-                                        acc = 0.0; accCount = 0
-                                    }
+                                    meter.push(sum / channels)
                                 }
                             } else {
                                 val sb = ordered.asShortBuffer()
@@ -158,24 +144,19 @@ object EnvelopeAnalyzer {
                                     while (c < channels && i < n) {
                                         sum += sb.get(i) / 32768f; i++; c++
                                     }
-                                    lp += alpha * (sum / channels - lp)
-                                    acc += (lp * lp).toDouble(); accCount++
-                                    if (accCount >= windowSize) {
-                                        out.add(sqrt(acc / accCount).toFloat())
-                                        acc = 0.0; accCount = 0
-                                    }
+                                    meter.push(sum / channels)
                                 }
                             }
                         }
                         codec.releaseOutputBuffer(outIdx, false)
                         if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) outputDone = true
                         // Cap runaway analysis on very long files.
-                        if (out.size >= maxWindows) outputDone = true
+                        if (meter.frames >= maxWindows) outputDone = true
                     }
                 }
             }
 
-            if (out.isEmpty()) null else normalise(out.toFloatArray())
+            meter.shape()
         } catch (t: Throwable) {
             // Unsupported codec, DRM, missing file — all just mean "no pulse".
             null
@@ -184,25 +165,5 @@ object EnvelopeAnalyzer {
             runCatching { codec?.release() }
             runCatching { extractor.release() }
         }
-    }
-
-    /** One-pole low-pass coefficient for [cutoffHz] at [sampleRate]. */
-    private fun onePoleAlpha(cutoffHz: Float, sampleRate: Int): Float {
-        val dt = 1f / sampleRate
-        val rc = 1f / (2f * PI.toFloat() * cutoffHz)
-        return dt / (rc + dt)
-    }
-
-    /**
-     * Scale to 0..1 against the 95th percentile rather than the maximum: one
-     * transient shouldn't flatten the whole track. The 0.7 gamma lifts quiet
-     * passages so the pulse stays visible without the loud parts clipping.
-     */
-    private fun normalise(arr: FloatArray): FloatArray {
-        val sorted = arr.copyOf().also { it.sort() }
-        val p95 = sorted[(sorted.size * 0.95f).toInt().coerceIn(0, sorted.lastIndex)]
-        val scale = if (p95 > 1e-6f) 1f / p95 else 1f
-        for (i in arr.indices) arr[i] = (arr[i] * scale).coerceIn(0f, 1f).pow(0.7f)
-        return arr
     }
 }

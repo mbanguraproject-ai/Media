@@ -91,22 +91,16 @@ fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit, onP
             modifier = Modifier.height(54.dp)
         )
         Spacer(Modifier.weight(1f))
-        // Via Pro. The same gold crown for everyone - for most people it is
-        // the way to the Pro page, for owners it is the badge - so the header
-        // does not change shape on purchase. Same 48dp touch as its neighbours.
+        // Via Pro: an offer for most people, a status for owners (ProBadge,
+        // Pro.kt). The badge keeps its size either way, so the header does
+        // not shift on purchase.
         val pro = isPro()
-        Box(
-            Modifier
-                .size(HeaderTouch)
-                .clip(CircleShape)
-                .pressScale(haptic = true, onClick = onPro),
-            contentAlignment = Alignment.Center
-        ) {
-            ProCrown(
-                size = HeaderGlyph + 2.dp, lit = true,
-                description = stringResource(if (pro) R.string.pro_active_title else R.string.pro_get)
-            )
-        }
+        ProBadge(
+            owned = pro,
+            description = stringResource(if (pro) R.string.pro_active_title else R.string.pro_get),
+            onClick = onPro
+        )
+        Spacer(Modifier.width(Space.xs))
         // Lit while something is playing elsewhere. A cast control that looks
         // the same connected and disconnected is the reason people cannot
         // tell why their phone is silent.

@@ -42,7 +42,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.graphics.Shadow
@@ -104,7 +103,7 @@ fun PlayerSurface(
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit,
     beat: BeatState,
-    // This track's real 20Hz bass envelope, or null for video / spoken word
+    // This track's real bass envelope (50Hz), or null for video / spoken word
     // / analysis still running. The scrubber draws a flat track rather than
     // a fabricated wave when it is absent.
     envelope: FloatArray? = null,
@@ -657,6 +656,7 @@ private fun BoxScope.PlayerLight(
             centerPx = Offset(cx, cy),
             baseRadiusPx = r0,
             strength = 1f,
+            snare = q.reactiveLevel >= 3,
             modifier = Modifier.matchParentSize().clearAndSetSemantics { }
         )
     }
@@ -740,17 +740,29 @@ private fun PlayerArtwork(
     // Outside the layer lambda: in there `density` would be the
     // layer scope's own.
     val tiltCamera = 14f * density.density
+    val elevationPx = with(density) { lerpDp(Elevation.low, Elevation.high, e).toPx() }
+    val shadowTint = if (isVideo) Color.Black else glow
+    val artShape = RoundedCornerShape(artCorner)
+    // Ultra on Android 13+: the cover deforms like a speaker cone
+    // (Phantom.kt). Where it cannot, Ultra moves as Premium does.
+    val phantom = remember { PhantomCone() }
+    val coneOn = q.reactiveLevel >= 4 && phantom.available && e > 0.5f && !isVideo
+    // How far the kick's spring scales the cover. With the cone the
+    // deformation carries the kick, so the cover itself moves less.
+    val coneScale = when {
+        coneOn -> 0.02f
+        q.reactiveLevel >= 3 -> 0.055f
+        else -> 0.04f
+    }
+    val pump = q.reactiveLevel >= 3 && !isVideo
     Box(
         Modifier.offset(x = artX, y = artY).size(width = artW, height = artH)
-            // 10% at full level. With the punch curve the value sits
-            // near zero between hits, so this reads as a strike rather
-            // than a constant wobble.
             .graphicsLayer {
-                // beat.level read HERE, inside the layer lambda: this
-                // re-runs on the draw pass only, never recomposing.
-                // 3%, not 10% - artwork that visibly grows reads as a
-                // bounce; the bloom and rings carry the beat.
-                val s = 1f + beat.level * 0.03f
+                // beat.cone read HERE, inside the layer lambda: this
+                // re-runs on the draw pass only, never recomposing. The
+                // kick's spring: out on the hit, a little under on the
+                // rebound (BeatPulse.kt).
+                val s = (1f + beat.cone * coneScale).coerceAtLeast(0.985f)
                 scaleX = s; scaleY = s
                 // Gives way to the lyrics; the pill keeps its cover.
                 alpha = 1f - lyr * e
@@ -762,30 +774,33 @@ private fun PlayerArtwork(
                     rotationX = -tilt.y * 7f * k
                     cameraDistance = tiltCamera
                 }
+                // Depth grows as it expands: a pill needs almost none, the
+                // hero cover is the strongest thing on the screen. Premium
+                // and Ultra: the shadow deepens as a kick pushes it out.
+                // A coloured shadow reads as light under the cover on a
+                // dark room; black shadow on black is invisible.
+                shadowElevation = elevationPx *
+                    (if (pump) 1f + beat.cone.coerceAtLeast(0f) * 0.9f else 1f)
+                shape = artShape
+                clip = false
+                ambientShadowColor = shadowTint
+                spotShadowColor = shadowTint
             }
-            // Depth grows as it expands: a pill needs almost none, the
-            // hero cover is the strongest thing on the screen.
-            .shadow(
-                elevation = lerpDp(Elevation.low, Elevation.high, e),
-                shape = RoundedCornerShape(artCorner),
-                clip = false,
-                // A coloured shadow reads as light under the cover on
-                // a dark room; black shadow on black is invisible.
-                ambientColor = if (isVideo) Color.Black else glow,
-                spotColor = if (isVideo) Color.Black else glow
-            )
-            .clip(RoundedCornerShape(artCorner))
+            .clip(artShape)
+            .phantomCone(phantom, beat, coneOn)
             // Light ON the cover: the parallax sheen, and on Premium
             // and Ultra with Reactive artwork a flash that sweeps it on
             // a hard hit. Drawn after the content, inside the clip.
             .drawWithContent {
                 drawContent()
                 if (e > 0.5f && !isVideo && (q.parallax || q.reactiveLevel >= 3)) {
-                    val hit = beat.lastHitNanos
+                    // Premium and Ultra: the flash sweeps the cover on each
+                    // snare, and each hi-hat strikes a glint.
+                    val hit = beat.snareNanos
                     val since = beat.frameNanos - hit
                     val flash = if (q.reactiveLevel >= 3 && hit != 0L && since in 0..FLASH_NS) {
                         val f = 1f - since / FLASH_NS.toFloat()
-                        f * f * beat.lastHitPower
+                        f * f * beat.snarePower
                     } else 0f
                     val k = ((e - 0.5f) * 2f).coerceIn(0f, 1f)
                     drawCoverLight(
@@ -794,6 +809,7 @@ private fun PlayerArtwork(
                         flash = flash * k,
                         flashPos = (since / FLASH_NS.toFloat()).coerceIn(0f, 1f)
                     )
+                    if (q.reactiveLevel >= 3) drawSparks(beat, k)
                 }
             }
     ) {

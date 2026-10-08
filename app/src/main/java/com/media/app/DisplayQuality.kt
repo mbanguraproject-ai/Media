@@ -257,7 +257,12 @@ data class QualityProfile(
     val fluidFlow: Boolean,          // ...flowing like liquid (FluidLight.kt, Android 13+)
     val lightField: Int,             // drifting pools of the cover's tones (needs drift)
     val grain: Boolean,              // anti-banding grain over the backdrop
-    val reactiveLevel: Int,          // 1 pulse + edge light, 2 + rings + backdrop breath, 3 + light flash
+    // Reactive artwork (BeatPulse.kt): 2 the kick - the cover's spring,
+    // rings, edge light, backdrop breath; 3 the whole kit - a harder punch
+    // and a deeper shadow on the kick, snare rings and the flash, hi-hat
+    // glints; 4 the cover deforms like a speaker cone (Phantom.kt, Android
+    // 13+, else as 3).
+    val reactiveLevel: Int,
     val parallax: Boolean,           // tilt with the phone, specular sheen, backdrop as a deeper layer
     val lyricFocus: Boolean,         // depth-of-field blur on lyric lines away from the sung one
     val lyricGlow: Boolean,          // accent glow on the sung line
@@ -304,7 +309,7 @@ fun profileFor(level: QualityLevel): QualityProfile = when (level) {
         waveformBars = 120,
         livingBackdrop = true, backdropDrift = true, backdropTurn = true, fluidFlow = true,
         lightField = 5, grain = true,
-        reactiveLevel = 3, parallax = true, lyricFocus = true, lyricGlow = true, topRefresh = true
+        reactiveLevel = 4, parallax = true, lyricFocus = true, lyricGlow = true, topRefresh = true
     )
 }
 

@@ -1,13 +1,22 @@
 package com.media.app
 
 import android.content.Context
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -17,6 +26,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -154,7 +164,15 @@ private val GoldDeep = Color(0xFFD38A12)
  * owned look, full gold; unlit it is an outline in gold, the offer.
  */
 @Composable
-fun ProCrown(size: Dp, lit: Boolean, modifier: Modifier = Modifier, description: String? = null) {
+fun ProCrown(
+    size: Dp,
+    lit: Boolean,
+    modifier: Modifier = Modifier,
+    description: String? = null,
+    // One flat colour instead of the gold: the dark crown on the owner's
+    // gold badge.
+    tint: Color? = null
+) {
     Canvas(
         modifier
             .size(size)
@@ -175,7 +193,8 @@ fun ProCrown(size: Dp, lit: Boolean, modifier: Modifier = Modifier, description:
             lineTo(x(4.8f), y(18f))
             close()
         }
-        val gold = Brush.verticalGradient(listOf(GoldLight, Gold, GoldDeep), startY = y(4f), endY = y(21f))
+        val gold = if (tint != null) androidx.compose.ui.graphics.SolidColor(tint)
+            else Brush.verticalGradient(listOf(GoldLight, Gold, GoldDeep), startY = y(4f), endY = y(21f))
         if (lit) {
             drawPath(body, gold)
             drawRoundRect(gold, topLeft = Offset(x(4.8f), y(19f)), size = androidx.compose.ui.geometry.Size(x(14.4f), y(2.2f)),
@@ -189,5 +208,78 @@ fun ProCrown(size: Dp, lit: Boolean, modifier: Modifier = Modifier, description:
         for ((jx, jy) in listOf(3f to 8.5f, 12f to 5.5f, 21f to 8.5f)) {
             drawCircle(gold, radius = x(1.6f), center = Offset(x(jx), y(jy)))
         }
+    }
+}
+
+// --------------------------------------------------------------------- badge
+
+private val OnGoldInk = Color(0xFF2A1D02)
+private const val SWEEP_MS = 3600
+
+/**
+ * The Home header's Pro badge, and the one place Pro shows who has it.
+ *
+ * FREE   a dark pill with a gold edge, a gold crown and PRO in gold: the way
+ *        to the Pro page, plainly an offer.
+ * OWNED  solid gold, a dark crown and PRO, a gold glow under it, and a sweep
+ *        of light across it every few seconds: a status, not a button that
+ *        happens to be yellow. The sweep stops with reduced motion.
+ */
+@Composable
+fun ProBadge(owned: Boolean, description: String, onClick: () -> Unit) {
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(Radius.pill)
+    val reduced = LocalReducedMotion.current
+    val sweep = if (owned && !reduced) {
+        androidx.compose.animation.core.rememberInfiniteTransition(label = "proSweep").animateFloat(
+            initialValue = 0f, targetValue = 1f,
+            animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                androidx.compose.animation.core.tween(SWEEP_MS, easing = androidx.compose.animation.core.LinearEasing)
+            ),
+            label = "proSweepPhase"
+        )
+    } else null
+    androidx.compose.foundation.layout.Row(
+        Modifier
+            .semantics(mergeDescendants = true) { contentDescription = description }
+            .pressScale(haptic = true, onClick = onClick)
+            .height(30.dp)
+            .then(
+                if (owned) Modifier.shadow(8.dp, shape, clip = false, ambientColor = Gold, spotColor = Gold)
+                else Modifier
+            )
+            .clip(shape)
+            .background(
+                if (owned) Brush.linearGradient(listOf(GoldLight, Gold, GoldDeep))
+                else Brush.linearGradient(listOf(Gold.copy(alpha = 0.16f), Gold.copy(alpha = 0.06f)))
+            )
+            .border(1.dp, if (owned) GoldLight.copy(alpha = 0.8f) else Gold.copy(alpha = 0.7f), shape)
+            .drawWithContent {
+                drawContent()
+                val phase = sweep?.value ?: return@drawWithContent
+                // The light crosses in the first quarter of the cycle, then rests.
+                val t = (phase / 0.25f).coerceAtMost(1.2f)
+                if (t > 1f) return@drawWithContent
+                val band = size.height * 1.6f
+                val x = -band + (size.width + band * 2f) * t
+                drawRect(
+                    Brush.linearGradient(
+                        listOf(Color.Transparent, Color.White.copy(alpha = 0.55f), Color.Transparent),
+                        start = Offset(x, 0f), end = Offset(x + band, size.height)
+                    )
+                )
+            }
+            .padding(start = 9.dp, end = 11.dp),
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+    ) {
+        ProCrown(16.dp, lit = true, tint = if (owned) OnGoldInk else null)
+        androidx.compose.foundation.layout.Spacer(Modifier.width(5.dp))
+        androidx.compose.material3.Text(
+            androidx.compose.ui.res.stringResource(R.string.pro_plan_pro).uppercase(),
+            style = Typo.Label.copy(
+                fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+                letterSpacing = 1.4.sp
+            ),
+            color = if (owned) OnGoldInk else Gold
+        )
     }
 }

@@ -697,13 +697,15 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // setting only governs whether the COVER moves. Still music-only: video
     // has a picture, and spoken word has no waveform worth drawing.
     val analysable = playingItem?.pillar == Pillar.MUSIC && !state.isVideo
-    val envelope = rememberEnvelope(if (analysable) playingItem else null)
+    val shape = rememberSoundShape(if (analysable) playingItem else null)
+    // The scrubber's waveform: the bass curve it has always drawn.
+    val envelope = shape?.wave
     val reactive = reactiveArtOn && analysable
     // Volume is the power control: silent means completely still, and turning
     // it up brings both the movement and the hit count with it.
     val musicVolume = rememberMusicVolume()
     val beat = rememberBeatPulse(
-        state, envelope,
+        state, shape,
         active = state.hasItem && reactive,
         volume = musicVolume
     )

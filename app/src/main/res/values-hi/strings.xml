@@ -70,7 +70,7 @@
     <string name="quality_enhanced_feature_3">एक लाइट फ़ील्ड: कवर के अपने रंगों के तीन पुंज हर स्क्रीन पर उसके ऊपर तैरते हैं</string>
     <string name="quality_enhanced_feature_4">एज लाइट: कवर के हर किनारे का रंग उसके पीछे से छलकता है</string>
     <string name="quality_enhanced_feature_5">कवर से रंग: वेवफ़ॉर्म, इमेज के चारों ओर की रोशनी और उसकी छाया हर गाने से मेल खाती है</string>
-    <string name="quality_enhanced_feature_6">रिएक्टिव कवर: कवर धड़कता है, बीट पर उससे शॉकवेव रिंग निकलती हैं और बैकग्राउंड बेस के साथ साँस लेता है</string>
+    <string name="quality_enhanced_feature_6">रिएक्टिव आर्टवर्क: हर किक ड्रम कवर पर स्पीकर के कोन की तरह चोट करता है – वह बाहर उछलता है और वापस लौटता है – हर चोट पर उससे छल्ले निकलते हैं, और पृष्ठभूमि बेस के साथ साँस लेती है</string>
     <string name="quality_enhanced_feature_7">फ़ोकस में बोल: गाई जा रही पंक्ति से दूर की पंक्तियाँ हल्की हो जाती हैं</string>
     <string name="quality_enhanced_feature_8">ज़्यादा साफ़ कवर, 72 बार वाला वेवफ़ॉर्म, और बारीक दाने जो रंगों की पट्टियाँ बनने से रोकते हैं</string>
     <string name="quality_premium">Premium</string>
@@ -78,7 +78,7 @@
     <string name="quality_premium_feature_1">बेहतर की सारी सुविधाएँ</string>
     <string name="quality_premium_feature_2">गहराई वाला पैरालैक्स: कवर आपके फ़ोन के साथ झुकता है, उस पर रोशनी फिसलती है, और बैकग्राउंड उसके पीछे एक अलग परत की तरह चलता है</string>
     <string name="quality_premium_feature_3">बैकग्राउंड बहते हुए घूमता भी है, यहाँ और पूरे ऐप में, और लाइट फ़ील्ड में चौथा पुंज जुड़ जाता है; रिएक्टिव कवर के साथ \"अभी चल रहा है\" में पुंज बेस पर बढ़ते हैं</string>
-    <string name="quality_premium_feature_4">रिएक्टिव कवर: तेज़ बीट पर कवर पर रोशनी की एक चमक दौड़ती है</string>
+    <string name="quality_premium_feature_4">रिएक्टिव आर्टवर्क पूरी ड्रम किट सुनता है: किक पर ज़्यादा ज़ोरदार धक्का और गहरी छाया, हर स्नेयर पर एक चमक और एक तीखा छल्ला, और हाई-हैट पर रोशनी की चिंगारियाँ</string>
     <string name="quality_premium_feature_5">गाई जा रही पंक्ति चमकती है</string>
     <string name="quality_premium_feature_6">\"अभी चल रहा है\" खुला रहने तक आपकी स्क्रीन का सबसे ऊँचा रिफ़्रेश रेट</string>
     <string name="quality_premium_feature_7">पूरे रिज़ॉल्यूशन वाले कवर, 96 बार वाला वेवफ़ॉर्म</string>
@@ -86,7 +86,7 @@
     <string name="quality_ultra_goal">आपका कवर, तरल रोशनी की तरह</string>
     <string name="quality_ultra_feature_1">Premium की सारी सुविधाएँ</string>
     <string name="quality_ultra_feature_2">फ़्लूइड कवर: कवर के रंग तरल की तरह एक-दूसरे में बहते हैं, \"अभी चल रहा है\" में और पूरे ऐप में (Android 13 और नए वर्शन)</string>
-    <string name="quality_ultra_feature_3">रिएक्टिव कवर के साथ बहाव बेस पर उमड़ता है</string>
+    <string name="quality_ultra_feature_3">रिएक्टिव आर्टवर्क स्पीकर का कोन बन जाता है: हर किक पर कवर ख़ुद फूलता और थरथराता है, उस पर लहरें दौड़ती हैं, और हाई-हैट उसकी सतह को झिलमिला देते हैं (Android 13 और बाद में)। बेस के साथ प्रवाह उमड़ता है</string>
     <string name="quality_ultra_feature_4">लाइट फ़ील्ड में रोशनी का पाँचवाँ पुंज</string>
     <string name="quality_ultra_feature_5">सबसे बारीक वेवफ़ॉर्म: 120 बार</string>
     <string name="quality_ultra_feature_6">ट्रैक सूचियों में बड़े कवर</string>

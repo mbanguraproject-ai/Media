@@ -28,7 +28,7 @@ import androidx.compose.ui.res.stringResource
 // ============================================================================
 //  SCRUBBER — the track's real waveform
 //
-//  Not decoration. EnvelopeAnalyzer already computes a 20Hz bass envelope for
+//  Not decoration. EnvelopeAnalyzer already computes a 50Hz bass envelope for
 //  every music file and caches it in Room; BeatPulse already reads it to drive
 //  the artwork. The same curve drawn along the transport is THIS track's actual
 //  shape - loud passages are tall because they are loud.

@@ -76,7 +76,7 @@
     <string name="quality_enhanced_feature_3">Световое поле: три пятна цветов самой обложки плывут по нему на каждом экране</string>
     <string name="quality_enhanced_feature_4">Свет по краям: цвет каждого края обложки разливается за ней</string>
     <string name="quality_enhanced_feature_5">Цвет из обложки: волна, свет вокруг картинки и её тень подходят каждой песне</string>
-    <string name="quality_enhanced_feature_6">Живая обложка: обложка пульсирует, от неё в такт расходятся кольца ударной волны, а фон дышит с басом</string>
+    <string name="quality_enhanced_feature_6">Реактивная обложка: каждая бочка ударяет по обложке, как по диффузору динамика, – она выдаётся вперёд и пружинит обратно, – с каждым ударом от неё расходятся кольца, а фон дышит в такт басу</string>
     <string name="quality_enhanced_feature_7">Текст в фокусе: строки вдали от исполняемой становятся мягче</string>
     <string name="quality_enhanced_feature_8">Более чёткие обложки, волна из 72 полос и мелкое зерно, которое убирает цветовые полосы</string>
     <string name="quality_premium">Premium</string>
@@ -84,7 +84,7 @@
     <string name="quality_premium_feature_1">Всё из «Улучшенного»</string>
     <string name="quality_premium_feature_2">Параллакс с глубиной: обложка наклоняется вместе с телефоном, по ней скользит свет, а фон движется за ней отдельным слоем</string>
     <string name="quality_premium_feature_3">Фон вращается, пока плывёт, здесь и во всём приложении, а в световом поле появляется четвёртое пятно; с живой обложкой пятна в «Сейчас играет» набухают с басом</string>
-    <string name="quality_premium_feature_4">Живая обложка: на сильных ударах по обложке пробегает вспышка света</string>
+    <string name="quality_premium_feature_4">Реактивная обложка слышит всю ударную установку: более сильный толчок и глубокая тень на бочке, вспышка и чёткое кольцо на каждом малом барабане и искры света на хай-хэтах</string>
     <string name="quality_premium_feature_5">Исполняемая строка текста светится</string>
     <string name="quality_premium_feature_6">Максимальная частота обновления экрана, пока открыт «Сейчас играет»</string>
     <string name="quality_premium_feature_7">Обложки в полном разрешении, волна из 96 полос</string>
@@ -92,7 +92,7 @@
     <string name="quality_ultra_goal">Ваша обложка как жидкий свет</string>
     <string name="quality_ultra_feature_1">Всё из Premium</string>
     <string name="quality_ultra_feature_2">Текучая обложка: цвета обложки перетекают друг в друга, как жидкость, в «Сейчас играет» и во всём приложении (Android 13 и новее)</string>
-    <string name="quality_ultra_feature_3">С живой обложкой течение усиливается на басах</string>
+    <string name="quality_ultra_feature_3">Реактивная обложка становится диффузором динамика: на каждой бочке сама обложка выгибается и вибрирует, по ней бегут волны, а хай-хэты заставляют её поверхность мерцать (Android 13 и новее). Поток нарастает вместе с басом</string>
     <string name="quality_ultra_feature_4">Пятое пятно света в световом поле</string>
     <string name="quality_ultra_feature_5">Самая тонкая волна: 120 полос</string>
     <string name="quality_ultra_feature_6">Более крупные обложки в списках треков</string>

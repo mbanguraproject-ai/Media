@@ -74,7 +74,7 @@
     <string name="quality_enhanced_feature_3">A light field: three pools of the cover\'s own colours float across it, on every screen</string>
     <string name="quality_enhanced_feature_4">Edge light: the colour at each edge of the cover spills out behind it</string>
     <string name="quality_enhanced_feature_5">Colour from the cover: the waveform, the light around the art and its shadow match each song</string>
-    <string name="quality_enhanced_feature_6">Reactive artwork: the cover pulses, shockwave rings leave it on the beat, and the backdrop breathes with the bass</string>
+    <string name="quality_enhanced_feature_6">Reactive artwork: every kick drum strikes the cover like a speaker cone - it thumps out and springs back - rings leave it on each hit, and the backdrop breathes with the bass</string>
     <string name="quality_enhanced_feature_7">Lyrics in focus: lines away from the one being sung go soft</string>
     <string name="quality_enhanced_feature_8">Sharper artwork, a 72-bar waveform, and fine grain that stops colour banding</string>
     <string name="quality_premium">Premium</string>
@@ -82,7 +82,7 @@
     <string name="quality_premium_feature_1">Everything in Enhanced</string>
     <string name="quality_premium_feature_2">Parallax with depth: the cover tilts with your phone, light slides across it, and the backdrop moves behind it as its own layer</string>
     <string name="quality_premium_feature_3">The backdrop turns as it drifts, here and across the app, and a fourth pool joins the light field; with Reactive artwork the pools swell on the bass in Now Playing</string>
-    <string name="quality_premium_feature_4">Reactive artwork: a flash of light sweeps the cover on hard hits</string>
+    <string name="quality_premium_feature_4">Reactive artwork hears the whole kit: a harder punch and a deeper shadow on the kick, a flash and a sharp ring on every snare, and glints of light on the hi-hats</string>
     <string name="quality_premium_feature_5">The sung lyric line glows</string>
     <string name="quality_premium_feature_6">Your screen\'s top refresh rate while Now Playing is open</string>
     <string name="quality_premium_feature_7">Full-resolution artwork, a 96-bar waveform</string>
@@ -90,7 +90,7 @@
     <string name="quality_ultra_goal">Your cover as liquid light</string>
     <string name="quality_ultra_feature_1">Everything in Premium</string>
     <string name="quality_ultra_feature_2">Fluid artwork: the cover\'s colours flow into one another like liquid, in Now Playing and across the whole app (Android 13 and later)</string>
-    <string name="quality_ultra_feature_3">With Reactive artwork the flow surges on the bass</string>
+    <string name="quality_ultra_feature_3">Reactive artwork becomes a speaker cone: the cover itself swells and rings on each kick, ripples run out across it, and the hi-hats make its surface shimmer (Android 13 and later). The flow surges on the bass</string>
     <string name="quality_ultra_feature_4">A fifth pool of light in the light field</string>
     <string name="quality_ultra_feature_5">The finest waveform: 120 bars</string>
     <string name="quality_ultra_feature_6">Larger artwork in track lists</string>
