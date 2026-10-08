@@ -73,3 +73,14 @@ jobs:
 
       - name: Check method register counts
         run: python3 tool/tools/dex_registers.py ${{ matrix.dex }} --package com.media.app --top 20
+
+      # R8's map from obfuscated names (com.media.app.o6) back to the real
+      # ones. Play Console crash reports name the obfuscated classes; this
+      # turns them back into a file and a function. Kept 90 days per run.
+      - name: Keep the R8 mapping
+        if: matrix.build == 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: r8-mapping
+          path: src/app/build/outputs/mapping/release/mapping.txt
+          retention-days: 90
