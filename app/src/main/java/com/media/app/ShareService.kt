@@ -167,7 +167,7 @@ class ShareService : Service() {
         val title = state.item?.title ?: getString(R.string.share_name)
         val where = state.active?.name ?: ""
         val builder = NotificationCompat.Builder(this, CHANNEL)
-            .setSmallIcon(R.drawable.ic_launcher_monochrome)
+            .setSmallIcon(R.drawable.ic_stat_via)
             .setContentTitle(title)
             .setContentText(if (where.isEmpty()) "" else getString(R.string.share_playing_on, where))
             .setContentIntent(open)

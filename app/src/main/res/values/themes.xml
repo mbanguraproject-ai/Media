@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Splash: deep ink, the mark, the wordmark. The icon here IS the
-         launcher foreground, so the icon you tap and the one that greets
-         you can never be two different birds. -->
+    <!-- Splash: deep ink, the aperture on its lit disc, the wordmark. Both
+         splash drawables come from tools/make_icon.py, the same geometry as
+         the launcher icon. Here, below Android 12, it is still; values-v31
+         has the animated one, where the iris turns in and opens. -->
     <style name="Theme.Media.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_ink</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
         <!-- Bottom wordmark. API 31+ only: core-splashscreen ignores this on
              older versions, which show the icon alone. Regenerate the PNG with
              tools/make_wordmark.py when the name or version changes. -->

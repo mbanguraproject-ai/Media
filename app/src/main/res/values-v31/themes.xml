@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+: the splash icon animates. The iris starts closed, turns a
+         quarter turn into place and opens onto the play shape over its lit
+         disc (drawable/splash_icon_animated.xml, from tools/make_icon.py).
+         820ms, inside the 850ms MainActivity holds the splash. -->
+    <style name="Theme.Media.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_ink</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon_animated</item>
+        <item name="windowSplashScreenAnimationDuration">820</item>
+        <item name="android:windowSplashScreenBrandingImage">@drawable/splash_branding</item>
+        <item name="postSplashScreenTheme">@style/Theme.Media</item>
+    </style>
+</resources>

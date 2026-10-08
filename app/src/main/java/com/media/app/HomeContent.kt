@@ -35,6 +35,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 
 // Flat solid tile color seeded by title — clean, no gradient noise, no fallback junk.
@@ -84,12 +87,26 @@ fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit, onP
             ),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Image(
-            painter = painterResource(R.drawable.via_mark),
-            // The mark carries the name on its own now, so it has to say so.
-            contentDescription = stringResource(R.string.cd_app_mark),
-            modifier = Modifier.height(54.dp)
-        )
+        // The app's own icon - the aperture tile you tap on the home screen
+        // (tools/make_icon.py) - and the name beside it. The mark and the
+        // name read as one: a single description for both.
+        Row(
+            Modifier.semantics(mergeDescendants = true) {},
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Image(
+                painter = painterResource(R.drawable.via_mark),
+                contentDescription = stringResource(R.string.cd_app_mark),
+                modifier = Modifier.size(34.dp)
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                stringResource(R.string.app_name),
+                style = Typo.Section.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.3).sp),
+                color = MediaColors.Cream,
+                modifier = Modifier.clearAndSetSemantics { }
+            )
+        }
         Spacer(Modifier.weight(1f))
         // Via Pro: an offer for most people, a status for owners (ProBadge,
         // Pro.kt). The badge keeps its size either way, so the header does
