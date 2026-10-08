@@ -380,7 +380,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                     // The track's OWN content uri, never the legacy
                     // content://media/external/audio/albumart path, which
                     // scoped storage broke. ViaBitmapLoader resolves this.
-                    .setArtworkUri(artworkUriFor(item.id, item.uri))
+                    .setArtworkUri(artworkUriFor(item.id, item.uri, artworkKindOf(item)))
                     .build()
             )
             .build()
@@ -389,10 +389,15 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
      * A repaired cover gets its stamp as a query parameter. Media3 keys its
      * bitmap cache on the uri, so an unchanged uri would keep drawing the old
      * cover in the notification; ViaBitmapLoader strips the stamp again.
+     * The kind rides along too, so a cover-less podcast gets the podcast tile
+     * in the notification, as it does in the app.
      */
-    private fun artworkUriFor(id: Long, uri: android.net.Uri): android.net.Uri {
+    private fun artworkUriFor(id: Long, uri: android.net.Uri, kind: ArtworkKind?): android.net.Uri {
         val stamp = ArtworkStore.stamp(id)
-        return if (stamp == 0L) uri else uri.buildUpon().appendQueryParameter("art", stamp.toString()).build()
+        val b = uri.buildUpon()
+        if (stamp != 0L) b.appendQueryParameter("art", stamp.toString())
+        if (kind != null) b.appendQueryParameter(DefaultArtwork.KIND_PARAM, kind.name)
+        return b.build()
     }
 
     /**
@@ -406,7 +411,9 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         val current = c.currentMediaItem ?: return
         val base = current.localConfiguration?.uri ?: return
         if (base.lastPathSegment?.toLongOrNull() != mediaId) return
-        val fresh = artworkUriFor(mediaId, base)
+        val kind = current.mediaMetadata.artworkUri?.getQueryParameter(DefaultArtwork.KIND_PARAM)
+            ?.let { k -> ArtworkKind.entries.firstOrNull { it.name == k } }
+        val fresh = artworkUriFor(mediaId, base, kind)
         if (current.mediaMetadata.artworkUri == fresh) return
         val updated = current.buildUpon()
             .setMediaMetadata(current.mediaMetadata.buildUpon().setArtworkUri(fresh).build())

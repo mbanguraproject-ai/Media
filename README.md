@@ -84,7 +84,7 @@ Online lookups (MusicBrainz, Cover Art Archive, Deezer, Apple's iTunes Search, L
 
 ### Browsing
 - Every set of views or filters is one chip style (`Chips.kt`): Home's Music / Video / Podcasts (with an icon each), Library's Albums / Artists, Playlists' Mine / Smart, the Sound presets and the speed presets. The current one is a filled accent pill, the rest sit on a faint fill with a hairline edge; colours animate, a tap gives press feedback and the touch target is 48dp.
-- Tracks without a cover get default artwork (`Artwork.kt`): a slate tile with a soft glow of the brand teal and a bright mark for what the file is (beamed notes for music, a microphone for podcasts, an open book for audiobooks, a waveform for recordings, a play triangle for video). Same ground and weight for all, so a list of cover-less tracks reads as calm and consistent rather than as empty slots.
+- Tracks without a cover get default artwork (`Artwork.kt`): a slate tile with a soft glow of the brand teal and a mark for what the file is, taken from Google's Material Rounded icons (the single note for music, the podcast mark, an open book for audiobooks, a microphone for recordings, a play triangle for video), the same set the Home chips use, so it stays sharp from a list row to Now Playing. The notification and lock screen get the same tile: `ArtworkBitmap.kt` runs the same drawing onto a bitmap, and the track's kind travels on its artwork uri.
 - Home: editorial feed with a Continue row (real play history, most-recent-first, deduplicated) plus per-pillar shelves.
 - Library: full filterable list (All / Music / Podcasts / Audiobooks / Video).
 - Live search across the whole library.

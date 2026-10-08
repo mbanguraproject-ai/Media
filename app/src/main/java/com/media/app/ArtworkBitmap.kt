@@ -3,18 +3,17 @@ package com.media.app
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.LinearGradient
-import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.RadialGradient
-import android.graphics.RectF
-import android.graphics.Shader
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.util.LruCache
 import android.util.Size
+import androidx.compose.ui.geometry.Size as TileSize
+import androidx.compose.ui.graphics.Canvas
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.media3.common.util.BitmapLoader
 import androidx.media3.common.util.UnstableApi
 import com.google.common.util.concurrent.ListenableFuture
@@ -46,70 +45,38 @@ import java.util.concurrent.Executors
 
 private const val TARGET = 512
 
-/** The Artwork.kt tile, rendered to a Bitmap. Same geometry, same values. */
+/**
+ * The Artwork.kt tile as a Bitmap, for the notification and lock screen. It
+ * runs the very same drawDefaultArtwork on a Compose draw scope over the
+ * bitmap, so the two cannot differ. (Until 5.1 this was a second, hand-copied
+ * drawing, which is how the notification kept the old 4.x note.)
+ */
 object DefaultArtwork {
-    private const val TOP = 0xFF232631.toInt()
-    private const val BOTTOM = 0xFF131419.toInt()
-    private const val SHEEN = 0x12FFFFFF   // white @ 7%
-    private const val MARK = 0x47FFFFFF    // white @ 28%
-    private const val EDGE = 0x0FFFFFFF    // white @ 6%
+    private val tiles = LruCache<String, Bitmap>(6)
 
-    private val tiles = LruCache<String, Bitmap>(4)
-
-    fun render(size: Int = TARGET, isVideo: Boolean = false): Bitmap {
-        val key = "$size/$isVideo"
+    fun render(size: Int = TARGET, kind: ArtworkKind = ArtworkKind.MUSIC): Bitmap {
+        val key = "$size/$kind"
         tiles.get(key)?.let { return it }
-        return draw(size, isVideo).also { tiles.put(key, it) }
+        return draw(size, kind).also { tiles.put(key, it) }
     }
 
-    private fun draw(s: Int, isVideo: Boolean): Bitmap {
+    private fun draw(s: Int, kind: ArtworkKind): Bitmap {
         val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
-        val c = Canvas(bmp)
-        val f = s.toFloat()
-        val p = Paint(Paint.ANTI_ALIAS_FLAG)
-        val cx = f * 0.5f
-        val cy = f * 0.5f
-
-        p.shader = LinearGradient(0f, 0f, f, f, TOP, BOTTOM, Shader.TileMode.CLAMP)
-        c.drawRect(0f, 0f, f, f, p)
-
-        val sr = f * 0.92f
-        p.shader = RadialGradient(f * 0.18f, f * 0.10f, sr, SHEEN, 0x00FFFFFF,
-            Shader.TileMode.CLAMP)
-        c.drawCircle(f * 0.18f, f * 0.10f, sr, p)
-        p.shader = null
-
-        p.color = MARK
-        if (isVideo) {
-            val h = f * 0.30f
-            val w = f * 0.26f
-            val left = cx - w * 0.42f
-            c.drawPath(Path().apply {
-                moveTo(left, cy - h * 0.5f)
-                lineTo(left + w, cy)
-                lineTo(left, cy + h * 0.5f)
-                close()
-            }, p)
-        } else {
-            val headR = f * 0.105f
-            val hx = cx - f * 0.070f
-            val hy = cy + f * 0.150f
-            val stemW = f * 0.030f
-            val stemX = hx + headR - stemW
-            val stemTop = cy - f * 0.205f
-            c.drawCircle(hx, hy, headR, p)
-            c.drawRoundRect(RectF(stemX, stemTop, stemX + stemW, hy),
-                stemW * 0.5f, stemW * 0.5f, p)
-            c.drawRoundRect(RectF(stemX, stemTop, stemX + f * 0.165f, stemTop + f * 0.058f),
-                f * 0.029f, f * 0.029f, p)
+        CanvasDrawScope().draw(
+            Density(1f), LayoutDirection.Ltr, Canvas(bmp.asImageBitmap()), TileSize(s.toFloat(), s.toFloat())
+        ) {
+            drawDefaultArtwork(kind)
         }
-
-        p.color = EDGE
-        p.style = Paint.Style.STROKE
-        p.strokeWidth = (f * 0.006f).coerceAtLeast(1f)
-        c.drawRect(0f, 0f, f, f, p)
         return bmp
     }
+
+    /** The kind PlayerViewModel puts on the artwork uri, else from the mime type. */
+    fun kindOf(uri: Uri, isVideo: Boolean): ArtworkKind =
+        uri.getQueryParameter(KIND_PARAM)?.let { k -> ArtworkKind.entries.firstOrNull { it.name == k } }
+            ?: if (isVideo) ArtworkKind.VIDEO else ArtworkKind.MUSIC
+
+    /** Query parameter on a session artwork uri naming its ArtworkKind. */
+    const val KIND_PARAM = "kind"
 }
 
 /**
@@ -136,7 +103,7 @@ class ViaBitmapLoader(private val context: Context) : BitmapLoader {
     override fun decodeBitmap(data: ByteArray): ListenableFuture<Bitmap> =
         io.submit(Callable {
             BitmapFactory.decodeByteArray(data, 0, data.size)
-                ?: DefaultArtwork.render(isVideo = false)
+                ?: DefaultArtwork.render()
         })
 
     override fun loadBitmap(uri: Uri): ListenableFuture<Bitmap> =
@@ -151,7 +118,8 @@ class ViaBitmapLoader(private val context: Context) : BitmapLoader {
         val isVideo = runCatching {
             context.contentResolver.getType(base)?.startsWith("video") == true
         }.getOrDefault(false)
-        val bmp = repaired(base) ?: embedded(base) ?: thumbnail(base) ?: DefaultArtwork.render(isVideo = isVideo)
+        val bmp = repaired(base) ?: embedded(base) ?: thumbnail(base)
+            ?: DefaultArtwork.render(kind = DefaultArtwork.kindOf(uri, isVideo))
         cache.put(key, bmp)
         return bmp
     }
