@@ -206,7 +206,7 @@ class PlaybackService : MediaSessionService() {
         proScope.cancel()
         loopRunner?.release()
         loopRunner = null
-        proPlayer?.release()
+        proPlayer?.cancelFades()
         proPlayer = null
         runCatching { audioManager().unregisterAudioDeviceCallback(routeWatch) }
         main.removeCallbacksAndMessages(null)

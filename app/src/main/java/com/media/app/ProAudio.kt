@@ -229,7 +229,12 @@ class ProPlayer(
         main.post(step)
     }
 
-    fun release() {
+    /**
+     * Stops a fade in progress and puts its volume back. Not `release()`:
+     * that is Player's own, and the session's release of this wrapper is
+     * what releases the real player.
+     */
+    fun cancelFades() {
         fading?.let { main.removeCallbacks(it) }
         fading = null
         restoreTo?.let { exo.volume = it }
