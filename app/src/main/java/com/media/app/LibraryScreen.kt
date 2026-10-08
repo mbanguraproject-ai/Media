@@ -1,4 +1,7 @@
 package com.media.app
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 
 import androidx.compose.foundation.background
@@ -16,9 +19,9 @@ import androidx.compose.ui.res.stringResource
 // you. Songs, Podcasts, Audiobooks, Recordings and Video all left when the
 // pillar strip landed on Home: the same list in two places is not two
 // features, it is one feature and a decision nobody made.
-private enum class LibTab(val label: Int) {
-    ALBUMS(R.string.label_albums),
-    ARTISTS(R.string.label_artists)
+private enum class LibTab(val label: Int, val icon: ImageVector) {
+    ALBUMS(R.string.label_albums, Icons.Rounded.Album),
+    ARTISTS(R.string.label_artists, Icons.Rounded.Person)
 }
 
 @Composable
@@ -63,7 +66,8 @@ fun LibraryScreen(
 
         TabStrip(
             labels = LibTab.values().map { stringResource(it.label) },
-            selected = LibTab.values().indexOf(tab)
+            selected = LibTab.values().indexOf(tab),
+            icons = LibTab.values().map { it.icon }
         ) { tab = LibTab.values()[it] }
 
         when (tab) {

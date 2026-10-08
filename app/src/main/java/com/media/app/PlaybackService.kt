@@ -4,10 +4,17 @@ import android.content.SharedPreferences
 import android.os.Handler
 import android.os.Looper
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 
@@ -21,6 +28,15 @@ class PlaybackService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null
     private var effects: SoundEffects? = null
+    // Via Pro (ProAudio.kt): the balance/mono processor in the audio chain,
+    // the soft-pause / smart-resume wrapper the session hands out, and the
+    // A-B loop.
+    private val balance = BalanceProcessor()
+    private var proPlayer: ProPlayer? = null
+    private var loopRunner: LoopRunner? = null
+    private val proScope = kotlinx.coroutines.CoroutineScope(
+        kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main.immediate
+    )
     private var soundListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
     private val main = Handler(Looper.getMainLooper())
     // Tag reads for ReplayGain are file I/O; one thread, in order, so a
@@ -52,15 +68,33 @@ class PlaybackService : MediaSessionService() {
         // Decoder fallback: when the first decoder a device offers fails to
         // initialise, try the next one instead of failing the track. Cheap
         // insurance on the odd formats, which is exactly where it happens.
-        val renderers = DefaultRenderersFactory(this)
+        //
+        // The audio sink is built here rather than by the factory's default
+        // so the Pro balance/mono processor sits first in its chain (before
+        // silence skipping and speed).
+        val renderers = object : DefaultRenderersFactory(this) {
+            override fun buildAudioSink(
+                context: android.content.Context,
+                enableFloatOutput: Boolean,
+                enableAudioTrackPlaybackParams: Boolean
+            ): AudioSink = DefaultAudioSink.Builder(context)
+                .setEnableFloatOutput(enableFloatOutput)
+                .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                .setAudioProcessors(arrayOf<AudioProcessor>(balance))
+                .build()
+        }
             .setEnableAudioFloatOutput(true)
             .setEnableDecoderFallback(true)
         val player = ExoPlayer.Builder(this, renderers).build()
+        ProPlayback.load(this)
+        val wrapped = ProPlayer(player, pro = { Pro.active.value }, settings = { ProPlayback.settings.value })
+        proPlayer = wrapped
         // Without this the session uses media3's default loader, which has
         // no fallback: a uri that fails to resolve becomes a blank square.
-        mediaSession = MediaSession.Builder(this, player)
+        mediaSession = MediaSession.Builder(this, wrapped)
             .setBitmapLoader(ViaBitmapLoader(this))
             .build()
+        startPro(player)
 
         // The Sound chain rides on the player's audio session. A new session
         // id (rare: a device route change can cause one) rebuilds it.
@@ -78,6 +112,9 @@ class PlaybackService : MediaSessionService() {
                 // music gets the long one for low-frequency precision.
                 fx.lowLatency = mediaItem?.localConfiguration?.uri?.toString()?.contains("/video/") == true
                 loadGain(player, mediaItem)
+                // A loop belongs to one track.
+                val loop = ProPlayback.loop.value
+                if (loop != null && loop.mediaId != mediaItem?.mediaId) ProPlayback.clearLoop()
             }
         })
         soundListener = SoundEngine.listen(this) {
@@ -89,6 +126,36 @@ class PlaybackService : MediaSessionService() {
             loadGain(player, player.currentMediaItem)
         }
         loadGain(player, player.currentMediaItem)
+    }
+
+    /**
+     * Pro on the player, live: whether this account has Pro, the Pro
+     * settings and the loop each re-apply the moment they change. Started
+     * with the cached entitlement, so playback driven from the notification
+     * before the app has opened is right too.
+     */
+    private fun startPro(player: ExoPlayer) {
+        val runner = LoopRunner(player) { ProPlayback.clearLoop() }
+        loopRunner = runner
+        proScope.launch {
+            val cached = runCatching { SettingsStore.adFreeFlow(this@PlaybackService).first() }.getOrDefault(false)
+            Billing.seed(cached)
+        }
+        proScope.launch {
+            kotlinx.coroutines.flow.combine(Pro.active, ProPlayback.settings) { pro, s -> pro to s }
+                .collect { (pro, s) ->
+                    player.skipSilenceEnabled = pro && s.skipSilence
+                    balance.mono = pro && s.mono
+                    balance.balance = if (pro) s.balance else 0f
+                    val pitch = if (pro) pitchFactor(s.pitch) else 1f
+                    val now = player.playbackParameters
+                    if (now.pitch != pitch) player.playbackParameters = PlaybackParameters(now.speed, pitch)
+                }
+        }
+        proScope.launch {
+            kotlinx.coroutines.flow.combine(Pro.active, ProPlayback.loop) { pro, loop -> if (pro) loop else null }
+                .collect { runner.apply(it) }
+        }
     }
 
     private fun audioManager() = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
@@ -136,6 +203,11 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        proScope.cancel()
+        loopRunner?.release()
+        loopRunner = null
+        proPlayer?.release()
+        proPlayer = null
         runCatching { audioManager().unregisterAudioDeviceCallback(routeWatch) }
         main.removeCallbacksAndMessages(null)
         soundListener?.let { SoundEngine.unlisten(this, it) }

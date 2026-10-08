@@ -597,17 +597,22 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         refresh()
     }
 
-    fun cycleSpeed() {
+    /** Any speed, from the speed sheet: presets for everyone, the fine slider for Pro. */
+    fun setSpeed(speed: Float) {
         val c = controller ?: return
-        val next = when {
-            c.playbackParameters.speed < 1.1f -> 1.25f
-            c.playbackParameters.speed < 1.4f -> 1.5f
-            c.playbackParameters.speed < 1.9f -> 2.0f
-            else -> 1.0f
-        }
-        c.setPlaybackSpeed(next)
+        c.setPlaybackSpeed(speed.coerceIn(SPEED_MIN, SPEED_MAX))
         refresh()
         saveCurrentPosition()   // persist the new speed for this item right away
+    }
+
+    /**
+     * The A-B loop button (Via Pro): marks A where playback is now, then B,
+     * then lets go. Reads the controller's own position rather than the
+     * UI's last tick, so the point lands where the tap was.
+     */
+    fun tapLoop() {
+        val c = controller ?: return
+        ProPlayback.tapLoop(c.currentMediaItem?.mediaId, c.currentPosition)
     }
 
     override fun onCleared() {
@@ -617,3 +622,6 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         super.onCleared()
     }
 }
+
+const val SPEED_MIN = 0.5f
+const val SPEED_MAX = 3.0f

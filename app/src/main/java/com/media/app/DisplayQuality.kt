@@ -228,6 +228,10 @@ data class QualityProfile(
     // densityScale float sounded like a system but produced values like
     // 1.84dp and scaled hairlines along with everything else. These are
     // designed numbers.
+    // 16dp on every tier since 5.1. 4.8 had taken it to 28-32dp, and rows
+    // with that much air each side stopped well short of the screen edge
+    // while every other player runs its lists edge to edge. Tiers still
+    // differ in row height and artwork size.
     val gutter: Dp,                  // the one screen-side padding, app-wide
     val rowPadV: Dp,                 // vertical padding inside a list row
     val rowArt: Dp,                  // artwork size in a list row
@@ -269,7 +273,7 @@ fun profileFor(level: QualityLevel): QualityProfile = when (level) {
         level = level,
         artScale = 1.25f,
         ambientGradient = true, dynamicArtLighting = true,
-        gutter = 28.dp, rowPadV = 12.dp, rowArt = 56.dp, rowArtCorner = 14,
+        gutter = 16.dp, rowPadV = 12.dp, rowArt = 56.dp, rowArtCorner = 14,
         motionScale = 1.10f, springMotion = true,
         waveformBars = 72,
         livingBackdrop = true, backdropDrift = true, backdropTurn = false, fluidFlow = false,
@@ -282,7 +286,7 @@ fun profileFor(level: QualityLevel): QualityProfile = when (level) {
         level = level,
         artScale = 1.50f,
         ambientGradient = true, dynamicArtLighting = true,
-        gutter = 32.dp, rowPadV = 14.dp, rowArt = 60.dp, rowArtCorner = 16,
+        gutter = 16.dp, rowPadV = 14.dp, rowArt = 60.dp, rowArtCorner = 16,
         motionScale = 1.20f, springMotion = true,
         waveformBars = 96,
         livingBackdrop = true, backdropDrift = true, backdropTurn = true, fluidFlow = false,
@@ -295,7 +299,7 @@ fun profileFor(level: QualityLevel): QualityProfile = when (level) {
         level = level,
         artScale = 1.50f,
         ambientGradient = true, dynamicArtLighting = true,
-        gutter = 32.dp, rowPadV = 14.dp, rowArt = 64.dp, rowArtCorner = 18,
+        gutter = 16.dp, rowPadV = 14.dp, rowArt = 64.dp, rowArtCorner = 18,
         motionScale = 1.20f, springMotion = true,
         waveformBars = 120,
         livingBackdrop = true, backdropDrift = true, backdropTurn = true, fluidFlow = true,

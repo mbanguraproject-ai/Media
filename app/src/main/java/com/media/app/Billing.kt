@@ -8,7 +8,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 // ============================================================================
-//  BILLING — one-time "remove ads" purchase
+//  BILLING — Via Pro, one-time purchase (product id "remove_ads", kept from
+//  when the purchase only removed ads: ids cannot be renamed, and keeping it
+//  makes everyone who already paid Pro on update)
 //
 //  Non-consumable INAPP product. Three things here are not optional and are
 //  where most implementations go wrong:
@@ -40,14 +42,26 @@ object Billing {
     val product: StateFlow<ProductDetails?> = _product.asStateFlow()
 
     private var client: BillingClient? = null
+    private var onChanged: (Boolean) -> Unit = {}
 
-    /** Seeds from the cached flag so the first frame is already correct. */
+    /** True once Play itself has said whether this account owns it. */
+    @Volatile private var confirmed = false
+
+    /**
+     * The cached flag, used until Play answers - both ways. It used to only
+     * ever turn the entitlement on, and the app seeds `true` for its first
+     * frame so no ad can flash; on a phone where Play never answered (no
+     * Play Store, billing unavailable) that `true` simply stayed, and with
+     * Pro features behind it that would be Pro for nothing. Once Play has
+     * answered, only Play decides.
+     */
     fun seed(cached: Boolean) {
-        if (cached) _adFree.value = true
+        if (!confirmed) _adFree.value = cached
     }
 
     fun start(context: Context, onEntitlementChanged: (Boolean) -> Unit) {
         if (client?.isReady == true) return
+        onChanged = onEntitlementChanged
 
         val listener = PurchasesUpdatedListener { result, purchases ->
             if (result.responseCode == BillingClient.BillingResponseCode.OK && purchases != null) {
@@ -104,6 +118,7 @@ object Billing {
             .setProductType(BillingClient.ProductType.INAPP).build()
         c.queryPurchasesAsync(params) { result, purchases ->
             if (result.responseCode != BillingClient.BillingResponseCode.OK) return@queryPurchasesAsync
+            confirmed = true
             val owned = purchases.any {
                 it.products.contains(REMOVE_ADS_ID) &&
                     it.purchaseState == Purchase.PurchaseState.PURCHASED
@@ -128,10 +143,17 @@ object Billing {
                 .setPurchaseToken(purchase.purchaseToken).build()
             client?.acknowledgePurchase(params) { /* retried next launch on failure */ }
         }
+        confirmed = true
         if (!_adFree.value) {
             _adFree.value = true
             onEntitlementChanged(true)
         }
+    }
+
+    /** Asks Play again who owns what: the Pro page's Restore button. */
+    fun restoreNow() {
+        val c = client ?: return
+        if (c.isReady) restore(c, onChanged)
     }
 
     fun purchase(activity: Activity) {

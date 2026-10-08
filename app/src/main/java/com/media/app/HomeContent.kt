@@ -1,5 +1,11 @@
 package com.media.app
 
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.AutoStories
+import androidx.compose.material.icons.rounded.Podcasts
+import androidx.compose.material.icons.rounded.SmartDisplay
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -67,7 +73,7 @@ private val HeaderTouchInset = (HeaderTouch - HeaderGlyph) / 2
 private val SearchGlyphRightGap = HeaderGlyph * (3.51f / 24f)
 
 @Composable
-fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit) {
+fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit, onPro: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -85,6 +91,22 @@ fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit) {
             modifier = Modifier.height(54.dp)
         )
         Spacer(Modifier.weight(1f))
+        // Via Pro. The same gold crown for everyone - for most people it is
+        // the way to the Pro page, for owners it is the badge - so the header
+        // does not change shape on purchase. Same 48dp touch as its neighbours.
+        val pro = isPro()
+        Box(
+            Modifier
+                .size(HeaderTouch)
+                .clip(CircleShape)
+                .pressScale(haptic = true, onClick = onPro),
+            contentAlignment = Alignment.Center
+        ) {
+            ProCrown(
+                size = HeaderGlyph + 2.dp, lit = true,
+                description = stringResource(if (pro) R.string.pro_active_title else R.string.pro_get)
+            )
+        }
         // Lit while something is playing elsewhere. A cast control that looks
         // the same connected and disconnected is the reason people cannot
         // tell why their phone is silent.
@@ -120,9 +142,9 @@ fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit) {
 // is no strip at all: a phone with no podcasts should never see the word
 // Podcasts, and a music-only library should not carry a row with one item.
 //
-// The underline is drawn rather than laid out. A Box sized to the label needs
-// an intrinsic measurement, and intrinsics inside a scrollable row are how you
-// get a crash on the one device with a long language and a large font scale.
+// Chips size to their own text, with no intrinsic measurement: intrinsics
+// inside a scrollable row are how you get a crash on the one device with a
+// long language and a large font scale.
 // Each pillar's tab name and the plural for its count ("12 episodes"),
 // as resources: both follow the app's language.
 private val PillarNames = mapOf(
@@ -137,58 +159,45 @@ private val PillarNames = mapOf(
 fun pillarLabel(p: Pillar): String = stringResource(PillarNames[p]?.first ?: R.string.pillar_music)
 fun pillarCountRes(p: Pillar): Int = PillarNames[p]?.second ?: R.plurals.count_tracks
 
+/** Each pillar's mark on its chip. */
+fun pillarIcon(p: Pillar): ImageVector = when (p) {
+    Pillar.MUSIC -> Icons.Rounded.MusicNote
+    Pillar.VIDEO -> Icons.Rounded.SmartDisplay
+    Pillar.PODCAST -> Icons.Rounded.Podcasts
+    Pillar.AUDIOBOOK -> Icons.Rounded.AutoStories
+    Pillar.RECORDING -> Icons.Rounded.Mic
+}
+
 @Composable
 fun PillarStrip(available: List<Pillar>, current: Pillar, onPick: (Pillar) -> Unit) {
     // One item is not a choice, and a row with one word in it reads as a
     // heading nobody can act on.
     if (available.size < 2) return
-    TabStrip(available.map { pillarLabel(it) }, available.indexOf(current)) {
-        onPick(available[it])
-    }
+    TabStrip(
+        labels = available.map { pillarLabel(it) },
+        selected = available.indexOf(current),
+        icons = available.map { pillarIcon(it) }
+    ) { onPick(available[it]) }
 }
 
 /**
- * The app's ONE way of showing a set of views and which is current.
- *
- * Library used to do this with a filled pill - white when selected - which
- * made the loudest object on the screen a tab label, and put white somewhere
- * other than the play button, which is the only thing allowed to have it.
+ * A set of views and which is current, as chips (Chips.kt). [icons] is
+ * optional, matched to labels by position.
  */
 @Composable
-fun TabStrip(labels: List<String>, selected: Int, onPick: (Int) -> Unit) {
-    val accent = MediaColors.Accent
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = Space.xl),
-        horizontalArrangement = Arrangement.spacedBy(Space.lg),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        labels.forEachIndexed { index, label ->
-            val isOn = index == selected
-            Text(
-                label,
-                style = Typo.Primary,
-                color = if (isOn) MediaColors.Cream else MediaColors.CreamFaint,
-                maxLines = 1,
-                modifier = Modifier
-                    .clickable { onPick(index) }
-                    .drawBehind {
-                        if (isOn) {
-                            val t = 2.dp.toPx()
-                            drawRoundRect(
-                                color = accent,
-                                topLeft = Offset(0f, size.height - t),
-                                size = Size(size.width, t),
-                                cornerRadius = CornerRadius(t / 2f)
-                            )
-                        }
-                    }
-                    .padding(top = Space.xs, bottom = Space.sm)
-            )
-        }
-    }
+fun TabStrip(
+    labels: List<String>,
+    selected: Int,
+    icons: List<ImageVector?> = emptyList(),
+    onPick: (Int) -> Unit
+) {
+    ChipRow(
+        labels = labels,
+        selected = selected,
+        icons = icons,
+        modifier = Modifier.padding(top = Space.xs, bottom = Space.xs),
+        onPick = onPick
+    )
 }
 
 // ------------------------------------------------------------------ RESUME

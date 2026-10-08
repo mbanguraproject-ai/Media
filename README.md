@@ -23,11 +23,27 @@ It plays them with a proper background service (lock-screen and notification con
 
 ### Playback
 - Native background playback via Media3 `MediaSessionService` — audio continues when the app is closed, with notification and lock-screen controls.
-- Editorial now-playing screen: art-forward layout, scrubber with time labels, and shuffle / repeat / playback-speed controls (1x, 1.25x, 1.5x, 2x).
+- Editorial now-playing screen: art-forward layout, scrubber with time labels, and shuffle / repeat / A-B loop / speed / sleep controls. Speed opens a sheet with 0.75x, 1x, 1.25x, 1.5x and 2x for everyone; Via Pro adds a fine slider and pitch (below).
 - Notification and lock-screen artwork tracks the current song (via MediaStore album-art URIs).
 - Synced play/pause state across cards, mini-player, and the full player.
 - The mini-player is near-black glass: a hair off black with a whisper of the cover's colour, a hairline edge and a faint top light. Its progress line has no grey track behind it.
 - Mini-player gestures: swipe left for the next song, right for the previous song, down to stop playback and close it, up (or tap) to open Now Playing. The pill follows the finger, so it shows what letting go will do. Its artwork and play control sit at mirrored insets.
+
+### Via Pro (5.1)
+One payment, kept for good, at the price set in the Play Console (shown from Play, in the buyer's currency; never written in the app). Pro is the Play product `remove_ads`: a product id can never be renamed, and keeping it means everyone who bought ad removal is Pro on update with nothing to restore. `Billing.kt` stays the source of truth: purchases are acknowledged, restored on every launch and revoked on a refund. The cached flag only stands in until Play answers; once Play has answered, only Play decides, so a phone where Play never answers cannot keep Pro from a stale cache.
+
+- **Where it shows:** a gold crown in the Home header (the way in for everyone, the badge for owners), a Via Pro row in Settings, and every locked control: tapping one opens the Pro page instead of doing nothing.
+- **The Pro page** (`ProScreen.kt`): Free and Pro side by side, the buy button with Play's price, "One payment. No subscription.", and Restore purchase, which asks Play again.
+- **What Pro adds** (`ProAudio.kt`, all inside the player in `PlaybackService`, so it works from the notification, lock screen and Bluetooth buttons too):
+  - *A-B loop:* the A-B button on Now Playing marks A, then B, then lets go. A `PlayerMessage` at B is delivered by the player's own clock every time playback reaches B, so there is no polling and no drift. Repeats: endless, 3, 5 or 10, then playback moves on. The section shows on the scrubber; changing track ends the loop.
+  - *Fine speed and pitch:* 0.5x to 3x in 0.05 steps, and pitch from -6 to +6 semitones independent of speed (slow a song down and keep its key).
+  - *Skip silence*, Media3's silence skipping.
+  - *Smart resume:* a recording longer than ten minutes, resumed after a pause of 30 seconds or more, steps back 5 seconds (10 after five minutes, 15 after an hour).
+  - *Soft play and pause:* the session's player is wrapped (`ProPlayer`), so a pause fades out over 200ms and a play fades in over 260ms; the volume is put back exactly, so the sleep timer's own fade is undisturbed.
+  - *Mono and balance:* an audio processor first in the player's chain mixes the channels per sample (16-bit and float stereo), live, with no restart.
+  - No ads anywhere, and the crown.
+- **Where Pro playback stops:** high-resolution files go to the float output untouched, and Media3 runs no audio processors on that path, so mono, balance and skip silence leave them alone; the Sound screen says so.
+- The Pro settings live on the Sound screen (Pro playback) and in the speed sheet; free users see them with every switch off, and a tap opens the Pro page.
 
 ### Artwork repair (4.0)
 - Every cover is graded: missing, low resolution (under 300px), or a blank placeholder.
@@ -63,16 +79,19 @@ Online lookups (MusicBrainz, Cover Art Archive, Deezer, Apple's iTunes Search, L
 
 ### Organization
 - Automatic classification of audio into pillars via a cascade: folder (Audiobooks/Podcasts/Music) → filename contains "podcast" → duration over 10 minutes = podcast, else music.
+- Library scan on Android 8 and 9 reads each file's folder from its path. MediaStore's `RELATIVE_PATH` column only exists from Android 10, and asking for it on older versions threw `SQLiteException: no such column` and crashed the scan (4.9, decoded from the release's R8 mapping).
 - Manual override: long-press any item to rename, set artist/host/author (field adapts to pillar), add optional details, and move it between Music / Podcasts / Audiobook. Overrides beat the automatic rules and persist across sessions and app updates (real DB migrations, no data loss). "Reset to automatic" clears an override.
 
 ### Browsing
+- Every set of views or filters is one chip style (`Chips.kt`): Home's Music / Video / Podcasts (with an icon each), Library's Albums / Artists, Playlists' Mine / Smart, the Sound presets and the speed presets. The current one is a filled accent pill, the rest sit on a faint fill with a hairline edge; colours animate, a tap gives press feedback and the touch target is 48dp.
+- Tracks without a cover get default artwork (`Artwork.kt`): a slate tile with a soft glow of the brand teal and a bright mark for what the file is (beamed notes for music, a microphone for podcasts, an open book for audiobooks, a waveform for recordings, a play triangle for video). Same ground and weight for all, so a list of cover-less tracks reads as calm and consistent rather than as empty slots.
 - Home: editorial feed with a Continue row (real play history, most-recent-first, deduplicated) plus per-pillar shelves.
 - Library: full filterable list (All / Music / Podcasts / Audiobooks / Video).
 - Live search across the whole library.
 - Dedicated Podcasts and Audiobooks tabs.
 
 ### Display quality (Auto / Enhanced / Premium / Ultra)
-Each tier is a complete design (gutters, artwork resolution, motion) plus a visual engine (`Backdrop.kt`, `CoverLight.kt`, `FluidLight.kt`). Auto picks the highest tier the device's RAM, CPU and panel support. In 4.8 every tier moved up one: the old Premium is now Enhanced, the old Ultra is now Premium, and Ultra is new.
+Each tier is a complete design (artwork resolution, motion) plus a visual engine (`Backdrop.kt`, `CoverLight.kt`, `FluidLight.kt`). Auto picks the highest tier the device's RAM, CPU and panel support. In 4.8 every tier moved up one: the old Premium is now Enhanced, the old Ultra is now Premium, and Ultra is new. The side gutter is 16dp on every tier since 5.1 (it was 20-24dp), so lists and artwork run close to the screen edges.
 - **Every tier:** colour from the cover. A Palette pass, tuned for a dark room, gives an accent (waveform, rings, lyric glow), a glow colour (the cover's coloured shadow) and up to four deep tones. Fine grain is overlaid on the backdrop to break 8-bit banding.
 - **Cover light** (`CoverLight.kt`), every tier. Made once per song on a background thread and cached, shared by Now Playing and the rest of the app:
   - *Smooth backdrop:* the cover reduced to 20px (its colour, none of its detail), brought up to 128px and box-blurred three times. Stretched across the screen it is smooth light. The 20px texture stretched directly showed its pixels as soft steps (a circle came out an octagon), which the old per-frame 24–32dp blur never fully removed and Android 11 and below never blurred at all. The per-frame blur is gone.
@@ -108,7 +127,7 @@ Each tier is a complete design (gutters, artwork resolution, motion) plus a visu
 - Every language ships in the base APK (`bundle.language.enableSplit = false`). Play would otherwise install only the phone's own languages from the bundle, and a language picked in the app would have nothing to switch to.
 
 ### Privacy
-The app collects nothing itself: no accounts, no analytics. Settings → Privacy has "Ad privacy choices" wherever Google's consent SDK says the law requires it (EEA, UK, Switzerland, and the US states configured in AdMob): Google's own form, to change or withdraw consent or opt out of sale/sharing. It also links to Android's advertising-ID settings and the privacy policy. All edits, history, and preferences stay in the app's private storage. The free version shows one adaptive banner in Settings from Google AdMob, requested only after Google's consent flow says ads may be requested (UMP `canRequestAds()`), sized to the card it sits in so it is never cropped, and paused with the app. A one-time purchase removes it. Policy source: `docs/privacy.html`; the app links to https://mebs.app/privacy/aura.
+The app collects nothing itself: no accounts, no analytics. Settings → Privacy has "Ad privacy choices" wherever Google's consent SDK says the law requires it (EEA, UK, Switzerland, and the US states configured in AdMob): Google's own form, to change or withdraw consent or opt out of sale/sharing. It also links to Android's advertising-ID settings and the privacy policy. All edits, history, and preferences stay in the app's private storage. The free version shows one adaptive banner in Settings from Google AdMob, requested only after Google's consent flow says ads may be requested (UMP `canRequestAds()`), sized to the card it sits in so it is never cropped, and paused with the app. Via Pro, a one-time purchase, removes it. Policy source: `docs/privacy.html`; the app links to https://mebs.app/privacy/aura.
 
 ---
 
@@ -160,6 +179,11 @@ The `Release check` GitHub workflow builds both release (R8) and debug on
 every push and runs this check on each. Run by hand (Actions, Release check,
 Run workflow) it takes a commit to build, so any older version can be checked.
 
+Each release build's R8 mapping is kept as a workflow artifact for 90 days.
+A Play Console crash from a minified build names obfuscated classes
+(`com.media.app.o6`); run the workflow by hand on that version's commit with
+those names in `decode`, and the log prints what each one is in the source.
+
 ### Translations
 
 English is `res/values/strings.xml`; each language is `res/values-xx/strings.xml` (`values-in` is Indonesian, Android's legacy code for it, and `values-pt` is Brazilian Portuguese). `tools/check_translations.py` checks every language against English: every string and plural present and nothing extra, exactly the same format placeholders, the plural forms each language's rules use, and escaping. It exits 1 on any problem:
@@ -175,6 +199,7 @@ The `Release check` workflow runs it on every push.
 - Notification artwork tracks the song correctly on standard Android and Samsung; some OEM skins (e.g. Tecno/HiOS) cache the notification bitmap and may not refresh per song — device-side behavior outside the app's control.
 - Podcasts/audiobooks are local-first (classified from on-device audio), not an online RSS client.
 - Video notification artwork is not yet handled like audio album art.
+- Via Pro's mono, balance and skip silence do not act on high-resolution files (see Via Pro).
 - Right-to-left languages (Arabic, Hebrew, Persian, Urdu) are not shipped: the layouts have not been mirrored and checked.
 
 ---

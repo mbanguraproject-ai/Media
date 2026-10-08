@@ -190,29 +190,20 @@ fun SettingsScreen(
             }
         }
 
-        // Price comes from Play, never hardcoded - it is localised and can
-        // change without a release.
-        val adFree by Billing.adFree.collectAsState()
+        // Via Pro. Always here, owned or not: owners come back to see what
+        // they have, and the Pro page holds the price (Play's, localised),
+        // the comparison and Restore.
+        val pro = isPro()
+        val openPro = LocalOpenPro.current
         val product by Billing.product.collectAsState()
         val price = product?.oneTimePurchaseOfferDetails?.formattedPrice
-        if (adFree) {
-            SectionLabel(stringResource(R.string.settings_supporter))
-            SettingRow(
-                Icons.Outlined.Favorite, stringResource(R.string.settings_thank_you), null,
-                subtitle = stringResource(R.string.settings_ads_off), navigates = false
-            ) {}
-        } else if (price != null) {
-            SectionLabel(stringResource(R.string.settings_support))
-            // Framed as backing the app rather than buying an annoyance away:
-            // one card in a feed is a weak thing to charge for, and the ask
-            // reads better as support with ad removal as the thank-you.
-            SettingRow(
-                Icons.Outlined.Favorite, stringResource(R.string.settings_support_via), price,
-                subtitle = stringResource(R.string.settings_support_sub)
-            ) {
-                (context as? android.app.Activity)?.let { Billing.purchase(it) }
-            }
-        }
+        SectionLabel(stringResource(R.string.pro_section))
+        SettingRow(
+            Icons.Outlined.WorkspacePremium,
+            stringResource(if (pro) R.string.pro_active_title else R.string.pro_get),
+            if (pro) null else price,
+            subtitle = stringResource(if (pro) R.string.pro_settings_active_sub else R.string.pro_settings_sub)
+        ) { openPro() }
 
         // The privacy policy promises that consent "can be changed later in
         // the app's settings". This is that place. The consent row appears

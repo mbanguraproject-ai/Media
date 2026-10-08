@@ -3,6 +3,7 @@ package com.media.app
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.os.Build
 import android.provider.MediaStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -250,12 +251,21 @@ object MediaRepository {
 
     private fun queryAudio(context: Context): List<AppMediaItem> {
         val items = mutableListOf<AppMediaItem>()
+        // RELATIVE_PATH arrived in Android 10. Asked for on Android 8 or 9 it
+        // is not an empty column but an error - MediaProvider answers "no
+        // such column: relative_path" - and the whole library query throws.
+        // That was the 4.9 crash (SQLiteException, Sony Xperia, Android 8):
+        // no library at all below Android 10. There the same folder is read
+        // from the file's absolute path, which those versions do have.
+        val hasRelativePath = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+        @Suppress("DEPRECATION")
+        val folderColumn = if (hasRelativePath) MediaStore.Audio.Media.RELATIVE_PATH else MediaStore.Audio.Media.DATA
         val projection = arrayOf(
             MediaStore.Audio.Media._ID,
             MediaStore.Audio.Media.TITLE,
             MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.DURATION,
-            MediaStore.Audio.Media.RELATIVE_PATH,
+            folderColumn,
             MediaStore.Audio.Media.ALBUM_ID,
             MediaStore.Audio.Media.ALBUM,
             MediaStore.Audio.Media.ARTIST_ID,
@@ -273,7 +283,7 @@ object MediaRepository {
             val titleCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
             val artistCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
             val durCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
-            val pathCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.RELATIVE_PATH)
+            val pathCol = c.getColumnIndexOrThrow(folderColumn)
             val albumCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
             val albumNameCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
             val artistIdCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST_ID)
@@ -287,7 +297,7 @@ object MediaRepository {
                 val id = c.getLong(idCol)
                 val title = normalizeTitle(c.getString(titleCol))
                 val dur = c.getLong(durCol)
-                val relPath = c.getString(pathCol) ?: ""
+                val relPath = if (hasRelativePath) c.getString(pathCol) ?: "" else relativePathOf(c.getString(pathCol))
                 val albumId = c.getLong(albumCol)
                 val artUri = android.content.ContentUris.withAppendedId(albumArtBase, albumId)
                 // MediaStore TRACK encodes disc*1000 + track; we only want track.
@@ -475,4 +485,21 @@ object MediaRepository {
         }
         return items
     }
+}
+
+// /storage/emulated/0, /storage/1A2B-3C4D (a card), /sdcard and the like:
+// the root of the volume a file sits on, which RELATIVE_PATH is measured from.
+private val VOLUME_ROOT = Regex("^/(?:storage/emulated/\\d+|storage/[^/]+|sdcard|mnt/sdcard|mnt/media_rw/[^/]+)(?=/|$)")
+
+/**
+ * RELATIVE_PATH as Android 10 reports it - the file's folder from the root of
+ * its volume, with a trailing slash ("Music/Podcasts/") - worked out from an
+ * absolute path, for Android 9 and below where the column does not exist.
+ */
+internal fun relativePathOf(absolute: String?): String {
+    if (absolute.isNullOrBlank()) return ""
+    val folder = absolute.substringBeforeLast('/', "")
+    val root = VOLUME_ROOT.find(folder)
+    val rest = (if (root != null) folder.substring(root.range.last + 1) else folder).trim('/')
+    return if (rest.isEmpty()) "" else "$rest/"
 }

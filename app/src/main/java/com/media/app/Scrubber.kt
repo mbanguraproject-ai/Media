@@ -65,6 +65,7 @@ private val BarMin = 3.dp        // silence is still a visible line
 private val BarMax = 34.dp
 private val PlainTrack = 4.dp
 private val Inset = 6.dp
+private val LoopMark = 2.dp
 private val HeadWidth = 2.5.dp
 private val PlainHeadHeight = 16.dp
 
@@ -105,6 +106,9 @@ fun Scrubber(
     activeColor: Color = MediaColors.Accent,
     inactiveColor: Color = MediaColors.InkHairline,
     thumbColor: Color = MediaColors.Cream,
+    // A Via Pro A-B loop on this track: A, and B once it is set (else -1).
+    loopAMs: Long = -1L,
+    loopBMs: Long = -1L,
     onInteract: () -> Unit = {}
 ) {
     val reduced = LocalReducedMotion.current
@@ -172,6 +176,29 @@ fun Scrubber(
             // Read inside draw: level changes 60x a second, so reading it in
             // composition would recompose the whole player every frame.
             val lv = beat?.level ?: 0f
+
+            // The loop, under everything: a soft band from A to B, and a
+            // hairline at each end. With only A set, just A's line.
+            if (loopAMs >= 0L && durationMs > 0L) {
+                val ax = insetPx + span * (loopAMs.toFloat() / durationMs).coerceIn(0f, 1f)
+                val bx = if (loopBMs > loopAMs) insetPx + span * (loopBMs.toFloat() / durationMs).coerceIn(0f, 1f) else -1f
+                val top = cy - size.height * 0.42f
+                val bandH = size.height * 0.84f
+                if (bx > ax) {
+                    drawRoundRect(
+                        color = activeColor.copy(alpha = 0.16f),
+                        topLeft = Offset(ax, top), size = Size(bx - ax, bandH),
+                        cornerRadius = CornerRadius(LoopMark.toPx() * 2f)
+                    )
+                }
+                for (x in listOf(ax, bx)) if (x >= 0f) {
+                    drawRoundRect(
+                        color = activeColor,
+                        topLeft = Offset(x - LoopMark.toPx() / 2f, top), size = Size(LoopMark.toPx(), bandH),
+                        cornerRadius = CornerRadius(LoopMark.toPx() / 2f)
+                    )
+                }
+            }
 
             if (bars != null && bars.isNotEmpty()) {
                 val n = bars.size

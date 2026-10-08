@@ -485,13 +485,15 @@ class HomeNav {
     var artworkItem by mutableStateOf<AppMediaItem?>(null)
     var showAudioPath by mutableStateOf(false)
     var showSound by mutableStateOf(false)
+    // The Via Pro page. Topmost of all: a locked control anywhere opens it.
+    var showPro by mutableStateOf(false)
     var homePillar by mutableStateOf(Pillar.MUSIC)
     var adsReady by mutableStateOf(false)
     var playerHidden by mutableStateOf(false)
     var playerWasOpen by mutableStateOf(false)
 
     val anyOverlay: Boolean
-        get() = showSound || artworkItem != null || detailsItem != null || showAudioPath ||
+        get() = showPro || showSound || artworkItem != null || detailsItem != null || showAudioPath ||
             addToItem != null || editItem != null || showTerms || showAbout ||
             showPlayer || showSearch || showSettings || openPlaylist != null ||
             showPlaylists || openAlbum != null || openArtist != null || showLibrary ||
@@ -504,6 +506,7 @@ class HomeNav {
     // also resets currentTab so the nav highlight doesn't lie.
     fun back() {
         when {
+            showPro -> showPro = false
             showSound -> showSound = false
             artworkItem != null -> artworkItem = null
             detailsItem != null -> detailsItem = null
@@ -831,7 +834,8 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // bottom nav sit at the end so they PERSIST above every screen. The parts
     // are drawn in exactly the order they were when they were all inline.
     // Every screen in here draws the room's light behind it.
-    CompositionLocalProvider(LocalAppAmbient provides ambient) {
+    val openPro = remember(nav) { { nav.showPro = true } }
+    CompositionLocalProvider(LocalAppAmbient provides ambient, LocalOpenPro provides openPro) {
         Box(Modifier.fillMaxSize()) {
             HomeFeed(
                 nav = nav, lib = lib, state = state, vm = vm, db = db, scope = scope,
@@ -911,7 +915,8 @@ private fun HomeFeed(
             StashHeader(
                 onSearch = { nav.showSearch = true },
                 sharing = sharing,
-                onShare = { nav.showShare = true }
+                onShare = { nav.showShare = true },
+                onPro = { nav.showPro = true }
             )
 
             PillarStrip(pillars, nav.homePillar) { nav.homePillar = it }
@@ -1528,6 +1533,9 @@ private fun HomeSheets(
     }
     if (nav.showSound) {
         SoundScreen(onClose = { nav.showSound = false })
+    }
+    if (nav.showPro) {
+        ProScreen(onClose = { nav.showPro = false })
     }
 }
 

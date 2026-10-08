@@ -177,6 +177,8 @@ fun SoundScreen(onClose: () -> Unit) {
             }
         )
 
+        ProPlaybackSection()
+
         Box(Modifier.fillMaxWidth().padding(Space.xl, Space.lg), contentAlignment = Alignment.CenterStart) {
             Text(stringResource(R.string.sound_reset_flat), style = Typo.Label, color = MediaColors.CreamDim,
                 modifier = Modifier.pressScale(haptic = true) { update(SoundSettings()) })
@@ -184,6 +186,68 @@ fun SoundScreen(onClose: () -> Unit) {
         Spacer(Modifier.height(bottomSafePadding(gap = 100.dp)))
     }
 }
+
+/**
+ * Via Pro's playback settings. Shown to everyone with the real controls: for
+ * free users every switch reads off and a tap opens the Pro page, so the
+ * section says exactly what Pro would change here.
+ */
+@Composable
+private fun ProPlaybackSection() {
+    val context = LocalContext.current
+    val pro = isPro()
+    val openPro = LocalOpenPro.current
+    val p by ProPlayback.settings.collectAsState()
+    fun set(change: (ProSettings) -> ProSettings) {
+        if (pro) ProPlayback.update(context, change) else openPro()
+    }
+
+    Row(
+        Modifier.fillMaxWidth().padding(Space.xl, Space.xl, Space.xl, Space.sm),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(stringResource(R.string.pro_playback).uppercase(), style = Typo.Micro, color = MediaColors.CreamDim)
+        Spacer(Modifier.width(Space.sm))
+        ProCrown(14.dp, lit = true)
+    }
+    if (!pro) ProLockedRow(stringResource(R.string.pro_playback_locked), onClick = openPro)
+    Toggle(stringResource(R.string.pro_skip_silence), stringResource(R.string.pro_skip_silence_sub), pro && p.skipSilence) { v -> set { it.copy(skipSilence = v) } }
+    Toggle(stringResource(R.string.pro_resume), stringResource(R.string.pro_resume_sub), pro && p.smartResume) { v -> set { it.copy(smartResume = v) } }
+    Toggle(stringResource(R.string.pro_soft), stringResource(R.string.pro_soft_sub), pro && p.softPause) { v -> set { it.copy(softPause = v) } }
+    Toggle(stringResource(R.string.pro_mono), stringResource(R.string.pro_mono_sub), pro && p.mono) { v -> set { it.copy(mono = v) } }
+    val bal = if (pro) p.balance else 0f
+    val pct = (kotlin.math.abs(bal) * 100f).roundToInt()
+    SliderRow(
+        label = stringResource(R.string.pro_balance), value = bal, range = -1f..1f,
+        readout = when {
+            pct == 0 -> stringResource(R.string.pro_balance_centre)
+            bal < 0f -> stringResource(R.string.pro_balance_left, pct)
+            else -> stringResource(R.string.pro_balance_right, pct)
+        },
+        enabled = true
+    ) { v ->
+        // Snaps to centre near the middle, so centre is easy to find again.
+        val snapped = if (kotlin.math.abs(v) < 0.04f) 0f else (v * 20f).roundToInt() / 20f
+        set { it.copy(balance = snapped) }
+    }
+    Column(Modifier.fillMaxWidth().padding(Space.xl, Space.md)) {
+        Text(stringResource(R.string.pro_loop_repeats), style = Typo.Body, color = MediaColors.Cream)
+        Text(stringResource(R.string.pro_loop_repeats_sub), style = Typo.Tertiary, color = MediaColors.CreamFaint)
+        Spacer(Modifier.height(Space.sm))
+        Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
+            LoopRepeatChoices.forEach { n ->
+                Chip(
+                    if (n == 0) stringResource(R.string.pro_loop_endless) else stringResource(R.string.pro_loop_times, n),
+                    selected = pro && p.loopRepeats == n,
+                    modifier = Modifier.weight(1f)
+                ) { set { it.copy(loopRepeats = n) } }
+            }
+        }
+    }
+    Note(stringResource(R.string.pro_hires_note))
+}
+
+private val LoopRepeatChoices = listOf(0, 3, 5, 10)
 
 @Composable
 private fun Section(text: String) {
@@ -221,19 +285,10 @@ private fun Toggle(title: String, subtitle: String, checked: Boolean, enabled: B
     }
 }
 
+// The shared chip (Chips.kt), so presets look like every other choice.
 @Composable
-private fun Chip(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Box(
-        modifier.clip(RoundedCornerShape(10.dp))
-            .background(if (selected) MediaColors.Accent else MediaColors.Elevated)
-            .border(0.5.dp, if (selected) MediaColors.Accent else MediaColors.InkHairline, RoundedCornerShape(10.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = Space.md, vertical = 10.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(label, style = Typo.Label, color = if (selected) MediaColors.OnAccent else MediaColors.CreamDim)
-    }
-}
+private fun Chip(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) =
+    ViaChip(label = label, selected = selected, modifier = modifier, onClick = onClick)
 
 @Composable
 private fun SliderRow(

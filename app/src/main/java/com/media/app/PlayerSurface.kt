@@ -135,6 +135,7 @@ fun PlayerSurface(
         Animatable(if (expanded) 1f else 0f).apply { updateBounds(0f, 1f) }
     }
     var showSleepSheet by remember { mutableStateOf(false) }
+    var showSpeedSheet by remember { mutableStateOf(false) }
     // Lyrics take the artwork's place rather than opening a new screen: the
     // words belong with the music, and the transport stays under the thumb.
     var showLyrics by remember { mutableStateOf(false) }
@@ -393,7 +394,8 @@ fun PlayerSurface(
                     isFavorite = isFavorite, onToggleFavorite = onToggleFavorite,
                     onOpenAudioPath = onOpenAudioPath,
                     envelope = envelope, beat = beat, npAccent = npAccent,
-                    onOpenSleep = { showSleepSheet = true }
+                    onOpenSleep = { showSleepSheet = true },
+                    onOpenSpeed = { showSpeedSheet = true }
                 )
             }
         }
@@ -420,6 +422,9 @@ fun PlayerSurface(
             onCancelTimer = { vm.cancelSleepTimer(); showSleepSheet = false },
             onDismiss = { showSleepSheet = false }
         )
+    }
+    if (showSpeedSheet) {
+        SpeedSheet(state = state, vm = vm, onDismiss = { showSpeedSheet = false })
     }
 }
 
@@ -1013,7 +1018,8 @@ private fun BoxScope.NowPlayingControls(
     envelope: FloatArray?,
     beat: BeatState,
     npAccent: Color,
-    onOpenSleep: () -> Unit
+    onOpenSleep: () -> Unit,
+    onOpenSpeed: () -> Unit
 ) {
     Column(
         // Measured BEFORE the nav-bar padding. Measured after it,
@@ -1063,13 +1069,17 @@ private fun BoxScope.NowPlayingControls(
 
         if (state.durationMs > 0) {
             Column(Modifier.fillMaxWidth().padding(horizontal = Space.xl)) {
+                val loopNow by ProPlayback.loop.collectAsState()
+                val loop = if (isPro()) loopNow else null
                 Scrubber(
                     positionMs = state.positionMs,
                     durationMs = state.durationMs,
                     onSeek = { vm.seekTo(it) },
                     envelope = envelope,
                     beat = beat,
-                    activeColor = npAccent
+                    activeColor = npAccent,
+                    loopAMs = loop?.aMs ?: -1L,
+                    loopBMs = loop?.bMs ?: -1L
                 )
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                     Text(fmtClock(state.positionMs), style = Typo.Tertiary,
@@ -1080,7 +1090,7 @@ private fun BoxScope.NowPlayingControls(
             }
         }
 
-        NowPlayingTransport(state = state, vm = vm, onOpenSleep = onOpenSleep)
+        NowPlayingTransport(state = state, vm = vm, onOpenSleep = onOpenSleep, onOpenSpeed = onOpenSpeed)
     }
 }
 
@@ -1133,12 +1143,13 @@ private fun NowPlayingTitle(
     }
 }
 
-/** Previous / play / next, then shuffle, repeat, speed and the sleep timer. */
+/** Previous / play / next, then shuffle, repeat, the A-B loop, speed and the sleep timer. */
 @Composable
 private fun NowPlayingTransport(
     state: PlayerState,
     vm: PlayerViewModel,
-    onOpenSleep: () -> Unit
+    onOpenSleep: () -> Unit,
+    onOpenSpeed: () -> Unit
 ) {
     Row(
         Modifier.fillMaxWidth().padding(Space.xl, Space.md),
@@ -1173,10 +1184,11 @@ private fun NowPlayingTransport(
             tint = if (state.repeatMode != 0) MediaColors.Accent else MediaColors.CreamDim,
             modifier = Modifier.size(IconSize.lg).pressScale(haptic = true) { vm.cycleRepeat() }
         )
+        LoopButton(vm)
         Text(
-            "${state.speed}x".replace(".0x", "x"), style = Typo.Primary,
+            speedLabel(state.speed), style = Typo.Primary,
             color = if (state.speed != 1.0f) MediaColors.Accent else MediaColors.CreamDim,
-            modifier = Modifier.pressScale(haptic = true) { vm.cycleSpeed() }
+            modifier = Modifier.pressScale(haptic = true, onClick = onOpenSpeed)
         )
         if (state.sleepActive && !state.sleepEndOfTrack) {
             Text(fmtClock(state.sleepRemainingMs), style = Typo.Primary,

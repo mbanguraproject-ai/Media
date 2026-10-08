@@ -1,5 +1,7 @@
 package com.media.app
 
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -70,29 +72,12 @@ fun PlaylistsScreen(
                 }
             }
 
-            // Segmented glass control
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = Space.xl)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(G_FILL)
-                    .border(1.dp, G_BORDER, RoundedCornerShape(14.dp))
-                    .padding(4.dp)
-            ) {
-                listOf(stringResource(R.string.playlists_tab_mine), stringResource(R.string.playlists_tab_smart)).forEachIndexed { i, label ->
-                    val sel = tab == i
-                    Box(
-                        Modifier.weight(1f).clip(RoundedCornerShape(11.dp))
-                            .background(if (sel) MediaColors.Accent.copy(alpha = 0.9f) else Color.Transparent)
-                            .clickable { tab = i }
-                            .padding(vertical = 11.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(label, style = Typo.Label,
-                            color = if (sel) Color.White else MediaColors.CreamDim,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                }
-            }
+            // Mine / Smart, as chips like every other set of views.
+            TabStrip(
+                labels = listOf(stringResource(R.string.playlists_tab_mine), stringResource(R.string.playlists_tab_smart)),
+                selected = tab,
+                icons = listOf(Icons.AutoMirrored.Rounded.QueueMusic, Icons.Rounded.AutoAwesome)
+            ) { tab = it }
 
             Spacer(Modifier.height(Space.lg))
 
