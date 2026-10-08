@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 // ============================================================================
-//  AURA DISPLAY QUALITY
+//  VIA DISPLAY QUALITY
 //
 //  Hardware capability -> device profiling -> a complete design profile.
 //
@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 //  floor, corner scale, layout density, motion - and not just booleans. A tier
 //  changes what the app LOOKS like, not only what it renders on top.
 //
-//  It also refuses to pretend: these levels describe Aura's rendering profile.
+//  It also refuses to pretend: these levels describe Via's rendering profile.
 //  They do not claim to change the panel. An LCD running Ultra is an LCD.
 // ============================================================================
 

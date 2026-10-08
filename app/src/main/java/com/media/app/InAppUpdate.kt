@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 //  IN-APP UPDATES
 //
 //  Google Play's In-App Updates. When the app opens and Play has a newer
-//  version of Aura, Play's own sheet offers it. Accepted, it downloads in the
+//  version of Via, Play's own sheet offers it. Accepted, it downloads in the
 //  background while the music keeps playing, and a banner says when it is
 //  ready; Restart installs it. The restart is always the listener's tap:
 //  installing stops playback for a moment, so it never happens by itself in

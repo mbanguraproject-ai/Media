@@ -379,7 +379,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                     .setArtist(item.artist)
                     // The track's OWN content uri, never the legacy
                     // content://media/external/audio/albumart path, which
-                    // scoped storage broke. AuraBitmapLoader resolves this.
+                    // scoped storage broke. ViaBitmapLoader resolves this.
                     .setArtworkUri(artworkUriFor(item.id, item.uri))
                     .build()
             )
@@ -388,7 +388,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * A repaired cover gets its stamp as a query parameter. Media3 keys its
      * bitmap cache on the uri, so an unchanged uri would keep drawing the old
-     * cover in the notification; AuraBitmapLoader strips the stamp again.
+     * cover in the notification; ViaBitmapLoader strips the stamp again.
      */
     private fun artworkUriFor(id: Long, uri: android.net.Uri): android.net.Uri {
         val stamp = ArtworkStore.stamp(id)

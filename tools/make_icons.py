@@ -301,7 +301,7 @@ if __name__ == "__main__":
     # ~200KB of APK for pixels nobody sees.
     h = int(round(MARK_DP * 4))
     w = max(1, round(bird.width * h / bird.height))
-    total += write(bird.resize((w, h), Image.LANCZOS), "%s/drawable-xxxhdpi/aura_mark.png" % RES)
+    total += write(bird.resize((w, h), Image.LANCZOS), "%s/drawable-xxxhdpi/via_mark.png" % RES)
     print("  header mark %dx%d (xxxhdpi)" % (w, h))
 
     # One plate, not one per density. It is a smooth gradient with no detail

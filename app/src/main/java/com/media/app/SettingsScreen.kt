@@ -63,7 +63,8 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val settingsScope = rememberCoroutineScope()
-    // Repo moved owners; the old bangscc10-dev Pages URL is stale.
+    // Repo moved owners; the old bangscc10-dev Pages URL is stale. The path
+    // keeps the app's old name (Aura): it is where the policy is published.
     val privacyUrl = "https://mebs.app/privacy/aura"
     Column(
         // Settings is text and empty space with no artwork to justify a
@@ -92,7 +93,7 @@ fun SettingsScreen(
         // ad within a thumb's width of a control is how accidental clicks
         // happen, and accidental clicks are how AdMob accounts get closed.
         val bannerHidden by Billing.adFree.collectAsState()
-        if (!bannerHidden) AuraBanner(ready = adsReady)
+        if (!bannerHidden) ViaBanner(ready = adsReady)
 
         // Library first: Storage and Rescan are what people come to Settings
         // for. They were below Sound and Artwork, a long scroll down.
@@ -206,7 +207,7 @@ fun SettingsScreen(
             // one card in a feed is a weak thing to charge for, and the ask
             // reads better as support with ad removal as the thank-you.
             SettingRow(
-                Icons.Outlined.Favorite, stringResource(R.string.settings_support_aura), price,
+                Icons.Outlined.Favorite, stringResource(R.string.settings_support_via), price,
                 subtitle = stringResource(R.string.settings_support_sub)
             ) {
                 (context as? android.app.Activity)?.let { Billing.purchase(it) }
@@ -412,7 +413,7 @@ private fun DisplayQualitySection(current: QualityMode, onPick: (QualityMode) ->
         modifier = Modifier.padding(Space.xl, 2.dp, Space.xl, 0.dp)
     )
     // Required by the blueprint's product-language rule, and true: this setting
-    // changes how Aura renders. It cannot turn an LCD into an OLED, and saying
+    // changes how Via renders. It cannot turn an LCD into an OLED, and saying
     // otherwise would be a claim the app cannot support.
     Text(
         stringResource(R.string.dq_honest),
@@ -582,7 +583,7 @@ private fun FontSizePicker(current: Float, onChange: (Float) -> Unit) {
 // ------------------------------------------------------------------ LANGUAGE
 //
 // Automatic follows the phone, and is where everyone starts. A pick here is
-// for Aura alone. On Android 13+ it is the same setting as the system's own
+// for Via alone. On Android 13+ it is the same setting as the system's own
 // per-app language, so it can be changed from either place (Language.kt).
 // Languages are listed in their own names: someone looking for theirs must
 // be able to read it whatever the app is currently in.
@@ -691,7 +692,7 @@ private fun SettingRow(
     title: String,
     value: String?,
     // Optional second line. The support row needs to state what you get;
-    // "Support Aura" alone doesn't say ads go away.
+    // "Support Via" alone doesn't say ads go away.
     subtitle: String? = null,
     navigates: Boolean = true,
     onClick: () -> Unit
@@ -783,7 +784,7 @@ private fun ProfileMark(audioCount: Int, videoCount: Int) {
             )
         } else {
             Image(
-                painter = painterResource(R.drawable.aura_mark),
+                painter = painterResource(R.drawable.via_mark),
                 contentDescription = stringResource(R.string.avatar_add),
                 modifier = Modifier.height(96.dp).clickable { pick() }
             )

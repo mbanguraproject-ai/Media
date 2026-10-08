@@ -21,13 +21,13 @@ import java.util.Locale
 //  Automatic by default: with nothing picked, Android resolves every string
 //  against the phone's own language list (all of it, not just the first
 //  entry), so a phone set to Portuguese gets Portuguese, and one set to a
-//  language Aura does not ship falls through the list to the next it does,
+//  language Via does not ship falls through the list to the next it does,
 //  then to English. Change the phone's language and the app follows.
 //
-//  A pick in Settings overrides that for Aura alone.
+//  A pick in Settings overrides that for Via alone.
 //    Android 13+  The pick goes to the system's own per-app language
 //                 setting (LocaleManager), so it also shows, and can be
-//                 changed, in Settings > Apps > Aura > Language. The system
+//                 changed, in Settings > Apps > Via > Language. The system
 //                 restarts the screen in the new language and applies it to
 //                 every part of the app, services included.
 //    Android 12-  The pick is stored here and applied by each component as it
@@ -40,7 +40,7 @@ import java.util.Locale
 
 object AppLanguage {
 
-    /** A language Aura ships, named in itself so anyone can find their own. */
+    /** A language Via ships, named in itself so anyone can find their own. */
     class Option(val tag: String, val nativeName: String)
 
     val options = listOf(
@@ -88,7 +88,7 @@ object AppLanguage {
         return device.getDisplayLanguage(device).replaceFirstChar { it.titlecase(device) }
     }
 
-    /** Switches Aura to [option], or back to automatic for null. */
+    /** Switches Via to [option], or back to automatic for null. */
     fun pick(activity: Activity, option: Option?) {
         prefs(activity).edit().apply {
             if (option == null) remove(KEY) else putString(KEY, option.tag)

@@ -224,7 +224,7 @@
     <string name="action_rescan_library">Réanalyser la bibliothèque</string>
     <string name="action_try_again">Réessayer</string>
     <string name="update_ready_title">Mise à jour prête</string>
-    <string name="update_ready_body">Une nouvelle version d\'Aura a été téléchargée. Redémarrez pour terminer ; la musique s\'arrête un instant.</string>
+    <string name="update_ready_body">Une nouvelle version de Via a été téléchargée. Redémarrez pour terminer ; la musique s\'arrête un instant.</string>
     <string name="action_restart">Redémarrer</string>
     <string name="reveal_building">Création de votre bibliothèque</string>
     <plurals name="reveal_tracks">
@@ -249,9 +249,9 @@
     <string name="action_play_pause">Lecture/Pause</string>
     <string name="action_next">Suivant</string>
     <string name="video_forward_10">Avancer de 10 secondes</string>
-    <string name="cd_app_mark">Aura</string>
+    <string name="cd_app_mark">Via</string>
     <string name="share_playing_elsewhere">Lecture sur un autre appareil</string>
-    <string name="share_name">Aura Share</string>
+    <string name="share_name">Via Share</string>
     <string name="action_search">Rechercher</string>
     <string name="pillar_music">Musique</string>
     <string name="pillar_video">Vidéo</string>
@@ -286,9 +286,9 @@
     <string name="cd_more_options">Plus d\'options</string>
     <string name="about_title">À propos</string>
     <string name="tagline">Votre bibliothèque, éclairée par ce qui joue.</string>
-    <string name="about_intro">Votre bibliothèque ne devrait pas être éparpillée dans une dizaine d\'applis. Aura rassemble tout ce qui se lit sur votre téléphone en un seul endroit, puis s\'efface pour que vous n\'ayez plus qu\'à écouter et regarder.</string>
+    <string name="about_intro">Votre bibliothèque ne devrait pas être éparpillée dans une dizaine d\'applis. Via rassemble tout ce qui se lit sur votre téléphone en un seul endroit, puis s\'efface pour que vous n\'ayez plus qu\'à écouter et regarder.</string>
     <string name="about_h1">Quatre types de contenus, un seul endroit</string>
-    <string name="about_p1">La musique pour vos chansons. Les podcasts pour les longues discussions. Les livres audio pour les livres que vous écoutez. Et la vidéo, dans tous les formats que votre téléphone comprend. Aura les classe automatiquement, et vous pouvez toujours tout réorganiser à la main.</string>
+    <string name="about_p1">La musique pour vos chansons. Les podcasts pour les longues discussions. Les livres audio pour les livres que vous écoutez. Et la vidéo, dans tous les formats que votre téléphone comprend. Via les classe automatiquement, et vous pouvez toujours tout réorganiser à la main.</string>
     <string name="about_h2">À vous, et à vous seul</string>
     <string name="about_p2">Tout se lit en local, directement depuis votre appareil. Aucun compte à créer, aucune connexion. Votre bibliothèque, votre historique d\'écoute et vos modifications ne quittent jamais votre téléphone. La seule exception, c\'est vous qui l\'activez : rechercher en ligne les pochettes et paroles manquantes, ce qui n\'envoie que le titre, l\'artiste, l\'album et la durée d\'un morceau.</string>
     <string name="about_h3">Pochettes et paroles, réparées</string>
@@ -346,13 +346,13 @@
     <string name="welcome_line_3">Tout se lit en local. Pas de compte, pas de connexion.</string>
     <string name="action_got_it">Compris</string>
     <string name="perm_explainer_title">Une petite chose</string>
-    <string name="perm_explainer_body">Aura lit les chansons, podcasts, livres audio et vidéos déjà présents sur votre téléphone. Pour les trouver, il a besoin de l\'autorisation de lire vos contenus multimédias.</string>
+    <string name="perm_explainer_body">Via lit les chansons, podcasts, livres audio et vidéos déjà présents sur votre téléphone. Pour les trouver, il a besoin de l\'autorisation de lire vos contenus multimédias.</string>
     <string name="perm_explainer_privacy">Rien ne quitte votre appareil, et rien n\'est envoyé nulle part.</string>
     <string name="action_understood">D\'accord</string>
     <string name="perm_blocked_title">L\'accès est désactivé</string>
-    <string name="perm_needed_title">Aura a besoin de votre bibliothèque</string>
+    <string name="perm_needed_title">Via a besoin de votre bibliothèque</string>
     <string name="perm_blocked_body">Android n\'affiche plus la demande d\'autorisation. Ouvrez les Réglages, autorisez l\'accès à la musique et à l\'audio, puis revenez.</string>
-    <string name="perm_needed_body">Aura ne lit que les fichiers déjà présents sur ce téléphone. Il a besoin de l\'autorisation de les lire ; rien n\'est envoyé nulle part.</string>
+    <string name="perm_needed_body">Via ne lit que les fichiers déjà présents sur ce téléphone. Il a besoin de l\'autorisation de les lire ; rien n\'est envoyé nulle part.</string>
     <string name="action_open_settings">Ouvrir les réglages</string>
     <string name="action_allow_access">Autoriser l\'accès</string>
     <string name="reactive_hint_title">La pochette réactive est désactivée</string>
@@ -457,7 +457,7 @@
     <string name="settings_thank_you">Merci</string>
     <string name="settings_ads_off">Les publicités sont désactivées pour de bon</string>
     <string name="settings_support">Soutenir</string>
-    <string name="settings_support_aura">Soutenir Aura</string>
+    <string name="settings_support_via">Soutenir Via</string>
     <string name="settings_support_sub">Achat unique · supprime les publicités pour toujours</string>
     <string name="settings_privacy">Confidentialité</string>
     <string name="settings_ad_choices">Choix de confidentialité publicitaire</string>
@@ -467,8 +467,8 @@
     <string name="settings_ad_id_sub">Réinitialisez-le ou supprimez-le dans les réglages publicitaires d\'Android ; cela s\'applique à toutes les applis</string>
     <string name="settings_privacy_policy">Règles de confidentialité</string>
     <string name="settings_about">À propos</string>
-    <string name="settings_about_app">À propos d\'Aura</string>
-    <string name="settings_rate_app">Noter Aura</string>
+    <string name="settings_about_app">À propos de Via</string>
+    <string name="settings_rate_app">Noter Via</string>
     <string name="settings_rate_sub">Sur Google Play</string>
     <string name="settings_version">Version</string>
     <string name="library_nothing_yet">Rien ici pour l\'instant</string>
@@ -486,7 +486,7 @@
     <string name="dq_hdr">HDR</string>
     <string name="dq_low_ram">appareil à faible RAM</string>
     <string name="dq_ceiling">Plafond mesuré : %1$s (score %2$d/8)</string>
-    <string name="dq_honest">La qualité d\'affichage change la façon dont Aura dessine. Elle ne change pas votre écran.</string>
+    <string name="dq_honest">La qualité d\'affichage change la façon dont Via dessine. Elle ne change pas votre écran.</string>
     <string name="rescan_scanning">Analyse de vos contenus…</string>
     <string name="rescan_done">Bibliothèque mise à jour</string>
     <string name="rescan_title">Réanalyser l\'appareil</string>
@@ -502,7 +502,7 @@
     <string name="language_title">Langue</string>
     <string name="language_automatic">Automatique</string>
     <string name="language_follows_phone">Suit votre téléphone : %1$s</string>
-    <string name="share_needs_wifi">Aura Share a besoin du Wi-Fi. Ce téléphone utilise les données mobiles, qui n\'offrent aucun réseau local où trouver une télé.</string>
+    <string name="share_needs_wifi">Via Share a besoin du Wi-Fi. Ce téléphone utilise les données mobiles, qui n\'offrent aucun réseau local où trouver une télé.</string>
     <string name="share_nothing_answered">Rien n\'a répondu sur ce réseau. La télé doit être sur le même Wi-Fi avec le partage multimédia activé ; selon la marque, il s\'appelle DLNA, Screen Share ou AllShare.</string>
     <string name="share_nothing_answered_host">Rien n\'a répondu sur ce réseau (ce téléphone est %1$s). La télé doit être sur le même Wi-Fi avec le partage multimédia activé ; selon la marque, il s\'appelle DLNA, Screen Share ou AllShare.</string>
     <string name="share_no_address">Ce téléphone n\'a pas d\'adresse sur le réseau pour l\'instant.</string>

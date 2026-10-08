@@ -219,7 +219,7 @@
     <string name="action_rescan_library">Quét lại thư viện</string>
     <string name="action_try_again">Thử lại</string>
     <string name="update_ready_title">Bản cập nhật đã sẵn sàng</string>
-    <string name="update_ready_body">Phiên bản mới của Aura đã tải xong. Khởi động lại để hoàn tất; nhạc sẽ dừng trong giây lát.</string>
+    <string name="update_ready_body">Phiên bản mới của Via đã tải xong. Khởi động lại để hoàn tất; nhạc sẽ dừng trong giây lát.</string>
     <string name="action_restart">Khởi động lại</string>
     <string name="reveal_building">Đang xây dựng thư viện của bạn</string>
     <plurals name="reveal_tracks">
@@ -241,9 +241,9 @@
     <string name="action_play_pause">Phát/Tạm dừng</string>
     <string name="action_next">Tiếp</string>
     <string name="video_forward_10">Tới 10 giây</string>
-    <string name="cd_app_mark">Aura</string>
+    <string name="cd_app_mark">Via</string>
     <string name="share_playing_elsewhere">Đang phát trên thiết bị khác</string>
-    <string name="share_name">Aura Share</string>
+    <string name="share_name">Via Share</string>
     <string name="action_search">Tìm kiếm</string>
     <string name="pillar_music">Nhạc</string>
     <string name="pillar_video">Video</string>
@@ -273,9 +273,9 @@
     <string name="cd_more_options">Tùy chọn khác</string>
     <string name="about_title">Giới thiệu</string>
     <string name="tagline">Thư viện của bạn, trong ánh sáng của bài đang phát.</string>
-    <string name="about_intro">Thư viện của bạn không nên bị rải rác trên cả chục ứng dụng. Aura gom mọi thứ phát được trên điện thoại vào một nơi — rồi lùi lại, để bạn chỉ việc nghe và xem.</string>
+    <string name="about_intro">Thư viện của bạn không nên bị rải rác trên cả chục ứng dụng. Via gom mọi thứ phát được trên điện thoại vào một nơi — rồi lùi lại, để bạn chỉ việc nghe và xem.</string>
     <string name="about_h1">Bốn loại phương tiện, một nơi</string>
-    <string name="about_p1">Nhạc cho các bài hát của bạn. Podcast cho những cuộc trò chuyện dài. Sách nói cho những cuốn sách bạn nghe. Và video, ở mọi định dạng điện thoại của bạn hiểu được. Aura tự động phân loại, và bạn có thể tự sắp xếp lại bất cứ thứ gì, bất cứ lúc nào.</string>
+    <string name="about_p1">Nhạc cho các bài hát của bạn. Podcast cho những cuộc trò chuyện dài. Sách nói cho những cuốn sách bạn nghe. Và video, ở mọi định dạng điện thoại của bạn hiểu được. Via tự động phân loại, và bạn có thể tự sắp xếp lại bất cứ thứ gì, bất cứ lúc nào.</string>
     <string name="about_h2">Của bạn, và chỉ của bạn</string>
     <string name="about_p2">Mọi thứ phát trực tiếp từ thiết bị của bạn, ngay trên máy. Không cần tạo tài khoản, không cần đăng nhập. Thư viện, lịch sử nghe và các chỉnh sửa của bạn không bao giờ rời khỏi điện thoại. Ngoại lệ duy nhất là thứ bạn tự bật: tìm ảnh bìa và lời bài hát còn thiếu trên mạng, chỉ gửi tiêu đề, nghệ sĩ, album và thời lượng của bản nhạc.</string>
     <string name="about_h3">Ảnh bìa và lời bài hát, được sửa đúng</string>
@@ -333,13 +333,13 @@
     <string name="welcome_line_3">Mọi thứ chạy ngay trên máy. Không tài khoản, không đăng nhập.</string>
     <string name="action_got_it">Đã hiểu</string>
     <string name="perm_explainer_title">Một điều nhỏ</string>
-    <string name="perm_explainer_body">Aura phát các bài hát, podcast, sách nói và video đã có trên điện thoại của bạn. Để tìm chúng, ứng dụng cần quyền đọc phương tiện của bạn.</string>
+    <string name="perm_explainer_body">Via phát các bài hát, podcast, sách nói và video đã có trên điện thoại của bạn. Để tìm chúng, ứng dụng cần quyền đọc phương tiện của bạn.</string>
     <string name="perm_explainer_privacy">Không có gì rời khỏi thiết bị của bạn, và không có gì được tải lên đâu cả.</string>
     <string name="action_understood">Đã hiểu</string>
     <string name="perm_blocked_title">Quyền truy cập bị chặn</string>
-    <string name="perm_needed_title">Aura cần thư viện của bạn</string>
+    <string name="perm_needed_title">Via cần thư viện của bạn</string>
     <string name="perm_blocked_body">Android không hiện yêu cầu cấp quyền nữa. Hãy mở Cài đặt, cho phép truy cập nhạc và âm thanh, rồi quay lại.</string>
-    <string name="perm_needed_body">Aura chỉ phát các tệp đã có trên điện thoại này. Ứng dụng cần quyền để đọc chúng — không có gì được tải lên đâu cả.</string>
+    <string name="perm_needed_body">Via chỉ phát các tệp đã có trên điện thoại này. Ứng dụng cần quyền để đọc chúng — không có gì được tải lên đâu cả.</string>
     <string name="action_open_settings">Mở Cài đặt</string>
     <string name="action_allow_access">Cho phép truy cập</string>
     <string name="reactive_hint_title">Ảnh bìa phản ứng đang tắt</string>
@@ -440,7 +440,7 @@
     <string name="settings_thank_you">Cảm ơn bạn</string>
     <string name="settings_ads_off">Quảng cáo đã tắt vĩnh viễn</string>
     <string name="settings_support">Ủng hộ</string>
-    <string name="settings_support_aura">Ủng hộ Aura</string>
+    <string name="settings_support_via">Ủng hộ Via</string>
     <string name="settings_support_sub">Thanh toán một lần · gỡ quảng cáo vĩnh viễn</string>
     <string name="settings_privacy">Quyền riêng tư</string>
     <string name="settings_ad_choices">Lựa chọn quyền riêng tư quảng cáo</string>
@@ -450,8 +450,8 @@
     <string name="settings_ad_id_sub">Đặt lại hoặc xóa trong cài đặt quảng cáo của Android; áp dụng cho mọi ứng dụng</string>
     <string name="settings_privacy_policy">Chính sách quyền riêng tư</string>
     <string name="settings_about">Giới thiệu</string>
-    <string name="settings_about_app">Giới thiệu Aura</string>
-    <string name="settings_rate_app">Đánh giá Aura</string>
+    <string name="settings_about_app">Giới thiệu Via</string>
+    <string name="settings_rate_app">Đánh giá Via</string>
     <string name="settings_rate_sub">Trên Google Play</string>
     <string name="settings_version">Phiên bản</string>
     <string name="library_nothing_yet">Chưa có gì ở đây</string>
@@ -469,7 +469,7 @@
     <string name="dq_hdr">HDR</string>
     <string name="dq_low_ram">Thiết bị RAM thấp</string>
     <string name="dq_ceiling">Mức trần đo được: %1$s (điểm %2$d/8)</string>
-    <string name="dq_honest">Chất lượng hiển thị thay đổi cách Aura hiển thị. Nó không thay đổi màn hình của bạn.</string>
+    <string name="dq_honest">Chất lượng hiển thị thay đổi cách Via hiển thị. Nó không thay đổi màn hình của bạn.</string>
     <string name="rescan_scanning">Đang quét phương tiện của bạn…</string>
     <string name="rescan_done">Đã cập nhật thư viện</string>
     <string name="rescan_title">Quét lại thiết bị</string>
@@ -485,7 +485,7 @@
     <string name="language_title">Ngôn ngữ</string>
     <string name="language_automatic">Tự động</string>
     <string name="language_follows_phone">Theo điện thoại của bạn: %1$s</string>
-    <string name="share_needs_wifi">Aura Share cần Wi‑Fi. Điện thoại này đang dùng dữ liệu di động, không có mạng nội bộ nào để TV kết nối.</string>
+    <string name="share_needs_wifi">Via Share cần Wi‑Fi. Điện thoại này đang dùng dữ liệu di động, không có mạng nội bộ nào để TV kết nối.</string>
     <string name="share_nothing_answered">Không có thiết bị nào phản hồi trên mạng này. TV cần dùng cùng Wi‑Fi và bật chia sẻ phương tiện — tùy hãng, tính năng này được gọi là DLNA, Screen Share hoặc AllShare.</string>
     <string name="share_nothing_answered_host">Không có thiết bị nào phản hồi trên mạng này (điện thoại này là %1$s). TV cần dùng cùng Wi‑Fi và bật chia sẻ phương tiện — tùy hãng, tính năng này được gọi là DLNA, Screen Share hoặc AllShare.</string>
     <string name="share_no_address">Điện thoại này hiện chưa có địa chỉ trên mạng.</string>

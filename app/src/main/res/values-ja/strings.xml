@@ -219,7 +219,7 @@
     <string name="action_rescan_library">ライブラリを再スキャン</string>
     <string name="action_try_again">再試行</string>
     <string name="update_ready_title">アップデートの準備ができました</string>
-    <string name="update_ready_body">Auraの新しいバージョンをダウンロードしました。再起動すると完了します。音楽は少しの間止まります。</string>
+    <string name="update_ready_body">Viaの新しいバージョンをダウンロードしました。再起動すると完了します。音楽は少しの間止まります。</string>
     <string name="action_restart">再起動</string>
     <string name="reveal_building">ライブラリを作成中</string>
     <plurals name="reveal_tracks">
@@ -241,9 +241,9 @@
     <string name="action_play_pause">再生/一時停止</string>
     <string name="action_next">次へ</string>
     <string name="video_forward_10">10秒進む</string>
-    <string name="cd_app_mark">Aura</string>
+    <string name="cd_app_mark">Via</string>
     <string name="share_playing_elsewhere">別のデバイスで再生中</string>
-    <string name="share_name">Aura Share</string>
+    <string name="share_name">Via Share</string>
     <string name="action_search">検索</string>
     <string name="pillar_music">音楽</string>
     <string name="pillar_video">動画</string>
@@ -273,9 +273,9 @@
     <string name="cd_more_options">その他のオプション</string>
     <string name="about_title">概要</string>
     <string name="tagline">あなたのライブラリを、再生中の曲の光で。</string>
-    <string name="about_intro">ライブラリが十数個のアプリに散らばっている必要はありません。Auraはスマートフォンで再生できるものをすべて一か所に集め、あとは邪魔をしません。ただ聴いて、観るだけです。</string>
+    <string name="about_intro">ライブラリが十数個のアプリに散らばっている必要はありません。Viaはスマートフォンで再生できるものをすべて一か所に集め、あとは邪魔をしません。ただ聴いて、観るだけです。</string>
     <string name="about_h1">4種類のメディアを一か所に</string>
-    <string name="about_p1">曲には音楽。長い対談にはポッドキャスト。耳で読む本にはオーディオブック。そしてスマートフォンが対応するあらゆるフォーマットの動画。Auraが自動で分類し、いつでも好きなように手動で並べ替えられます。</string>
+    <string name="about_p1">曲には音楽。長い対談にはポッドキャスト。耳で読む本にはオーディオブック。そしてスマートフォンが対応するあらゆるフォーマットの動画。Viaが自動で分類し、いつでも好きなように手動で並べ替えられます。</string>
     <string name="about_h2">あなただけのもの</string>
     <string name="about_p2">すべてデバイスから直接、ローカルで再生されます。アカウント作成もサインインも不要です。ライブラリ、再生履歴、編集内容がスマートフォンの外に出ることはありません。唯一の例外はあなたが自分でオンにする機能、つまり足りないアートワークと歌詞のオンライン検索で、送信されるのはトラックのタイトル、アーティスト、アルバム、長さだけです。</string>
     <string name="about_h3">アートワークと歌詞をきちんと修正</string>
@@ -333,13 +333,13 @@
     <string name="welcome_line_3">すべてローカルで動作。アカウントもサインインも不要。</string>
     <string name="action_got_it">OK</string>
     <string name="perm_explainer_title">ひとつだけ</string>
-    <string name="perm_explainer_body">Auraはスマートフォンにすでにある曲、ポッドキャスト、オーディオブック、動画を再生します。それらを見つけるために、メディアの読み取りを許可してください。</string>
+    <string name="perm_explainer_body">Viaはスマートフォンにすでにある曲、ポッドキャスト、オーディオブック、動画を再生します。それらを見つけるために、メディアの読み取りを許可してください。</string>
     <string name="perm_explainer_privacy">デバイスの外には何も出ず、どこにもアップロードされません。</string>
     <string name="action_understood">わかりました</string>
     <string name="perm_blocked_title">アクセスがブロックされています</string>
-    <string name="perm_needed_title">Auraにはライブラリへのアクセスが必要です</string>
+    <string name="perm_needed_title">Viaにはライブラリへのアクセスが必要です</string>
     <string name="perm_blocked_body">Androidが許可のリクエストを表示しなくなりました。設定を開いて音楽とオーディオへのアクセスを許可してから、戻ってきてください。</string>
-    <string name="perm_needed_body">Auraはこのスマートフォンにすでにあるファイルだけを再生します。読み取るには許可が必要です。どこにもアップロードされません。</string>
+    <string name="perm_needed_body">Viaはこのスマートフォンにすでにあるファイルだけを再生します。読み取るには許可が必要です。どこにもアップロードされません。</string>
     <string name="action_open_settings">設定を開く</string>
     <string name="action_allow_access">アクセスを許可</string>
     <string name="reactive_hint_title">リアクティブアートワークはオフです</string>
@@ -440,7 +440,7 @@
     <string name="settings_thank_you">ありがとうございます</string>
     <string name="settings_ads_off">広告は永久にオフです</string>
     <string name="settings_support">サポート</string>
-    <string name="settings_support_aura">Auraをサポート</string>
+    <string name="settings_support_via">Viaをサポート</string>
     <string name="settings_support_sub">1回限りの支払い · 広告を永久に非表示</string>
     <string name="settings_privacy">プライバシー</string>
     <string name="settings_ad_choices">広告のプライバシー設定</string>
@@ -450,8 +450,8 @@
     <string name="settings_ad_id_sub">Androidの広告設定でリセットまたは削除できます。すべてのアプリに適用されます</string>
     <string name="settings_privacy_policy">プライバシーポリシー</string>
     <string name="settings_about">概要</string>
-    <string name="settings_about_app">Auraについて</string>
-    <string name="settings_rate_app">Auraを評価</string>
+    <string name="settings_about_app">Viaについて</string>
+    <string name="settings_rate_app">Viaを評価</string>
     <string name="settings_rate_sub">Google Playで</string>
     <string name="settings_version">バージョン</string>
     <string name="library_nothing_yet">まだ何もありません</string>
@@ -469,7 +469,7 @@
     <string name="dq_hdr">HDR</string>
     <string name="dq_low_ram">低RAMデバイス</string>
     <string name="dq_ceiling">測定上限：%1$s（スコア %2$d/8）</string>
-    <string name="dq_honest">表示品質はAuraの見た目を変えるもので、画面そのものは変わりません。</string>
+    <string name="dq_honest">表示品質はViaの見た目を変えるもので、画面そのものは変わりません。</string>
     <string name="rescan_scanning">メディアをスキャン中…</string>
     <string name="rescan_done">ライブラリを更新しました</string>
     <string name="rescan_title">デバイスを再スキャン</string>
@@ -485,7 +485,7 @@
     <string name="language_title">言語</string>
     <string name="language_automatic">自動</string>
     <string name="language_follows_phone">スマートフォンの設定に合わせる：%1$s</string>
-    <string name="share_needs_wifi">Aura ShareにはWi‑Fiが必要です。このスマートフォンはモバイルデータ通信中で、テレビがつながるローカルネットワークがありません。</string>
+    <string name="share_needs_wifi">Via ShareにはWi‑Fiが必要です。このスマートフォンはモバイルデータ通信中で、テレビがつながるローカルネットワークがありません。</string>
     <string name="share_nothing_answered">このネットワークで応答したデバイスはありませんでした。テレビが同じWi‑Fiにつながっていて、メディア共有がオンになっている必要があります。メーカーによってDLNA、Screen Share、AllShareなどと呼ばれています。</string>
     <string name="share_nothing_answered_host">このネットワークで応答したデバイスはありませんでした（このスマートフォンは%1$sです）。テレビが同じWi‑Fiにつながっていて、メディア共有がオンになっている必要があります。メーカーによってDLNA、Screen Share、AllShareなどと呼ばれています。</string>
     <string name="share_no_address">このスマートフォンには現在ネットワーク上のアドレスがありません。</string>

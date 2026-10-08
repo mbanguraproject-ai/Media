@@ -79,7 +79,7 @@ fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
-            painter = painterResource(R.drawable.aura_mark),
+            painter = painterResource(R.drawable.via_mark),
             // The mark carries the name on its own now, so it has to say so.
             contentDescription = stringResource(R.string.cd_app_mark),
             modifier = Modifier.height(54.dp)

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Was a deep purple from the old theme: every cold start opened purple
-         and handed over to a near-black teal app. This is Aura.Ground, so the
+         and handed over to a near-black teal app. This is Via.Ground, so the
          splash and the first frame are the same colour. -->
     <color name="splash_ink">#000000</color>
 </resources>

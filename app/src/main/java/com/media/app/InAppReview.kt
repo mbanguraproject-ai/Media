@@ -16,7 +16,7 @@ import com.google.android.play.core.review.ReviewManagerFactory
 //  own quota on top and may show nothing; the app never says it is about to
 //  ask, never asks twice in a row, and never gates anything on a review.
 //
-//  The "Rate Aura" row in Settings opens the Play listing instead. Google is
+//  The "Rate Via" row in Settings opens the Play listing instead. Google is
 //  explicit that a button must not call the in-app flow, because the quota
 //  can make it a button that silently does nothing.
 // ============================================================================

@@ -146,7 +146,7 @@ object Ads {
  * costs the user no layout at all.
  */
 @Composable
-fun AuraBanner(ready: Boolean, modifier: Modifier = Modifier) {
+fun ViaBanner(ready: Boolean, modifier: Modifier = Modifier) {
     // No unit, no banner. Shipping an AdView pointed at an empty or wrong-format
     // unit id produces an invisible box and a stream of no-fill errors, and
     // reusing the NATIVE unit for a banner is a format mismatch, not a shortcut.

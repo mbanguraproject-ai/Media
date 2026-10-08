@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 
 // ============================================================================
-//  AURA SHARE - the sheet
+//  VIA SHARE - the sheet
 //
 //  A window onto ShareSession and nothing more. It holds no state of its own
 //  beyond a finger mid-drag, so closing it cannot stop the film and reopening

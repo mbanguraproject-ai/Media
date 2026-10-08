@@ -9,7 +9,7 @@ import java.net.Socket
 import java.util.concurrent.Executors
 
 // ============================================================================
-//  AURA SHARE - the file half
+//  VIA SHARE - the file half
 //
 //  The renderer does not receive anything. It is handed a URL and comes back
 //  to fetch the file itself, so this phone has to be an HTTP server for as

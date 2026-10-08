@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The languages Aura ships. Android 13+ lists these under
-     Settings > Apps > Aura > Language; keep in step with AppLanguage.options
+<!-- The languages Via ships. Android 13+ lists these under
+     Settings > Apps > Via > Language; keep in step with AppLanguage.options
      and the res/values-xx folders. -->
 <locale-config xmlns:android="http://schemas.android.com/apk/res/android">
     <locale android:name="en" />

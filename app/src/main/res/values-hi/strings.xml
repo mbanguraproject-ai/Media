@@ -224,7 +224,7 @@
     <string name="action_rescan_library">लाइब्रेरी फिर से स्कैन करें</string>
     <string name="action_try_again">फिर से कोशिश करें</string>
     <string name="update_ready_title">अपडेट तैयार है</string>
-    <string name="update_ready_body">Aura का नया वर्शन डाउनलोड हो गया है। पूरा करने के लिए रीस्टार्ट करें; संगीत कुछ पल के लिए रुकेगा।</string>
+    <string name="update_ready_body">Via का नया वर्शन डाउनलोड हो गया है। पूरा करने के लिए रीस्टार्ट करें; संगीत कुछ पल के लिए रुकेगा।</string>
     <string name="action_restart">रीस्टार्ट करें</string>
     <string name="reveal_building">आपकी लाइब्रेरी बनाई जा रही है</string>
     <plurals name="reveal_tracks">
@@ -249,9 +249,9 @@
     <string name="action_play_pause">चलाएं/रोकें</string>
     <string name="action_next">अगला</string>
     <string name="video_forward_10">10 सेकंड आगे</string>
-    <string name="cd_app_mark">Aura</string>
+    <string name="cd_app_mark">Via</string>
     <string name="share_playing_elsewhere">दूसरे डिवाइस पर चल रहा है</string>
-    <string name="share_name">Aura Share</string>
+    <string name="share_name">Via Share</string>
     <string name="action_search">खोजें</string>
     <string name="pillar_music">संगीत</string>
     <string name="pillar_video">वीडियो</string>
@@ -286,9 +286,9 @@
     <string name="cd_more_options">और विकल्प</string>
     <string name="about_title">परिचय</string>
     <string name="tagline">आपकी लाइब्रेरी, जो चल रहा है उसकी रोशनी में।</string>
-    <string name="about_intro">आपकी लाइब्रेरी दर्जन भर ऐप्स में बिखरी नहीं होनी चाहिए। Aura आपके फ़ोन पर चलने वाली हर चीज़ को एक जगह इकट्ठा करता है — और फिर बीच से हट जाता है, ताकि आप बस सुनें और देखें।</string>
+    <string name="about_intro">आपकी लाइब्रेरी दर्जन भर ऐप्स में बिखरी नहीं होनी चाहिए। Via आपके फ़ोन पर चलने वाली हर चीज़ को एक जगह इकट्ठा करता है — और फिर बीच से हट जाता है, ताकि आप बस सुनें और देखें।</string>
     <string name="about_h1">चार तरह का मीडिया, एक जगह</string>
-    <string name="about_p1">आपके गानों के लिए संगीत। लंबी बातचीत के लिए पॉडकास्ट। जिन किताबों को आप सुनते हैं उनके लिए ऑडियोबुक। और वीडियो, किसी भी फ़ॉर्मैट में जिसे आपका फ़ोन समझता है। Aura इन्हें अपने-आप छाँटता है, और आप कभी भी कुछ भी हाथ से फिर से व्यवस्थित कर सकते हैं।</string>
+    <string name="about_p1">आपके गानों के लिए संगीत। लंबी बातचीत के लिए पॉडकास्ट। जिन किताबों को आप सुनते हैं उनके लिए ऑडियोबुक। और वीडियो, किसी भी फ़ॉर्मैट में जिसे आपका फ़ोन समझता है। Via इन्हें अपने-आप छाँटता है, और आप कभी भी कुछ भी हाथ से फिर से व्यवस्थित कर सकते हैं।</string>
     <string name="about_h2">आपका, सिर्फ़ आपका</string>
     <string name="about_p2">सब कुछ सीधे आपके डिवाइस से, लोकल रूप से चलता है। न कोई अकाउंट बनाना है, न किसी चीज़ में साइन इन करना है। आपकी लाइब्रेरी, सुनने का इतिहास और बदलाव कभी आपके फ़ोन से बाहर नहीं जाते। एकमात्र अपवाद आप ख़ुद चालू करते हैं: छूटे हुए कवर और बोल ऑनलाइन खोजना, जिसमें सिर्फ़ ट्रैक का शीर्षक, कलाकार, एल्बम और अवधि भेजी जाती है।</string>
     <string name="about_h3">कवर और बोल, ठीक किए हुए</string>
@@ -346,13 +346,13 @@
     <string name="welcome_line_3">सब कुछ लोकल रूप से चलता है। न अकाउंट, न साइन इन।</string>
     <string name="action_got_it">समझ गया</string>
     <string name="perm_explainer_title">एक छोटी-सी बात</string>
-    <string name="perm_explainer_body">Aura आपके फ़ोन पर पहले से मौजूद गाने, पॉडकास्ट, ऑडियोबुक और वीडियो चलाता है। उन्हें ढूँढने के लिए इसे आपका मीडिया पढ़ने की अनुमति चाहिए।</string>
+    <string name="perm_explainer_body">Via आपके फ़ोन पर पहले से मौजूद गाने, पॉडकास्ट, ऑडियोबुक और वीडियो चलाता है। उन्हें ढूँढने के लिए इसे आपका मीडिया पढ़ने की अनुमति चाहिए।</string>
     <string name="perm_explainer_privacy">आपके डिवाइस से कुछ भी बाहर नहीं जाता, और कुछ भी कहीं अपलोड नहीं होता।</string>
     <string name="action_understood">ठीक है</string>
     <string name="perm_blocked_title">पहुँच बंद है</string>
-    <string name="perm_needed_title">Aura को आपकी लाइब्रेरी चाहिए</string>
+    <string name="perm_needed_title">Via को आपकी लाइब्रेरी चाहिए</string>
     <string name="perm_blocked_body">Android अब अनुमति का अनुरोध नहीं दिखा रहा है। सेटिंग खोलें, संगीत और ऑडियो तक पहुँच दें, फिर वापस आएं।</string>
-    <string name="perm_needed_body">Aura सिर्फ़ वही फ़ाइलें चलाता है जो इस फ़ोन पर पहले से हैं। उन्हें पढ़ने के लिए इसे अनुमति चाहिए — कुछ भी कहीं अपलोड नहीं होता।</string>
+    <string name="perm_needed_body">Via सिर्फ़ वही फ़ाइलें चलाता है जो इस फ़ोन पर पहले से हैं। उन्हें पढ़ने के लिए इसे अनुमति चाहिए — कुछ भी कहीं अपलोड नहीं होता।</string>
     <string name="action_open_settings">सेटिंग खोलें</string>
     <string name="action_allow_access">पहुँच दें</string>
     <string name="reactive_hint_title">रिएक्टिव कवर बंद है</string>
@@ -457,7 +457,7 @@
     <string name="settings_thank_you">धन्यवाद</string>
     <string name="settings_ads_off">विज्ञापन हमेशा के लिए बंद हैं</string>
     <string name="settings_support">समर्थन</string>
-    <string name="settings_support_aura">Aura का समर्थन करें</string>
+    <string name="settings_support_via">Via का समर्थन करें</string>
     <string name="settings_support_sub">एक बार का भुगतान · विज्ञापन हमेशा के लिए हटाता है</string>
     <string name="settings_privacy">निजता</string>
     <string name="settings_ad_choices">विज्ञापन निजता के विकल्प</string>
@@ -467,8 +467,8 @@
     <string name="settings_ad_id_sub">इसे Android की विज्ञापन सेटिंग में रीसेट करें या मिटाएं; यह हर ऐप पर लागू होता है</string>
     <string name="settings_privacy_policy">निजता नीति</string>
     <string name="settings_about">परिचय</string>
-    <string name="settings_about_app">Aura के बारे में</string>
-    <string name="settings_rate_app">Aura को रेटिंग दें</string>
+    <string name="settings_about_app">Via के बारे में</string>
+    <string name="settings_rate_app">Via को रेटिंग दें</string>
     <string name="settings_rate_sub">Google Play पर</string>
     <string name="settings_version">वर्शन</string>
     <string name="library_nothing_yet">यहाँ अभी कुछ नहीं है</string>
@@ -486,7 +486,7 @@
     <string name="dq_hdr">HDR</string>
     <string name="dq_low_ram">कम RAM वाला डिवाइस</string>
     <string name="dq_ceiling">मापी गई सीमा: %1$s (स्कोर %2$d/8)</string>
-    <string name="dq_honest">डिस्प्ले क्वालिटी बदलती है कि Aura कैसे दिखाता है। यह आपकी स्क्रीन नहीं बदलती।</string>
+    <string name="dq_honest">डिस्प्ले क्वालिटी बदलती है कि Via कैसे दिखाता है। यह आपकी स्क्रीन नहीं बदलती।</string>
     <string name="rescan_scanning">आपका मीडिया स्कैन किया जा रहा है…</string>
     <string name="rescan_done">लाइब्रेरी अपडेट हो गई</string>
     <string name="rescan_title">डिवाइस फिर से स्कैन करें</string>
@@ -502,7 +502,7 @@
     <string name="language_title">भाषा</string>
     <string name="language_automatic">अपने-आप</string>
     <string name="language_follows_phone">आपके फ़ोन जैसी: %1$s</string>
-    <string name="share_needs_wifi">Aura Share को वाई-फ़ाई चाहिए। यह फ़ोन मोबाइल डेटा पर है, जिसमें कोई लोकल नेटवर्क नहीं होता जिस पर टीवी हो सके।</string>
+    <string name="share_needs_wifi">Via Share को वाई-फ़ाई चाहिए। यह फ़ोन मोबाइल डेटा पर है, जिसमें कोई लोकल नेटवर्क नहीं होता जिस पर टीवी हो सके।</string>
     <string name="share_nothing_answered">इस नेटवर्क पर किसी ने जवाब नहीं दिया। टीवी उसी वाई-फ़ाई पर होना चाहिए और उसकी मीडिया शेयरिंग चालू होनी चाहिए — ब्रांड के हिसाब से इसे DLNA, Screen Share या AllShare कहते हैं।</string>
     <string name="share_nothing_answered_host">इस नेटवर्क पर किसी ने जवाब नहीं दिया (यह फ़ोन %1$s है)। टीवी उसी वाई-फ़ाई पर होना चाहिए और उसकी मीडिया शेयरिंग चालू होनी चाहिए — ब्रांड के हिसाब से इसे DLNA, Screen Share या AllShare कहते हैं।</string>
     <string name="share_no_address">इस फ़ोन का अभी नेटवर्क पर कोई पता नहीं है।</string>

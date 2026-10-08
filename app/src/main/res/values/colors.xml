@@ -9,7 +9,7 @@
          card sat on the home screen as a violet slab among neutral rows. -->
 
     <!-- Window background. Only visible before Compose draws (cold start,
-         rotation). Matches Aura.Ground so the handover is invisible. -->
+         rotation). Matches Via.Ground so the handover is invisible. -->
     <color name="window_ink">#000000</color>
 
     <!-- The CTA label was white on the accent fill: 2.1:1, unreadable. Dark

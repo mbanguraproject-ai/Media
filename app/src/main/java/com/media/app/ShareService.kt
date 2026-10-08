@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 // ============================================================================
-//  AURA SHARE - staying alive
+//  VIA SHARE - staying alive
 //
 //  The phone is the server. Once the TV is playing, the file it is reading
 //  comes out of this process, so the process has to still be here when the
@@ -44,6 +44,8 @@ class ShareService : Service() {
     }
 
     companion object {
+        // Still the old name (Aura). A new id would leave the old channel
+        // behind in system settings; the name users see comes from share_name.
         private const val CHANNEL = "aura_share"
         private const val ID = 0xA124
 
@@ -125,7 +127,17 @@ class ShareService : Service() {
     private fun channel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val existing = notifier()?.getNotificationChannel(CHANNEL)
-        if (existing != null) return
+        if (existing != null) {
+            // The system keeps the name a channel was created with, so phones
+            // that had Aura would go on showing "Aura Share". Re-creating it
+            // with the same id renames it and keeps the user's settings.
+            val name = getString(R.string.share_name)
+            if (existing.name != name) {
+                existing.name = name
+                notifier()?.createNotificationChannel(existing)
+            }
+            return
+        }
         val ch = NotificationChannel(
             CHANNEL, getString(R.string.share_name), NotificationManager.IMPORTANCE_LOW
         ).apply {

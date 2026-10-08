@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.sp
 //  An object, not top-level vals - enum constructors run at class-load time and
 //  would read uninitialised file-level properties.
 // ============================================================================
-object Aura {
+object Via {
     val Accent = Color(0xFF2DD4BF)   // active state, progress, selection
     val Ground = Color(0xFF000000)   // near black — the one flat floor
 }
@@ -60,11 +60,11 @@ enum class Mood(
     // Colour is identical for every entry now. These stay only as COLLECTIONS
     // (mood_members rows); they carry no theme of their own. The banners went
     // with the colours - "Workout mode activated" was chrome announcing itself.
-    ALL(       "All",        Aura.Accent, Aura.Ground, null, Aura.Accent),
-    LATE_NIGHT("Late Night", Aura.Accent, Aura.Ground, null, Aura.Accent),
-    WORKOUT(   "Workout",    Aura.Accent, Aura.Ground, null, Aura.Accent),
-    FOCUS(     "Focus",      Aura.Accent, Aura.Ground, null, Aura.Accent),
-    FAVORITES( "Favorites",  Aura.Accent, Aura.Ground, null, Aura.Accent);
+    ALL(       "All",        Via.Accent, Via.Ground, null, Via.Accent),
+    LATE_NIGHT("Late Night", Via.Accent, Via.Ground, null, Via.Accent),
+    WORKOUT(   "Workout",    Via.Accent, Via.Ground, null, Via.Accent),
+    FOCUS(     "Focus",      Via.Accent, Via.Ground, null, Via.Accent),
+    FAVORITES( "Favorites",  Via.Accent, Via.Ground, null, Via.Accent);
 
     // Stable DB key for membership (matches mood_members.moodKey). ALL is never stored.
     val key: String get() = name.lowercase()
@@ -114,7 +114,7 @@ val DarkPalette = Palette(
     // Was a purple-navy cast (#17141F and friends). A tinted ground under
     // full-colour album art muddies every warm cover on the screen, so the
     // floor is neutral now and the artwork supplies the colour.
-    bg = Aura.Ground,                // #000000 — pixels off on OLED
+    bg = Via.Ground,                 // #000000 — pixels off on OLED
     surface = Color(0xFF0B0B0D),     // +1 step
     elevated = Color(0xFF15151A),    // +2 - cards, panels
     floating = Color(0xFF1F1F26),    // +3 - reads above scrolling content
@@ -131,9 +131,9 @@ val DarkPalette = Palette(
     // 5.8:1 on `elevated`, the worst surface it lands on. The deeper floor
     // bought contrast back rather than spending it.
     textFaint = Color(0xFF8B929E),
-    accent = Aura.Accent,            // the ONLY accent in the app
+    accent = Via.Accent,             // the ONLY accent in the app
     onAccent = Color(0xFF06231F),
-    onInverse = Aura.Ground          // was a leftover purple
+    onInverse = Via.Ground           // was a leftover purple
 )
 
 // Light kept as a graceful fallback (screenshots are dark-first).

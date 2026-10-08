@@ -224,7 +224,7 @@
     <string name="action_rescan_library">Verificar biblioteca de novo</string>
     <string name="action_try_again">Tentar de novo</string>
     <string name="update_ready_title">Atualização pronta</string>
-    <string name="update_ready_body">Uma nova versão do Aura foi baixada. Reinicie para concluir; a música para por um instante.</string>
+    <string name="update_ready_body">Uma nova versão do Via foi baixada. Reinicie para concluir; a música para por um instante.</string>
     <string name="action_restart">Reiniciar</string>
     <string name="reveal_building">Montando sua biblioteca</string>
     <plurals name="reveal_tracks">
@@ -249,9 +249,9 @@
     <string name="action_play_pause">Tocar/Pausar</string>
     <string name="action_next">Próxima</string>
     <string name="video_forward_10">Avançar 10 segundos</string>
-    <string name="cd_app_mark">Aura</string>
+    <string name="cd_app_mark">Via</string>
     <string name="share_playing_elsewhere">Tocando em outro dispositivo</string>
-    <string name="share_name">Aura Share</string>
+    <string name="share_name">Via Share</string>
     <string name="action_search">Buscar</string>
     <string name="pillar_music">Música</string>
     <string name="pillar_video">Vídeo</string>
@@ -286,9 +286,9 @@
     <string name="cd_more_options">Mais opções</string>
     <string name="about_title">Sobre</string>
     <string name="tagline">Sua biblioteca, iluminada pelo que está tocando.</string>
-    <string name="about_intro">Sua biblioteca não deveria estar espalhada por uma dúzia de apps. O Aura reúne tudo o que toca no seu celular em um só lugar e depois sai do caminho para você só ouvir e assistir.</string>
+    <string name="about_intro">Sua biblioteca não deveria estar espalhada por uma dúzia de apps. O Via reúne tudo o que toca no seu celular em um só lugar e depois sai do caminho para você só ouvir e assistir.</string>
     <string name="about_h1">Quatro tipos de mídia, um só lugar</string>
-    <string name="about_p1">Música para as suas canções. Podcasts para conversas longas. Audiolivros para os livros que você ouve. E vídeo, em qualquer formato que o seu celular entenda. O Aura organiza tudo automaticamente, e você sempre pode reorganizar qualquer coisa à mão.</string>
+    <string name="about_p1">Música para as suas canções. Podcasts para conversas longas. Audiolivros para os livros que você ouve. E vídeo, em qualquer formato que o seu celular entenda. O Via organiza tudo automaticamente, e você sempre pode reorganizar qualquer coisa à mão.</string>
     <string name="about_h2">Seu, e só seu</string>
     <string name="about_p2">Tudo toca localmente, direto do seu dispositivo. Não há contas para criar nem nada em que entrar. Sua biblioteca, seu histórico e suas edições nunca saem do celular. A única exceção é você quem liga: buscar na internet capas e letras que faltam, o que envia apenas o título, o artista, o álbum e a duração de uma faixa.</string>
     <string name="about_h3">Capas e letras, consertadas</string>
@@ -346,13 +346,13 @@
     <string name="welcome_line_3">Tudo toca localmente. Sem contas, sem login.</string>
     <string name="action_got_it">Entendi</string>
     <string name="perm_explainer_title">Só uma coisinha</string>
-    <string name="perm_explainer_body">O Aura toca as músicas, podcasts, audiolivros e vídeos que já estão no seu celular. Para encontrá-los, ele precisa de permissão para ler sua mídia.</string>
+    <string name="perm_explainer_body">O Via toca as músicas, podcasts, audiolivros e vídeos que já estão no seu celular. Para encontrá-los, ele precisa de permissão para ler sua mídia.</string>
     <string name="perm_explainer_privacy">Nada sai do seu dispositivo, e nada é enviado para lugar nenhum.</string>
     <string name="action_understood">Entendido</string>
     <string name="perm_blocked_title">O acesso está desativado</string>
-    <string name="perm_needed_title">O Aura precisa da sua biblioteca</string>
+    <string name="perm_needed_title">O Via precisa da sua biblioteca</string>
     <string name="perm_blocked_body">O Android não está mais mostrando o pedido de permissão. Abra os Ajustes, permita o acesso a músicas e áudio e volte.</string>
-    <string name="perm_needed_body">O Aura só toca arquivos que já estão neste celular. Ele precisa de permissão para lê-los; nada é enviado para lugar nenhum.</string>
+    <string name="perm_needed_body">O Via só toca arquivos que já estão neste celular. Ele precisa de permissão para lê-los; nada é enviado para lugar nenhum.</string>
     <string name="action_open_settings">Abrir ajustes</string>
     <string name="action_allow_access">Permitir acesso</string>
     <string name="reactive_hint_title">A capa reativa está desligada</string>
@@ -457,7 +457,7 @@
     <string name="settings_thank_you">Obrigado</string>
     <string name="settings_ads_off">Os anúncios foram removidos para sempre</string>
     <string name="settings_support">Apoio</string>
-    <string name="settings_support_aura">Apoie o Aura</string>
+    <string name="settings_support_via">Apoie o Via</string>
     <string name="settings_support_sub">Pagamento único · remove os anúncios para sempre</string>
     <string name="settings_privacy">Privacidade</string>
     <string name="settings_ad_choices">Opções de privacidade de anúncios</string>
@@ -467,8 +467,8 @@
     <string name="settings_ad_id_sub">Redefina ou exclua nos ajustes de anúncios do Android; vale para todos os apps</string>
     <string name="settings_privacy_policy">Política de privacidade</string>
     <string name="settings_about">Sobre</string>
-    <string name="settings_about_app">Sobre o Aura</string>
-    <string name="settings_rate_app">Avaliar o Aura</string>
+    <string name="settings_about_app">Sobre o Via</string>
+    <string name="settings_rate_app">Avaliar o Via</string>
     <string name="settings_rate_sub">No Google Play</string>
     <string name="settings_version">Versão</string>
     <string name="library_nothing_yet">Ainda não há nada aqui</string>
@@ -486,7 +486,7 @@
     <string name="dq_hdr">HDR</string>
     <string name="dq_low_ram">dispositivo com pouca RAM</string>
     <string name="dq_ceiling">Limite medido: %1$s (pontuação %2$d/8)</string>
-    <string name="dq_honest">A qualidade de exibição muda como o Aura desenha. Ela não muda a sua tela.</string>
+    <string name="dq_honest">A qualidade de exibição muda como o Via desenha. Ela não muda a sua tela.</string>
     <string name="rescan_scanning">Verificando sua mídia…</string>
     <string name="rescan_done">Biblioteca atualizada</string>
     <string name="rescan_title">Verificar o dispositivo de novo</string>
@@ -502,7 +502,7 @@
     <string name="language_title">Idioma</string>
     <string name="language_automatic">Automático</string>
     <string name="language_follows_phone">Segue o celular: %1$s</string>
-    <string name="share_needs_wifi">O Aura Share precisa de Wi-Fi. Este celular está nos dados móveis, que não têm uma rede local onde uma TV possa estar.</string>
+    <string name="share_needs_wifi">O Via Share precisa de Wi-Fi. Este celular está nos dados móveis, que não têm uma rede local onde uma TV possa estar.</string>
     <string name="share_nothing_answered">Nada respondeu nesta rede. A TV precisa estar no mesmo Wi-Fi com o compartilhamento de mídia ativado; dependendo da marca, ele se chama DLNA, Screen Share ou AllShare.</string>
     <string name="share_nothing_answered_host">Nada respondeu nesta rede (este celular é %1$s). A TV precisa estar no mesmo Wi-Fi com o compartilhamento de mídia ativado; dependendo da marca, ele se chama DLNA, Screen Share ou AllShare.</string>
     <string name="share_no_address">Este celular está sem endereço na rede agora.</string>

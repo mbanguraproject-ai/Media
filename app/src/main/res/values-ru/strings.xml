@@ -234,7 +234,7 @@
     <string name="action_rescan_library">Пересканировать медиатеку</string>
     <string name="action_try_again">Повторить</string>
     <string name="update_ready_title">Обновление готово</string>
-    <string name="update_ready_body">Новая версия Aura загружена. Перезапустите, чтобы завершить; музыка ненадолго остановится.</string>
+    <string name="update_ready_body">Новая версия Via загружена. Перезапустите, чтобы завершить; музыка ненадолго остановится.</string>
     <string name="action_restart">Перезапустить</string>
     <string name="reveal_building">Собираем вашу медиатеку</string>
     <plurals name="reveal_tracks">
@@ -265,9 +265,9 @@
     <string name="action_play_pause">Воспроизведение/пауза</string>
     <string name="action_next">Следующий</string>
     <string name="video_forward_10">Вперёд на 10 секунд</string>
-    <string name="cd_app_mark">Aura</string>
+    <string name="cd_app_mark">Via</string>
     <string name="share_playing_elsewhere">Играет на другом устройстве</string>
-    <string name="share_name">Aura Share</string>
+    <string name="share_name">Via Share</string>
     <string name="action_search">Поиск</string>
     <string name="pillar_music">Музыка</string>
     <string name="pillar_video">Видео</string>
@@ -312,9 +312,9 @@
     <string name="cd_more_options">Ещё</string>
     <string name="about_title">О приложении</string>
     <string name="tagline">Ваша медиатека в свете того, что играет.</string>
-    <string name="about_intro">Медиатека не должна быть разбросана по десятку приложений. Aura собирает всё, что можно воспроизвести на телефоне, в одном месте — и уходит в тень, чтобы вы просто слушали и смотрели.</string>
+    <string name="about_intro">Медиатека не должна быть разбросана по десятку приложений. Via собирает всё, что можно воспроизвести на телефоне, в одном месте — и уходит в тень, чтобы вы просто слушали и смотрели.</string>
     <string name="about_h1">Четыре вида медиа — одно место</string>
-    <string name="about_p1">Музыка для ваших песен. Подкасты для долгих разговоров. Аудиокниги для книг, которые вы слушаете. И видео — в любом формате, который понимает телефон. Aura сортирует всё автоматически, а вы всегда можете переложить что угодно вручную.</string>
+    <string name="about_p1">Музыка для ваших песен. Подкасты для долгих разговоров. Аудиокниги для книг, которые вы слушаете. И видео — в любом формате, который понимает телефон. Via сортирует всё автоматически, а вы всегда можете переложить что угодно вручную.</string>
     <string name="about_h2">Ваше, и только ваше</string>
     <string name="about_p2">Всё воспроизводится локально, прямо с устройства. Никаких аккаунтов и входа. Ваша медиатека, история прослушивания и правки никогда не покидают телефон. Единственное исключение включаете вы сами: поиск недостающих обложек и текстов в интернете, при котором отправляются только название, исполнитель, альбом и длительность трека.</string>
     <string name="about_h3">Обложки и тексты — исправлены</string>
@@ -372,13 +372,13 @@
     <string name="welcome_line_3">Всё играет локально. Без аккаунтов и входа.</string>
     <string name="action_got_it">Понятно</string>
     <string name="perm_explainer_title">Один момент</string>
-    <string name="perm_explainer_body">Aura воспроизводит песни, подкасты, аудиокниги и видео, которые уже есть на телефоне. Чтобы найти их, нужно разрешение на чтение медиафайлов.</string>
+    <string name="perm_explainer_body">Via воспроизводит песни, подкасты, аудиокниги и видео, которые уже есть на телефоне. Чтобы найти их, нужно разрешение на чтение медиафайлов.</string>
     <string name="perm_explainer_privacy">Ничего не покидает устройство, и ничего никуда не загружается.</string>
     <string name="action_understood">Хорошо</string>
     <string name="perm_blocked_title">Доступ отключён</string>
-    <string name="perm_needed_title">Aura нужна ваша медиатека</string>
+    <string name="perm_needed_title">Via нужна ваша медиатека</string>
     <string name="perm_blocked_body">Android больше не показывает запрос разрешения. Откройте Настройки, разрешите доступ к музыке и аудио и вернитесь.</string>
-    <string name="perm_needed_body">Aura воспроизводит только файлы, которые уже есть на этом телефоне. Для этого нужно разрешение на их чтение — ничего никуда не загружается.</string>
+    <string name="perm_needed_body">Via воспроизводит только файлы, которые уже есть на этом телефоне. Для этого нужно разрешение на их чтение — ничего никуда не загружается.</string>
     <string name="action_open_settings">Открыть настройки</string>
     <string name="action_allow_access">Разрешить доступ</string>
     <string name="reactive_hint_title">Живая обложка выключена</string>
@@ -491,7 +491,7 @@
     <string name="settings_thank_you">Спасибо</string>
     <string name="settings_ads_off">Реклама отключена навсегда</string>
     <string name="settings_support">Поддержать</string>
-    <string name="settings_support_aura">Поддержать Aura</string>
+    <string name="settings_support_via">Поддержать Via</string>
     <string name="settings_support_sub">Разово · убирает рекламу навсегда</string>
     <string name="settings_privacy">Конфиденциальность</string>
     <string name="settings_ad_choices">Настройки конфиденциальности рекламы</string>
@@ -501,8 +501,8 @@
     <string name="settings_ad_id_sub">Сбросьте или удалите его в рекламных настройках Android; это действует для всех приложений</string>
     <string name="settings_privacy_policy">Политика конфиденциальности</string>
     <string name="settings_about">О приложении</string>
-    <string name="settings_about_app">Об Aura</string>
-    <string name="settings_rate_app">Оценить Aura</string>
+    <string name="settings_about_app">О Via</string>
+    <string name="settings_rate_app">Оценить Via</string>
     <string name="settings_rate_sub">В Google Play</string>
     <string name="settings_version">Версия</string>
     <string name="library_nothing_yet">Здесь пока пусто</string>
@@ -520,7 +520,7 @@
     <string name="dq_hdr">HDR</string>
     <string name="dq_low_ram">устройство с малым объёмом ОЗУ</string>
     <string name="dq_ceiling">Измеренный предел: %1$s (оценка %2$d/8)</string>
-    <string name="dq_honest">Качество отображения меняет то, как Aura рисует. Оно не меняет ваш экран.</string>
+    <string name="dq_honest">Качество отображения меняет то, как Via рисует. Оно не меняет ваш экран.</string>
     <string name="rescan_scanning">Сканируем медиафайлы…</string>
     <string name="rescan_done">Медиатека обновлена</string>
     <string name="rescan_title">Пересканировать устройство</string>
@@ -536,7 +536,7 @@
     <string name="language_title">Язык</string>
     <string name="language_automatic">Автоматически</string>
     <string name="language_follows_phone">Как на телефоне: %1$s</string>
-    <string name="share_needs_wifi">Для Aura Share нужен Wi-Fi. Телефон работает через мобильный интернет, а там нет локальной сети, в которой мог бы быть телевизор.</string>
+    <string name="share_needs_wifi">Для Via Share нужен Wi-Fi. Телефон работает через мобильный интернет, а там нет локальной сети, в которой мог бы быть телевизор.</string>
     <string name="share_nothing_answered">В этой сети никто не ответил. Телевизор должен быть в той же сети Wi-Fi с включённым доступом к медиа — в зависимости от марки это называется DLNA, Screen Share или AllShare.</string>
     <string name="share_nothing_answered_host">В этой сети никто не ответил (этот телефон — %1$s). Телевизор должен быть в той же сети Wi-Fi с включённым доступом к медиа — в зависимости от марки это называется DLNA, Screen Share или AllShare.</string>
     <string name="share_no_address">У этого телефона сейчас нет адреса в сети.</string>

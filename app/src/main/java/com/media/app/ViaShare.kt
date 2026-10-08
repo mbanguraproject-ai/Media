@@ -17,7 +17,7 @@ import java.net.Socket
 import java.net.URL
 
 // ============================================================================
-//  AURA SHARE - the network half
+//  VIA SHARE - the network half
 //
 //  Casting to a TV without a dongle. Google Cast only talks to Cast hardware;
 //  UPnP/DLNA is what every smart TV, AV receiver and network speaker has
@@ -53,7 +53,7 @@ private const val SSDP_HOST = "239.255.255.250"
 private const val SSDP_PORT = 1900
 private const val RENDERER = "urn:schemas-upnp-org:device:MediaRenderer:1"
 
-object AuraShare {
+object ViaShare {
 
     // ------------------------------------------------------ WHICH INTERFACE
     //
@@ -136,7 +136,7 @@ object AuraShare {
                     .append(method).append(' ').append(path).append(" HTTP/1.1\r\n")
                     .append("HOST: ").append(url.host).append(':').append(port).append("\r\n")
                     .append("CONNECTION: close\r\n")
-                    .append("USER-AGENT: Aura/1 UPnP/1.0\r\n")
+                    .append("USER-AGENT: Via/1 UPnP/1.0\r\n")
                 headers.forEach { (k, v) -> head.append(k).append(": ").append(v).append("\r\n") }
                 head.append("CONTENT-LENGTH: ").append(body?.size ?: 0).append("\r\n\r\n")
                 sock.getOutputStream().apply {
@@ -186,7 +186,7 @@ object AuraShare {
     fun discover(context: Context, windowMs: Long = 3000): List<Renderer> {
         val wifi = context.applicationContext
             .getSystemService(Context.WIFI_SERVICE) as? WifiManager
-        val lock = wifi?.createMulticastLock("aura-share")?.apply {
+        val lock = wifi?.createMulticastLock("via-share")?.apply {
             setReferenceCounted(true)
             runCatching { acquire() }
         }

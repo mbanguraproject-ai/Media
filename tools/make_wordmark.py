@@ -4,7 +4,7 @@ Renders the splash branding wordmark from the app's own Inter font.
 
 VectorDrawable has no text element, so the branding image must be raster.
 Re-run this whenever the name or version changes:
-    python3 tools/make_wordmark.py "AURA 2.1"
+    python3 tools/make_wordmark.py "VIA 2.1"
 """
 import sys
 from PIL import Image, ImageDraw, ImageFont
@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw, ImageFont
 # No version number. The splash is a wordmark, not a changelog - a baked-in
 # version silently goes stale the moment versionName changes, which is exactly
 # what happened between 2.0 and 2.1.
-TEXT = sys.argv[1] if len(sys.argv) > 1 else "AURA"
+TEXT = sys.argv[1] if len(sys.argv) > 1 else "VIA"
 FONT = "app/src/main/res/font/inter_variable.ttf"
 OUT  = "app/src/main/res/drawable-xxhdpi/splash_branding.png"
 

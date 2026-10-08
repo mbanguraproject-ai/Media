@@ -224,7 +224,7 @@
     <string name="action_rescan_library">Kitaplığı yeniden tara</string>
     <string name="action_try_again">Yeniden dene</string>
     <string name="update_ready_title">Güncelleme hazır</string>
-    <string name="update_ready_body">Aura\'nın yeni sürümü indirildi. Tamamlamak için yeniden başlat; müzik bir anlığına durur.</string>
+    <string name="update_ready_body">Via\'nın yeni sürümü indirildi. Tamamlamak için yeniden başlat; müzik bir anlığına durur.</string>
     <string name="action_restart">Yeniden başlat</string>
     <string name="reveal_building">Kitaplığın oluşturuluyor</string>
     <plurals name="reveal_tracks">
@@ -249,9 +249,9 @@
     <string name="action_play_pause">Çal/Duraklat</string>
     <string name="action_next">Sonraki</string>
     <string name="video_forward_10">10 saniye ileri</string>
-    <string name="cd_app_mark">Aura</string>
+    <string name="cd_app_mark">Via</string>
     <string name="share_playing_elsewhere">Başka bir cihazda çalıyor</string>
-    <string name="share_name">Aura Share</string>
+    <string name="share_name">Via Share</string>
     <string name="action_search">Ara</string>
     <string name="pillar_music">Müzik</string>
     <string name="pillar_video">Video</string>
@@ -286,9 +286,9 @@
     <string name="cd_more_options">Diğer seçenekler</string>
     <string name="about_title">Hakkında</string>
     <string name="tagline">Kitaplığın, çalan şeyin ışığında.</string>
-    <string name="about_intro">Kitaplığın bir düzine uygulamaya dağılmış olmamalı. Aura, telefonunda çalan her şeyi tek bir yerde toplar ve sonra kenara çekilir; sen yalnızca dinler ve izlersin.</string>
+    <string name="about_intro">Kitaplığın bir düzine uygulamaya dağılmış olmamalı. Via, telefonunda çalan her şeyi tek bir yerde toplar ve sonra kenara çekilir; sen yalnızca dinler ve izlersin.</string>
     <string name="about_h1">Dört tür medya, tek bir yer</string>
-    <string name="about_p1">Şarkıların için müzik. Uzun sohbetler için podcast\'ler. Dinlediğin kitaplar için sesli kitaplar. Ve telefonunun anladığı her biçimde video. Aura bunları otomatik olarak sıralar; sen de istediğini her zaman elle yeniden düzenleyebilirsin.</string>
+    <string name="about_p1">Şarkıların için müzik. Uzun sohbetler için podcast\'ler. Dinlediğin kitaplar için sesli kitaplar. Ve telefonunun anladığı her biçimde video. Via bunları otomatik olarak sıralar; sen de istediğini her zaman elle yeniden düzenleyebilirsin.</string>
     <string name="about_h2">Senin, yalnızca senin</string>
     <string name="about_p2">Her şey yerel olarak, doğrudan cihazından çalar. Açılacak hesap, girilecek oturum yok. Kitaplığın, dinleme geçmişin ve düzenlemelerin telefonundan hiç çıkmaz. Tek istisnayı sen açarsın: eksik kapakları ve şarkı sözlerini internette aramak; bunun için yalnızca bir parçanın başlığı, sanatçısı, albümü ve süresi gönderilir.</string>
     <string name="about_h3">Kapaklar ve şarkı sözleri, onarıldı</string>
@@ -346,13 +346,13 @@
     <string name="welcome_line_3">Her şey yerel olarak çalar. Hesap yok, oturum açma yok.</string>
     <string name="action_got_it">Anladım</string>
     <string name="perm_explainer_title">Kısa bir şey</string>
-    <string name="perm_explainer_body">Aura, telefonunda zaten olan şarkıları, podcast\'leri, sesli kitapları ve videoları çalar. Onları bulmak için medyanı okuma iznine ihtiyacı var.</string>
+    <string name="perm_explainer_body">Via, telefonunda zaten olan şarkıları, podcast\'leri, sesli kitapları ve videoları çalar. Onları bulmak için medyanı okuma iznine ihtiyacı var.</string>
     <string name="perm_explainer_privacy">Hiçbir şey cihazından çıkmaz ve hiçbir yere yüklenmez.</string>
     <string name="action_understood">Tamam</string>
     <string name="perm_blocked_title">Erişim kapalı</string>
-    <string name="perm_needed_title">Aura\'nın kitaplığına ihtiyacı var</string>
+    <string name="perm_needed_title">Via\'nın kitaplığına ihtiyacı var</string>
     <string name="perm_blocked_body">Android artık izin istemini göstermiyor. Ayarlar\'ı aç, müzik ve ses erişimine izin ver, sonra geri gel.</string>
-    <string name="perm_needed_body">Aura yalnızca bu telefonda zaten olan dosyaları çalar. Onları okumak için izne ihtiyacı var; hiçbir şey hiçbir yere yüklenmez.</string>
+    <string name="perm_needed_body">Via yalnızca bu telefonda zaten olan dosyaları çalar. Onları okumak için izne ihtiyacı var; hiçbir şey hiçbir yere yüklenmez.</string>
     <string name="action_open_settings">Ayarları aç</string>
     <string name="action_allow_access">Erişime izin ver</string>
     <string name="reactive_hint_title">Tepki veren kapak kapalı</string>
@@ -457,7 +457,7 @@
     <string name="settings_thank_you">Teşekkürler</string>
     <string name="settings_ads_off">Reklamlar tamamen kapalı</string>
     <string name="settings_support">Destek</string>
-    <string name="settings_support_aura">Aura\'yı destekle</string>
+    <string name="settings_support_via">Via\'yı destekle</string>
     <string name="settings_support_sub">Tek seferlik · reklamları sonsuza kadar kaldırır</string>
     <string name="settings_privacy">Gizlilik</string>
     <string name="settings_ad_choices">Reklam gizliliği seçenekleri</string>
@@ -467,8 +467,8 @@
     <string name="settings_ad_id_sub">Android\'in reklam ayarlarından sıfırla veya sil; tüm uygulamalar için geçerlidir</string>
     <string name="settings_privacy_policy">Gizlilik Politikası</string>
     <string name="settings_about">Hakkında</string>
-    <string name="settings_about_app">Aura hakkında</string>
-    <string name="settings_rate_app">Aura\'yı puanla</string>
+    <string name="settings_about_app">Via hakkında</string>
+    <string name="settings_rate_app">Via\'yı puanla</string>
     <string name="settings_rate_sub">Google Play\'de</string>
     <string name="settings_version">Sürüm</string>
     <string name="library_nothing_yet">Burada henüz bir şey yok</string>
@@ -486,7 +486,7 @@
     <string name="dq_hdr">HDR</string>
     <string name="dq_low_ram">düşük RAM\'li cihaz</string>
     <string name="dq_ceiling">Ölçülen sınır: %1$s (puan %2$d/8)</string>
-    <string name="dq_honest">Ekran kalitesi Aura\'nın nasıl çizdiğini değiştirir. Ekranını değiştirmez.</string>
+    <string name="dq_honest">Ekran kalitesi Via\'nın nasıl çizdiğini değiştirir. Ekranını değiştirmez.</string>
     <string name="rescan_scanning">Medyan taranıyor…</string>
     <string name="rescan_done">Kitaplık güncellendi</string>
     <string name="rescan_title">Cihazı yeniden tara</string>
@@ -502,7 +502,7 @@
     <string name="language_title">Dil</string>
     <string name="language_automatic">Otomatik</string>
     <string name="language_follows_phone">Telefonunu izler: %1$s</string>
-    <string name="share_needs_wifi">Aura Share için Wi-Fi gerekir. Bu telefon mobil veride; orada bir TV\'nin bulunabileceği yerel bir ağ yok.</string>
+    <string name="share_needs_wifi">Via Share için Wi-Fi gerekir. Bu telefon mobil veride; orada bir TV\'nin bulunabileceği yerel bir ağ yok.</string>
     <string name="share_nothing_answered">Bu ağda hiçbir şey yanıt vermedi. TV aynı Wi-Fi\'da olmalı ve medya paylaşımı açık olmalı; markaya göre DLNA, Screen Share veya AllShare diye geçer.</string>
     <string name="share_nothing_answered_host">Bu ağda hiçbir şey yanıt vermedi (bu telefon: %1$s). TV aynı Wi-Fi\'da olmalı ve medya paylaşımı açık olmalı; markaya göre DLNA, Screen Share veya AllShare diye geçer.</string>
     <string name="share_no_address">Bu telefonun şu anda ağda bir adresi yok.</string>

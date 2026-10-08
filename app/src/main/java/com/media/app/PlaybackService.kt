@@ -59,7 +59,7 @@ class PlaybackService : MediaSessionService() {
         // Without this the session uses media3's default loader, which has
         // no fallback: a uri that fails to resolve becomes a blank square.
         mediaSession = MediaSession.Builder(this, player)
-            .setBitmapLoader(AuraBitmapLoader(this))
+            .setBitmapLoader(ViaBitmapLoader(this))
             .build()
 
         // The Sound chain rides on the player's audio session. A new session

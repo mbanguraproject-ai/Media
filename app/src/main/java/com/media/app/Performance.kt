@@ -111,7 +111,7 @@ fun rememberAdaptiveQuality(
 
         // The listener is invoked on this thread, so the counters below are
         // only ever touched by it. State changes are posted to main.
-        val thread = HandlerThread("aura-frame-metrics").apply { start() }
+        val thread = HandlerThread("via-frame-metrics").apply { start() }
         val handler = Handler(thread.looper)
         val main = Handler(Looper.getMainLooper())
 

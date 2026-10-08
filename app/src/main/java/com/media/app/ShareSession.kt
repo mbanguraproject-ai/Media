@@ -21,7 +21,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 // ============================================================================
-//  AURA SHARE - the session
+//  VIA SHARE - the session
 //
 //  A singleton, not something a screen owns. Playback on a TV outlives the
 //  sheet that started it, outlives Home, and has to outlive the Activity: the
@@ -88,7 +88,7 @@ object ShareSession {
             _state.update { it.copy(scanning = true, note = null) }
             // Someone on mobile data has no local network for a TV to be on.
             // Saying "nothing answered" to them is a lie of omission.
-            if (AuraShare.lanNetwork(ctx) == null) {
+            if (ViaShare.lanNetwork(ctx) == null) {
                 _state.update {
                     it.copy(
                         scanning = false, devices = emptyList(), host = null,
@@ -97,8 +97,8 @@ object ShareSession {
                 }
                 return@launch
             }
-            val found = AuraShare.discover(ctx)
-            val host = AuraShare.localAddress(ctx)
+            val found = ViaShare.discover(ctx)
+            val host = ViaShare.localAddress(ctx)
             _state.update {
                 it.copy(
                     scanning = false, devices = found, host = host,
@@ -114,7 +114,7 @@ object ShareSession {
     fun start(renderer: Renderer, items: List<AppMediaItem>, at: Int) {
         val ctx = app ?: return
         scope.launch {
-            val host = AuraShare.localAddress(ctx)
+            val host = ViaShare.localAddress(ctx)
             if (host == null) {
                 _state.update { it.copy(note = UiText(R.string.share_no_address)) }
                 return@launch
@@ -137,7 +137,7 @@ object ShareSession {
                     active = renderer, queue = items, index = start,
                     playing = true, positionMs = 0L,
                     durationMs = media.durationMs, note = null,
-                    volume = AuraShare.volume(renderer)
+                    volume = ViaShare.volume(renderer)
                 )
             }
             ShareService.start(ctx)
@@ -148,7 +148,7 @@ object ShareSession {
     fun toggle() = scope.launch {
         val s = _state.value
         val r = s.active ?: return@launch
-        val ok = if (s.playing) AuraShare.pause(r) else AuraShare.resume(r)
+        val ok = if (s.playing) ViaShare.pause(r) else ViaShare.resume(r)
         if (ok) _state.update { it.copy(playing = !s.playing) }
     }
 
@@ -162,12 +162,12 @@ object ShareSession {
         if (total <= 0L) return@launch
         val ms = (fraction.coerceIn(0f, 1f) * total).toLong()
         _state.update { it.copy(positionMs = ms) }
-        AuraShare.seek(r, ms)
+        ViaShare.seek(r, ms)
     }
 
     fun setVolume(value: Int) = scope.launch {
         val r = _state.value.active ?: return@launch
-        if (AuraShare.setVolume(r, value)) _state.update { it.copy(volume = value.coerceIn(0, 100)) }
+        if (ViaShare.setVolume(r, value)) _state.update { it.copy(volume = value.coerceIn(0, 100)) }
     }
 
     fun stop(reason: UiText? = null) {
@@ -185,7 +185,7 @@ object ShareSession {
         unwatch(ctx)
         if (ctx != null) ShareService.stop(ctx)
         scope.launch {
-            if (r != null) AuraShare.stop(r)
+            if (r != null) ViaShare.stop(r)
             server?.stop()
         }
     }
@@ -193,11 +193,11 @@ object ShareSession {
     // --------------------------------------------------------------- GUTS
     private suspend fun load(r: Renderer, media: AppMediaItem, host: String): Boolean {
         val url = server?.serve(media, host) ?: return false
-        if (AuraShare.play(r, url, media.title, media.mimeType, media.durationMs)) return true
+        if (ViaShare.play(r, url, media.title, media.mimeType, media.durationMs)) return true
         // Some renderers accept the URI and are not ready to be told Play in
         // the same breath. One retry, then it is a real refusal.
         delay(400)
-        return AuraShare.play(r, url, media.title, media.mimeType, media.durationMs)
+        return ViaShare.play(r, url, media.title, media.mimeType, media.durationMs)
     }
 
     private suspend fun advance(delta: Int, auto: Boolean) {
@@ -212,7 +212,7 @@ object ShareSession {
             return
         }
         val media = s.queue[target]
-        val host = AuraShare.localAddress(ctx) ?: return
+        val host = ViaShare.localAddress(ctx) ?: return
         _state.update {
             it.copy(index = target, positionMs = 0L, durationMs = media.durationMs, playing = true)
         }
@@ -231,9 +231,9 @@ object ShareSession {
             var everPlayed = false
             while (isActive) {
                 val r = _state.value.active ?: break
-                val pos = AuraShare.position(r)
-                val dur = AuraShare.duration(r)
-                val transport = AuraShare.transportState(r)
+                val pos = ViaShare.position(r)
+                val dur = ViaShare.duration(r)
+                val transport = ViaShare.transportState(r)
                 if (transport == "PLAYING") everPlayed = true
                 _state.update {
                     it.copy(
@@ -271,12 +271,12 @@ object ShareSession {
             WifiManager.WIFI_MODE_FULL_LOW_LATENCY
         else
             WifiManager.WIFI_MODE_FULL_HIGH_PERF
-        wifiLock = wm?.createWifiLock(mode, "aura-share")?.apply {
+        wifiLock = wm?.createWifiLock(mode, "via-share")?.apply {
             setReferenceCounted(false)
             runCatching { acquire() }
         }
         val pm = ctx.getSystemService(Context.POWER_SERVICE) as? PowerManager
-        wakeLock = pm?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "aura:share")?.apply {
+        wakeLock = pm?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "via:share")?.apply {
             setReferenceCounted(false)
             // Timed, because a wake lock with no timeout is a battery bug
             // waiting for one crash to happen. Four hours outlasts any film.

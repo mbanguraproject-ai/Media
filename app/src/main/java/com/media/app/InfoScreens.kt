@@ -89,13 +89,13 @@ fun TermsScreen(onClose: () -> Unit) {
         // Every other language says so here; in English this is empty.
         stringResource(R.string.terms_english_note).takeIf { it.isNotBlank() }?.let { Para(it) }
         Para(
-            "These terms cover your use of Aura. They are written to be read, " +
+            "These terms cover your use of Via. They are written to be read, " +
             "not to be got past."
         )
 
-        Heading("What Aura is")
+        Heading("What Via is")
         Para(
-            "Aura is a media player for files that are already on your device. " +
+            "Via is a media player for files that are already on your device. " +
             "It reads your storage through Android's media library, plays what " +
             "it finds, and lets you organise it. It is not a streaming service " +
             "and it has no catalogue of its own."
@@ -103,16 +103,16 @@ fun TermsScreen(onClose: () -> Unit) {
 
         Heading("Your files stay yours")
         Para(
-            "Aura does not upload your media anywhere. Playlists, favourites, " +
+            "Via does not upload your media anywhere. Playlists, favourites, " +
             "corrected titles and artwork choices are stored on this device " +
-            "only, and are removed when you uninstall the app. Aura claims no " +
+            "only, and are removed when you uninstall the app. Via claims no " +
             "ownership of anything you play through it."
         )
 
         Heading("Online artwork and lyrics")
         Para(
             "If you turn on online lookups in Settings, or ask for a cover or " +
-            "lyrics by hand, Aura sends that track's title, artist, album and " +
+            "lyrics by hand, Via sends that track's title, artist, album and " +
             "length to MusicBrainz, Cover Art Archive, Deezer, Apple's iTunes " +
             "Search, LRCLIB, NetEase and lyrics.ovh, and saves " +
             "what comes back on this device. Nothing else about you or your " +
@@ -120,7 +120,7 @@ fun TermsScreen(onClose: () -> Unit) {
             "services' own terms apply to what they receive."
         )
 
-        Heading("Aura Share and your network")
+        Heading("Via Share and your network")
         Para(
             "When you send something to a TV or speaker, your phone serves that " +
             "one file over your own Wi-Fi to the device you picked, for as long " +
@@ -132,10 +132,10 @@ fun TermsScreen(onClose: () -> Unit) {
 
         Heading("Permissions, and why")
         Para(
-            "Audio and video access is what lets Aura see your library at all. " +
+            "Audio and video access is what lets Via see your library at all. " +
             "Notifications carry the playback controls. Network and Wi-Fi state " +
-            "are used by Aura Share to find devices on your local network and " +
-            "by advertising. Aura asks for nothing it does not use."
+            "are used by Via Share to find devices on your local network and " +
+            "by advertising. Via asks for nothing it does not use."
         )
 
         Heading("Advertising")
@@ -155,7 +155,7 @@ fun TermsScreen(onClose: () -> Unit) {
         Heading("Removing ads")
         Para(
             "Ad-free is a one-time purchase made through Google Play. Google " +
-            "takes the payment and holds the receipt; Aura only asks Play " +
+            "takes the payment and holds the receipt; Via only asks Play " +
             "whether you own it. Refunds are handled by Google under Play's " +
             "own policy, not by us, and the purchase is tied to your Google " +
             "account rather than to this phone."
@@ -163,21 +163,21 @@ fun TermsScreen(onClose: () -> Unit) {
 
         Heading("Deleting files")
         Para(
-            "Aura can delete a file from your device when you ask it to. " +
+            "Via can delete a file from your device when you ask it to. " +
             "Deletion is permanent, is confirmed by Android itself on modern " +
             "versions, and cannot be undone from inside the app."
         )
 
         Heading("Acceptable use")
         Para(
-            "Use Aura with content you have the right to play. What you put on " +
-            "your device is your responsibility, and Aura neither checks nor " +
+            "Use Via with content you have the right to play. What you put on " +
+            "your device is your responsibility, and Via neither checks nor " +
             "polices it."
         )
 
         Heading("No warranty")
         Para(
-            "Aura is provided as-is, without warranty of any kind. It is a " +
+            "Via is provided as-is, without warranty of any kind. It is a " +
             "player: it reads your files and does not modify them, but you " +
             "should keep backups of anything you cannot replace, as you would " +
             "with any software."

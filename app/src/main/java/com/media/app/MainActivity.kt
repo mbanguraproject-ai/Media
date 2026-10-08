@@ -456,7 +456,7 @@ private val MiniPlayerGap = 12.dp
 @Stable
 class HomeNav {
     var showPlayer by mutableStateOf(false)
-    // Aura Share. Held at this level because the header opens it, the back
+    // Via Share. Held at this level because the header opens it, the back
     // handler closes it, and the video feed has to know it is open - a sheet
     // over Home counts as an overlay, so the surface goes back to the pill.
     var showShare by mutableStateOf(false)
@@ -1411,7 +1411,7 @@ private fun HomePlayer(
         if (sharing && state.isPlaying) vm.togglePlayPause()
     }
     if (nav.showShare) {
-        // Aura Share gets the REAL queue, not just the current track, so Next
+        // Via Share gets the REAL queue, not just the current track, so Next
         // and end-of-track work on the TV the way they do on the phone. The
         // index is found by uri rather than carried over, because an entry
         // whose item is no longer in the library drops out of the mapping.

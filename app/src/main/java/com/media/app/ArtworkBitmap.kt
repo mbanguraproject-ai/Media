@@ -118,7 +118,7 @@ object DefaultArtwork {
  * longer be blank.
  */
 @UnstableApi
-class AuraBitmapLoader(private val context: Context) : BitmapLoader {
+class ViaBitmapLoader(private val context: Context) : BitmapLoader {
 
     private val io: ListeningExecutorService =
         MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor())

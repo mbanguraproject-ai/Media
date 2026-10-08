@@ -219,7 +219,7 @@
     <string name="action_rescan_library">Pindai ulang koleksi</string>
     <string name="action_try_again">Coba lagi</string>
     <string name="update_ready_title">Pembaruan siap</string>
-    <string name="update_ready_body">Versi baru Aura sudah diunduh. Mulai ulang untuk menyelesaikan; musik berhenti sebentar.</string>
+    <string name="update_ready_body">Versi baru Via sudah diunduh. Mulai ulang untuk menyelesaikan; musik berhenti sebentar.</string>
     <string name="action_restart">Mulai ulang</string>
     <string name="reveal_building">Membangun koleksimu</string>
     <plurals name="reveal_tracks">
@@ -241,9 +241,9 @@
     <string name="action_play_pause">Putar/Jeda</string>
     <string name="action_next">Berikutnya</string>
     <string name="video_forward_10">Maju 10 detik</string>
-    <string name="cd_app_mark">Aura</string>
+    <string name="cd_app_mark">Via</string>
     <string name="share_playing_elsewhere">Diputar di perangkat lain</string>
-    <string name="share_name">Aura Share</string>
+    <string name="share_name">Via Share</string>
     <string name="action_search">Cari</string>
     <string name="pillar_music">Musik</string>
     <string name="pillar_video">Video</string>
@@ -273,9 +273,9 @@
     <string name="cd_more_options">Opsi lainnya</string>
     <string name="about_title">Tentang</string>
     <string name="tagline">Koleksimu, diterangi oleh apa yang sedang diputar.</string>
-    <string name="about_intro">Koleksimu seharusnya tidak tersebar di belasan aplikasi. Aura mengumpulkan semua yang bisa diputar di ponselmu ke satu tempat, lalu menyingkir agar kamu tinggal mendengarkan dan menonton.</string>
+    <string name="about_intro">Koleksimu seharusnya tidak tersebar di belasan aplikasi. Via mengumpulkan semua yang bisa diputar di ponselmu ke satu tempat, lalu menyingkir agar kamu tinggal mendengarkan dan menonton.</string>
     <string name="about_h1">Empat jenis media, satu tempat</string>
-    <string name="about_p1">Musik untuk lagu-lagumu. Podcast untuk obrolan panjang. Buku audio untuk buku yang kamu dengarkan. Dan video, dalam format apa pun yang dipahami ponselmu. Aura mengurutkannya secara otomatis, dan kamu selalu bisa menata ulang apa saja secara manual.</string>
+    <string name="about_p1">Musik untuk lagu-lagumu. Podcast untuk obrolan panjang. Buku audio untuk buku yang kamu dengarkan. Dan video, dalam format apa pun yang dipahami ponselmu. Via mengurutkannya secara otomatis, dan kamu selalu bisa menata ulang apa saja secara manual.</string>
     <string name="about_h2">Milikmu, hanya milikmu</string>
     <string name="about_p2">Semuanya diputar secara lokal, langsung dari perangkatmu. Tidak ada akun yang perlu dibuat dan tidak ada yang perlu login. Koleksi, riwayat dengar, dan editanmu tidak pernah keluar dari ponselmu. Satu-satunya pengecualian kamu sendiri yang menyalakannya: mencari sampul dan lirik yang hilang secara online, yang hanya mengirim judul, artis, album, dan durasi sebuah lagu.</string>
     <string name="about_h3">Sampul dan lirik, diperbaiki</string>
@@ -333,13 +333,13 @@
     <string name="welcome_line_3">Semuanya diputar secara lokal. Tanpa akun, tanpa login.</string>
     <string name="action_got_it">Mengerti</string>
     <string name="perm_explainer_title">Satu hal singkat</string>
-    <string name="perm_explainer_body">Aura memutar lagu, podcast, buku audio, dan video yang sudah ada di ponselmu. Untuk menemukannya, Aura memerlukan izin untuk membaca mediamu.</string>
+    <string name="perm_explainer_body">Via memutar lagu, podcast, buku audio, dan video yang sudah ada di ponselmu. Untuk menemukannya, Via memerlukan izin untuk membaca mediamu.</string>
     <string name="perm_explainer_privacy">Tidak ada yang keluar dari perangkatmu, dan tidak ada yang diunggah ke mana pun.</string>
     <string name="action_understood">Paham</string>
     <string name="perm_blocked_title">Akses dinonaktifkan</string>
-    <string name="perm_needed_title">Aura memerlukan koleksimu</string>
+    <string name="perm_needed_title">Via memerlukan koleksimu</string>
     <string name="perm_blocked_body">Android tidak lagi menampilkan permintaan izin. Buka Setelan, izinkan akses ke musik dan audio, lalu kembali.</string>
-    <string name="perm_needed_body">Aura hanya memutar file yang sudah ada di ponsel ini. Aura memerlukan izin untuk membacanya — tidak ada yang diunggah ke mana pun.</string>
+    <string name="perm_needed_body">Via hanya memutar file yang sudah ada di ponsel ini. Via memerlukan izin untuk membacanya — tidak ada yang diunggah ke mana pun.</string>
     <string name="action_open_settings">Buka setelan</string>
     <string name="action_allow_access">Izinkan akses</string>
     <string name="reactive_hint_title">Sampul reaktif nonaktif</string>
@@ -440,7 +440,7 @@
     <string name="settings_thank_you">Terima kasih</string>
     <string name="settings_ads_off">Iklan dimatikan untuk selamanya</string>
     <string name="settings_support">Dukungan</string>
-    <string name="settings_support_aura">Dukung Aura</string>
+    <string name="settings_support_via">Dukung Via</string>
     <string name="settings_support_sub">Sekali bayar · hapus iklan selamanya</string>
     <string name="settings_privacy">Privasi</string>
     <string name="settings_ad_choices">Pilihan privasi iklan</string>
@@ -450,8 +450,8 @@
     <string name="settings_ad_id_sub">Setel ulang atau hapus di setelan iklan Android; berlaku untuk semua aplikasi</string>
     <string name="settings_privacy_policy">Kebijakan Privasi</string>
     <string name="settings_about">Tentang</string>
-    <string name="settings_about_app">Tentang Aura</string>
-    <string name="settings_rate_app">Beri rating Aura</string>
+    <string name="settings_about_app">Tentang Via</string>
+    <string name="settings_rate_app">Beri rating Via</string>
     <string name="settings_rate_sub">Di Google Play</string>
     <string name="settings_version">Versi</string>
     <string name="library_nothing_yet">Belum ada apa pun di sini</string>
@@ -469,7 +469,7 @@
     <string name="dq_hdr">HDR</string>
     <string name="dq_low_ram">perangkat RAM rendah</string>
     <string name="dq_ceiling">Batas terukur: %1$s (skor %2$d/8)</string>
-    <string name="dq_honest">Kualitas tampilan mengubah cara Aura merender. Ini tidak mengubah layarmu.</string>
+    <string name="dq_honest">Kualitas tampilan mengubah cara Via merender. Ini tidak mengubah layarmu.</string>
     <string name="rescan_scanning">Memindai mediamu…</string>
     <string name="rescan_done">Koleksi diperbarui</string>
     <string name="rescan_title">Pindai ulang perangkat</string>
@@ -485,7 +485,7 @@
     <string name="language_title">Bahasa</string>
     <string name="language_automatic">Otomatis</string>
     <string name="language_follows_phone">Mengikuti ponselmu: %1$s</string>
-    <string name="share_needs_wifi">Aura Share memerlukan Wi-Fi. Ponsel ini memakai data seluler, yang tidak memiliki jaringan lokal tempat TV bisa terhubung.</string>
+    <string name="share_needs_wifi">Via Share memerlukan Wi-Fi. Ponsel ini memakai data seluler, yang tidak memiliki jaringan lokal tempat TV bisa terhubung.</string>
     <string name="share_nothing_answered">Tidak ada yang merespons di jaringan ini. TV harus terhubung ke Wi-Fi yang sama dengan berbagi media diaktifkan — namanya DLNA, Screen Share, atau AllShare, tergantung mereknya.</string>
     <string name="share_nothing_answered_host">Tidak ada yang merespons di jaringan ini (ponsel ini adalah %1$s). TV harus terhubung ke Wi-Fi yang sama dengan berbagi media diaktifkan — namanya DLNA, Screen Share, atau AllShare, tergantung mereknya.</string>
     <string name="share_no_address">Ponsel ini tidak memiliki alamat di jaringan saat ini.</string>

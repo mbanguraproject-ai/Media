@@ -4,7 +4,7 @@
 <resources>
     <!-- Display name only. applicationId (app.devbangs.media) is permanent
          once published and is NOT this - users never see it. -->
-    <string name="app_name" translatable="false">Aura</string>
+    <string name="app_name" translatable="false">Via</string>
     <string name="action_play_next">Play next</string>
     <string name="action_add_to_queue">Add to queue</string>
     <string name="action_edit_info">Edit info</string>
@@ -228,7 +228,7 @@
     <string name="action_rescan_library">Rescan library</string>
     <string name="action_try_again">Try again</string>
     <string name="update_ready_title">Update ready</string>
-    <string name="update_ready_body">A new version of Aura has downloaded. Restart to finish; the music stops for a moment.</string>
+    <string name="update_ready_body">A new version of Via has downloaded. Restart to finish; the music stops for a moment.</string>
     <string name="action_restart">Restart</string>
     <string name="reveal_building">Building your library</string>
     <plurals name="reveal_tracks">
@@ -253,9 +253,9 @@
     <string name="action_play_pause">Play/Pause</string>
     <string name="action_next">Next</string>
     <string name="video_forward_10">Forward 10 seconds</string>
-    <string name="cd_app_mark">Aura</string>
+    <string name="cd_app_mark">Via</string>
     <string name="share_playing_elsewhere">Playing on another device</string>
-    <string name="share_name">Aura Share</string>
+    <string name="share_name">Via Share</string>
     <string name="action_search">Search</string>
     <string name="pillar_music">Music</string>
     <string name="pillar_video">Video</string>
@@ -290,9 +290,9 @@
     <string name="cd_more_options">More options</string>
     <string name="about_title">About</string>
     <string name="tagline">Your library, lit by what\'s playing.</string>
-    <string name="about_intro">Your library shouldn\'t be scattered across a dozen apps. Aura gathers everything that plays on your phone into one place — and then gets out of the way so you can just listen and watch.</string>
+    <string name="about_intro">Your library shouldn\'t be scattered across a dozen apps. Via gathers everything that plays on your phone into one place — and then gets out of the way so you can just listen and watch.</string>
     <string name="about_h1">Four kinds of media, one place</string>
-    <string name="about_p1">Music for your songs. Podcasts for long-form talk. Audiobooks for the books you listen to. And video, in any format your phone understands. Aura sorts them automatically, and you can always reorganize anything by hand.</string>
+    <string name="about_p1">Music for your songs. Podcasts for long-form talk. Audiobooks for the books you listen to. And video, in any format your phone understands. Via sorts them automatically, and you can always reorganize anything by hand.</string>
     <string name="about_h2">Yours, and only yours</string>
     <string name="about_p2">Everything plays locally, straight from your device. There are no accounts to make and nothing to sign in to. Your library, your listening history and your edits never leave your phone. The one exception is yours to switch on: looking up missing artwork and lyrics online, which sends only a track\'s title, artist, album and length.</string>
     <string name="about_h3">Covers and lyrics, repaired</string>
@@ -350,13 +350,13 @@
     <string name="welcome_line_3">Everything plays locally. No accounts, nothing to sign in to.</string>
     <string name="action_got_it">Got it</string>
     <string name="perm_explainer_title">One quick thing</string>
-    <string name="perm_explainer_body">Aura plays the songs, podcasts, audiobooks and videos already on your phone. To find them, it needs permission to read your media.</string>
+    <string name="perm_explainer_body">Via plays the songs, podcasts, audiobooks and videos already on your phone. To find them, it needs permission to read your media.</string>
     <string name="perm_explainer_privacy">Nothing leaves your device, and nothing is uploaded anywhere.</string>
     <string name="action_understood">Understood</string>
     <string name="perm_blocked_title">Access is turned off</string>
-    <string name="perm_needed_title">Aura needs your library</string>
+    <string name="perm_needed_title">Via needs your library</string>
     <string name="perm_blocked_body">Android is no longer showing the permission prompt. Open Settings, allow access to music and audio, then come back.</string>
-    <string name="perm_needed_body">Aura only plays files already on this phone. It needs permission to read them - nothing is uploaded anywhere.</string>
+    <string name="perm_needed_body">Via only plays files already on this phone. It needs permission to read them - nothing is uploaded anywhere.</string>
     <string name="action_open_settings">Open settings</string>
     <string name="action_allow_access">Allow access</string>
     <string name="reactive_hint_title">Reactive artwork is off</string>
@@ -461,7 +461,7 @@
     <string name="settings_thank_you">Thank you</string>
     <string name="settings_ads_off">Ads are off for good</string>
     <string name="settings_support">Support</string>
-    <string name="settings_support_aura">Support Aura</string>
+    <string name="settings_support_via">Support Via</string>
     <string name="settings_support_sub">One-time · removes ads forever</string>
     <string name="settings_privacy">Privacy</string>
     <string name="settings_ad_choices">Ad privacy choices</string>
@@ -471,8 +471,8 @@
     <string name="settings_ad_id_sub">Reset or delete it in Android\'s ad settings; it applies to every app</string>
     <string name="settings_privacy_policy">Privacy Policy</string>
     <string name="settings_about">About</string>
-    <string name="settings_about_app">About Aura</string>
-    <string name="settings_rate_app">Rate Aura</string>
+    <string name="settings_about_app">About Via</string>
+    <string name="settings_rate_app">Rate Via</string>
     <string name="settings_rate_sub">On Google Play</string>
     <string name="settings_version">Version</string>
     <string name="library_nothing_yet">Nothing here yet</string>
@@ -490,7 +490,7 @@
     <string name="dq_hdr">HDR</string>
     <string name="dq_low_ram">low-RAM device</string>
     <string name="dq_ceiling">Measured ceiling: %1$s (score %2$d/8)</string>
-    <string name="dq_honest">Display quality changes how Aura renders. It does not change your screen.</string>
+    <string name="dq_honest">Display quality changes how Via renders. It does not change your screen.</string>
     <string name="rescan_scanning">Scanning your media…</string>
     <string name="rescan_done">Library updated</string>
     <string name="rescan_title">Rescan device</string>
@@ -506,7 +506,7 @@
     <string name="language_title">Language</string>
     <string name="language_automatic">Automatic</string>
     <string name="language_follows_phone">Follows your phone: %1$s</string>
-    <string name="share_needs_wifi">Aura Share needs Wi-Fi. This phone is on mobile data, which has no local network for a TV to be on.</string>
+    <string name="share_needs_wifi">Via Share needs Wi-Fi. This phone is on mobile data, which has no local network for a TV to be on.</string>
     <string name="share_nothing_answered">Nothing answered on this network. The TV has to be on the same Wi-Fi with its media sharing turned on - it is called DLNA, Screen Share or AllShare depending on the brand.</string>
     <string name="share_nothing_answered_host">Nothing answered on this network (this phone is %1$s). The TV has to be on the same Wi-Fi with its media sharing turned on - it is called DLNA, Screen Share or AllShare depending on the brand.</string>
     <string name="share_no_address">This phone has no address on the network right now.</string>
