@@ -18,6 +18,9 @@ on:
       ref:
         description: "Commit, branch or tag to build (default: this one)"
         required: false
+      decode:
+        description: "Obfuscated class names from a Play crash report to decode, space separated (e.g. com.media.app.o6)"
+        required: false
 
 jobs:
   strings:
@@ -73,6 +76,18 @@ jobs:
 
       - name: Check method register counts
         run: python3 tool/tools/dex_registers.py ${{ matrix.dex }} --package com.media.app --top 20
+
+      # A crash report's obfuscated names, decoded right here in the log:
+      # each class's real name and what its members were called.
+      - name: Decode crash names
+        if: matrix.build == 'release' && inputs.decode != ''
+        env:
+          NAMES: ${{ inputs.decode }}
+        run: |
+          for n in $NAMES; do
+            echo "=== $n"
+            grep -n -A12 -- "-> ${n}:\$" src/app/build/outputs/mapping/release/mapping.txt || echo "(not in this build's mapping)"
+          done
 
       # R8's map from obfuscated names (com.media.app.o6) back to the real
       # ones. Play Console crash reports name the obfuscated classes; this
