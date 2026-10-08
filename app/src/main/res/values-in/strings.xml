@@ -446,7 +446,7 @@
     <string name="pro_plan_pro">Pro</string>
     <string name="pro_row_library">Seluruh pustakamu, semua format</string>
     <string name="pro_row_sound">Equalizer, bass, dan suara spasial</string>
-    <string name="pro_row_display">Semua kualitas tampilan, termasuk Ultra</string>
+    <string name="pro_row_display">Tampilan Premium dan Ultra, dengan artwork reaktif penuh</string>
     <string name="pro_row_ads">Tanpa iklan, di mana pun</string>
     <string name="pro_row_loop">Loop A-B dengan jumlah ulangan</string>
     <string name="pro_row_speed">Kecepatan 0,5x sampai 3x, dan nada</string>
@@ -460,7 +460,7 @@
     <string name="pro_once">Sekali bayar. Tanpa langganan. Milikmu selamanya.</string>
     <string name="pro_thanks">Dibeli sekali, milikmu selamanya. Di ponsel baru, Pulihkan pembelian akan mengembalikannya.</string>
     <string name="pro_restore">Pulihkan pembelian</string>
-    <string name="pro_settings_sub">Sekali bayar · tanpa iklan, loop A-B, kecepatan halus dan nada, lewati jeda hening, dan lainnya</string>
+    <string name="pro_settings_sub">Sekali bayar · tampilan Premium dan Ultra, tanpa iklan, loop A-B, kecepatan halus dan nada, dan lainnya</string>
     <string name="pro_settings_active_sub">Tanpa iklan, dan semua alat pemutaran Pro</string>
     <string name="pro_unlock">Buka</string>
     <string name="pro_loop_locked">Loop A-B tersedia dengan Via Pro</string>

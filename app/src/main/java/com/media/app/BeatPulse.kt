@@ -159,11 +159,38 @@ class BeatState {
 }
 
 /**
- * Drives [BeatState] at 60fps whenever [active] and playback is running.
+ * The playing ExoPlayer, for Reactive artwork's clock. Set by PlaybackService
+ * (same process); read on the main thread only, where the player lives.
  *
- * [state].positionMs only ticks at 2Hz, so each frame extrapolates from the
- * last known position via the frame clock; re-keying on positionMs resyncs to
- * truth twice a second so drift never accumulates.
+ * Its position is what you are hearing: ExoPlayer derives it from the audio
+ * output's own timestamps, so the output's latency is already in it.
+ */
+object PlayerClock {
+    @Volatile internal var player: androidx.media3.common.Player? = null
+
+    fun positionMs(): Long? {
+        val p = player ?: return null
+        return if (p.playbackState == androidx.media3.common.Player.STATE_IDLE) null else p.currentPosition
+    }
+}
+
+/**
+ * How far ahead of the audible position to draw: a frame drawn now reaches
+ * the screen about two vsyncs later.
+ */
+private const val DISPLAY_LEAD_MS = 30f
+
+/**
+ * Drives [BeatState] at the display's rate whenever [active] and playback is
+ * running.
+ *
+ * SYNC. Until 5.3 this re-read the position twice a second (PlayerState) and
+ * guessed in between by counting frames from the last read. Each read was
+ * already a frame or more old when the effect restarted on it, so the guess
+ * started behind, drifted, and snapped back twice a second: the artwork and
+ * the song looked like two different things. Now [clock] is the player's own
+ * position, read on every frame, plus the time the frame takes to reach the
+ * screen - so a hit is drawn on the frame you see as you hear it.
  */
 /**
  * Music-stream volume as 0..1, polled at ~3Hz.
@@ -193,47 +220,46 @@ fun rememberBeatPulse(
     state: PlayerState,
     shape: SoundShape?,
     active: Boolean,
-    volume: Float
+    volume: Float,
+    clock: () -> Long
 ): BeatState {
     val reduced = LocalReducedMotion.current
     val beat = remember { BeatState() }
+    val now by rememberUpdatedState(clock)
 
-    LaunchedEffect(shape, state.isPlaying, state.positionMs, state.speed, reduced, active, volume) {
+    LaunchedEffect(shape, state.isPlaying, state.speed, reduced, active, volume) {
         // Silent means still. Not "quiet" - nothing at all.
         if (shape == null || !state.isPlaying || reduced || !active || volume <= 0.01f) {
             beat.reset()
             return@LaunchedEffect
         }
         val power = volume.coerceIn(0f, 1f)
-        val base = state.positionMs
-        val speed = state.speed
+        val lead = (DISPLAY_LEAD_MS * state.speed).toLong()
         val hz = SoundShape.HZ
-        // Resynced twice a second: carry on from the last frame fired, unless
-        // this is a jump (a seek, a new track), which fires nothing it skips.
-        val baseFrame = (base * hz / 1000L).toInt()
-        if (beat.firedFrame == Int.MIN_VALUE || kotlin.math.abs(baseFrame - beat.firedFrame) > hz / 2) {
-            beat.firedFrame = baseFrame
-        }
-        var t0 = 0L
         var last = 0L
         while (true) {
-            withFrameNanos { now ->
-                if (t0 == 0L) { t0 = now; last = now }
-                val dt = ((now - last) / 1e9f).coerceIn(0f, 0.05f)
-                last = now
-                val ms = base + ((now - t0) / 1_000_000f * speed).toLong()
+            withFrameNanos { frameTime ->
+                val dt = if (last == 0L) 0f else ((frameTime - last) / 1e9f).coerceIn(0f, 0.05f)
+                last = frameTime
+                val ms = now() + lead
                 val frame = (ms * hz / 1000L).toInt()
 
-                // Every hit playback has crossed since the last frame, on
-                // this frame. Volume scales them: quieter means softer.
-                if (frame > beat.firedFrame) {
-                    fire(shape.lowHits, beat.firedFrame, frame) { p -> beat.kick(now, p * power) }
-                    fire(shape.midHits, beat.firedFrame, frame) { p -> beat.snare(now, p * power) }
-                    fire(shape.highHits, beat.firedFrame, frame) { p -> beat.hat(p * power) }
-                    beat.firedFrame = frame
+                when {
+                    // A jump - a seek, a resume after a while away - fires
+                    // nothing it skipped.
+                    frame < beat.firedFrame - 2 || frame > beat.firedFrame + hz / 2 ->
+                        beat.firedFrame = frame
+                    // Every hit playback has crossed since the last frame, on
+                    // this frame. Volume scales them: quieter means softer.
+                    frame > beat.firedFrame -> {
+                        fire(shape.lowHits, beat.firedFrame, frame) { p -> beat.kick(frameTime, p * power) }
+                        fire(shape.midHits, beat.firedFrame, frame) { p -> beat.snare(frameTime, p * power) }
+                        fire(shape.highHits, beat.firedFrame, frame) { p -> beat.hat(p * power) }
+                        beat.firedFrame = frame
+                    }
                 }
-                beat.step(dt, punch(shape.low.levelAt(ms)) * power, now)
-                beat.frameNanos = now
+                beat.step(dt, punch(shape.low.levelAt(ms)) * power, frameTime)
+                beat.frameNanos = frameTime
             }
         }
     }

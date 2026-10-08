@@ -446,7 +446,7 @@
     <string name="pro_plan_pro">Pro</string>
     <string name="pro_row_library">Toàn bộ thư viện, mọi định dạng</string>
     <string name="pro_row_sound">Bộ chỉnh âm, bass và âm thanh không gian</string>
-    <string name="pro_row_display">Mọi chất lượng hiển thị, kể cả Ultra</string>
+    <string name="pro_row_display">Hiển thị Premium và Ultra, với đầy đủ ảnh bìa phản ứng</string>
     <string name="pro_row_ads">Không quảng cáo ở bất kỳ đâu</string>
     <string name="pro_row_loop">Lặp A-B với số lần lặp</string>
     <string name="pro_row_speed">Tốc độ từ 0,5x đến 3x, và cao độ</string>
@@ -460,7 +460,7 @@
     <string name="pro_once">Trả một lần. Không đăng ký. Của bạn mãi mãi.</string>
     <string name="pro_thanks">Mua một lần, dùng mãi mãi. Trên điện thoại mới, Khôi phục giao dịch mua sẽ lấy lại.</string>
     <string name="pro_restore">Khôi phục giao dịch mua</string>
-    <string name="pro_settings_sub">Một lần · không quảng cáo, lặp A-B, tốc độ và cao độ tinh chỉnh, bỏ qua khoảng lặng và hơn thế</string>
+    <string name="pro_settings_sub">Một lần · hiển thị Premium và Ultra, không quảng cáo, lặp A-B, tốc độ và cao độ tinh chỉnh và hơn thế</string>
     <string name="pro_settings_active_sub">Không quảng cáo, cùng mọi công cụ phát Pro</string>
     <string name="pro_unlock">Mở khóa</string>
     <string name="pro_loop_locked">Lặp A-B có trong Via Pro</string>

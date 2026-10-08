@@ -41,8 +41,8 @@ private val envelopeMemory = LruCache<Long, SoundShape>(8)
 /**
  * The sound shape of [item] (SoundShape.kt), or null while it is still being
  * computed (or if the file can't be decoded). Stored interleaved, three
- * floats a frame, in the same envelope table; a row from before 5.2 has the
- * old rate in `hz` and is redone.
+ * floats a frame, in the same envelope table; a row whose `hz` is not
+ * EnvelopeAnalyzer.STORED_TAG is from an older analysis and is redone.
  *
  * LaunchedEffect keys on the media id, so skipping tracks cancels an
  * in-progress analysis for free — EnvelopeAnalyzer checks ensureActive().
@@ -64,7 +64,7 @@ fun rememberSoundShape(item: AppMediaItem?): SoundShape? {
 
         val cached = withContext(Dispatchers.IO) { runCatching { dao.get(target.id) }.getOrNull() }
         if (cached != null &&
-            cached.hz == EnvelopeAnalyzer.HZ &&
+            cached.hz == EnvelopeAnalyzer.STORED_TAG &&
             cached.dateModified == target.dateModified
         ) {
             val shape = withContext(Dispatchers.Default) {
@@ -89,7 +89,7 @@ fun rememberSoundShape(item: AppMediaItem?): SoundShape? {
                 dao.put(
                     AudioEnvelope(
                         mediaId = target.id,
-                        hz = EnvelopeAnalyzer.HZ,
+                        hz = EnvelopeAnalyzer.STORED_TAG,
                         dateModified = target.dateModified,
                         data = computed.interleaved().toEnvelopeBlob()
                     )

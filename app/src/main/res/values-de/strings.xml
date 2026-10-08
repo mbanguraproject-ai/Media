@@ -463,7 +463,7 @@
     <string name="pro_plan_pro">Pro</string>
     <string name="pro_row_library">Deine ganze Mediathek, jedes Format</string>
     <string name="pro_row_sound">Equalizer, Bass und Raumklang</string>
-    <string name="pro_row_display">Jede Anzeigequalität, auch Ultra</string>
+    <string name="pro_row_display">Premium- und Ultra-Anzeige, mit dem vollen reaktiven Artwork</string>
     <string name="pro_row_ads">Keine Werbung, nirgends</string>
     <string name="pro_row_loop">A-B-Schleife mit Wiederholungen</string>
     <string name="pro_row_speed">Tempo von 0,5x bis 3x, dazu Tonhöhe</string>
@@ -477,7 +477,7 @@
     <string name="pro_once">Eine Zahlung. Kein Abo. Für immer deins.</string>
     <string name="pro_thanks">Einmal gekauft, für immer behalten. Auf einem neuen Handy holt „Kauf wiederherstellen“ es zurück.</string>
     <string name="pro_restore">Kauf wiederherstellen</string>
-    <string name="pro_settings_sub">Einmalig · keine Werbung, A-B-Schleife, feines Tempo und Tonhöhe, Stille überspringen und mehr</string>
+    <string name="pro_settings_sub">Einmalig · Premium- und Ultra-Anzeige, keine Werbung, A-B-Schleife, feines Tempo und Tonhöhe und mehr</string>
     <string name="pro_settings_active_sub">Keine Werbung und jedes Pro-Wiedergabe-Werkzeug</string>
     <string name="pro_unlock">Freischalten</string>
     <string name="pro_loop_locked">Die A-B-Schleife gibt es mit Via Pro</string>

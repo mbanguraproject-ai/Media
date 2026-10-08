@@ -463,7 +463,7 @@
     <string name="pro_plan_pro">Pro</string>
     <string name="pro_row_library">Toda a sua biblioteca, qualquer formato</string>
     <string name="pro_row_sound">Equalizador, grave e som espacial</string>
-    <string name="pro_row_display">Todas as qualidades de exibição, Ultra incluída</string>
+    <string name="pro_row_display">Exibição Premium e Ultra, com a capa reativa completa</string>
     <string name="pro_row_ads">Sem anúncios, em lugar nenhum</string>
     <string name="pro_row_loop">Loop A-B com número de repetições</string>
     <string name="pro_row_speed">Velocidade de 0,5x a 3x, e tom</string>
@@ -477,7 +477,7 @@
     <string name="pro_once">Um pagamento. Sem assinatura. Seu para sempre.</string>
     <string name="pro_thanks">Comprado uma vez, seu para sempre. Em um celular novo, Restaurar compra traz de volta.</string>
     <string name="pro_restore">Restaurar compra</string>
-    <string name="pro_settings_sub">Pagamento único · sem anúncios, loop A-B, velocidade fina e tom, pular silêncios e mais</string>
+    <string name="pro_settings_sub">Pagamento único · exibição Premium e Ultra, sem anúncios, loop A-B, velocidade fina e tom, e mais</string>
     <string name="pro_settings_active_sub">Sem anúncios e com todas as ferramentas de reprodução Pro</string>
     <string name="pro_unlock">Desbloquear</string>
     <string name="pro_loop_locked">O loop A-B vem com o Via Pro</string>

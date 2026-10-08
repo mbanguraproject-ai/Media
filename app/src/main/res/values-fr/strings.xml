@@ -463,7 +463,7 @@
     <string name="pro_plan_pro">Pro</string>
     <string name="pro_row_library">Toute votre bibliothèque, tous les formats</string>
     <string name="pro_row_sound">Égaliseur, basses et son spatial</string>
-    <string name="pro_row_display">Toutes les qualités d\'affichage, Ultra comprise</string>
+    <string name="pro_row_display">Affichage Premium et Ultra, avec la pochette réactive complète</string>
     <string name="pro_row_ads">Aucune publicité, nulle part</string>
     <string name="pro_row_loop">Boucle A-B avec nombre de répétitions</string>
     <string name="pro_row_speed">Vitesse de 0,5x à 3x, et hauteur</string>
@@ -477,7 +477,7 @@
     <string name="pro_once">Un seul paiement. Sans abonnement. À vous pour de bon.</string>
     <string name="pro_thanks">Acheté une fois, gardé pour de bon. Sur un nouveau téléphone, Restaurer l\'achat le récupère.</string>
     <string name="pro_restore">Restaurer l\'achat</string>
-    <string name="pro_settings_sub">Paiement unique · sans pub, boucle A-B, vitesse fine et hauteur, saut des silences et plus</string>
+    <string name="pro_settings_sub">Paiement unique · affichage Premium et Ultra, sans pub, boucle A-B, vitesse fine et hauteur, et plus</string>
     <string name="pro_settings_active_sub">Sans pub, avec tous les outils de lecture Pro</string>
     <string name="pro_unlock">Débloquer</string>
     <string name="pro_loop_locked">La boucle A-B est incluse dans Via Pro</string>

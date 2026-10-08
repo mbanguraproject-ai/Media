@@ -38,6 +38,16 @@ object EnvelopeAnalyzer {
      */
     const val HZ = SoundShape.HZ
 
+    /**
+     * What a stored analysis is tagged with (the table's `hz` column): the
+     * rate, plus 1000 x the format version. 2 = encoder lead-in skipped
+     * (5.3). Anything else is redone on next play.
+     */
+    const val STORED_TAG = 2 * 1000 + HZ
+
+    /** MediaFormat.KEY_ENCODER_DELAY, which only has a name from Android 11. */
+    private const val KEY_ENCODER_DELAY = "encoder-delay"
+
     private const val TIMEOUT_US = 10_000L
 
     /**
@@ -78,6 +88,11 @@ object EnvelopeAnalyzer {
             codec.start()
 
             val meter = BandMeter(sampleRate, HZ)
+            // The encoder's lead-in (an MP3's LAME delay, an AAC's priming):
+            // silence the decoder hands back first and the player trims off.
+            // Counted here, it put every hit 25-50ms late against what you
+            // hear. Skipped, the two timelines start on the same sample.
+            var skip = if (format.containsKey(KEY_ENCODER_DELAY)) format.getInteger(KEY_ENCODER_DELAY).coerceAtLeast(0) else 0
             val maxWindows = (maxDurationMs / 1000L * HZ).toInt()
 
             val info = MediaCodec.BufferInfo()
@@ -133,7 +148,7 @@ object EnvelopeAnalyzer {
                                 while (i < n) {
                                     var sum = 0f; var c = 0
                                     while (c < channels && i < n) { sum += fb.get(i); i++; c++ }
-                                    meter.push(sum / channels)
+                                    if (skip > 0) skip-- else meter.push(sum / channels)
                                 }
                             } else {
                                 val sb = ordered.asShortBuffer()
@@ -144,7 +159,7 @@ object EnvelopeAnalyzer {
                                     while (c < channels && i < n) {
                                         sum += sb.get(i) / 32768f; i++; c++
                                     }
-                                    meter.push(sum / channels)
+                                    if (skip > 0) skip-- else meter.push(sum / channels)
                                 }
                             }
                         }

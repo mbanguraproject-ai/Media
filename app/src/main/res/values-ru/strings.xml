@@ -497,7 +497,7 @@
     <string name="pro_plan_pro">Pro</string>
     <string name="pro_row_library">Вся медиатека, любой формат</string>
     <string name="pro_row_sound">Эквалайзер, бас и объёмный звук</string>
-    <string name="pro_row_display">Любое качество отображения, включая Ultra</string>
+    <string name="pro_row_display">Отображение Premium и Ultra с полной реактивной обложкой</string>
     <string name="pro_row_ads">Никакой рекламы</string>
     <string name="pro_row_loop">Петля A-B с числом повторов</string>
     <string name="pro_row_speed">Скорость от 0,5x до 3x и тон</string>
@@ -511,7 +511,7 @@
     <string name="pro_once">Один платёж. Без подписки. Навсегда ваше.</string>
     <string name="pro_thanks">Куплено один раз — ваше навсегда. На новом телефоне «Восстановить покупку» вернёт Pro.</string>
     <string name="pro_restore">Восстановить покупку</string>
-    <string name="pro_settings_sub">Разовая покупка · без рекламы, петля A-B, точная скорость и тон, пропуск тишины и другое</string>
+    <string name="pro_settings_sub">Разовая покупка · отображение Premium и Ultra, без рекламы, петля A-B, точная скорость и тон и другое</string>
     <string name="pro_settings_active_sub">Без рекламы, со всеми инструментами воспроизведения Pro</string>
     <string name="pro_unlock">Открыть</string>
     <string name="pro_loop_locked">Петля A-B доступна в Via Pro</string>

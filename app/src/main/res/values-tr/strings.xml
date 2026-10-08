@@ -463,7 +463,7 @@
     <string name="pro_plan_pro">Pro</string>
     <string name="pro_row_library">Tüm kitaplığın, her biçim</string>
     <string name="pro_row_sound">Ekolayzer, bas ve uzamsal ses</string>
-    <string name="pro_row_display">Ultra dahil her ekran kalitesi</string>
+    <string name="pro_row_display">Premium ve Ultra ekran, tam tepkili kapakla</string>
     <string name="pro_row_ads">Hiçbir yerde reklam yok</string>
     <string name="pro_row_loop">Tekrar sayılı A-B döngüsü</string>
     <string name="pro_row_speed">0,5x ile 3x arası hız ve perde</string>
@@ -477,7 +477,7 @@
     <string name="pro_once">Tek ödeme. Abonelik yok. Sonsuza dek senin.</string>
     <string name="pro_thanks">Bir kez alındı, sonsuza dek senin. Yeni bir telefonda Satın alımı geri yükle ile geri gelir.</string>
     <string name="pro_restore">Satın alımı geri yükle</string>
-    <string name="pro_settings_sub">Tek seferlik · reklamsız, A-B döngüsü, ince hız ve perde, sessizliği atlama ve daha fazlası</string>
+    <string name="pro_settings_sub">Tek seferlik · Premium ve Ultra ekran, reklamsız, A-B döngüsü, ince hız ve perde ve daha fazlası</string>
     <string name="pro_settings_active_sub">Reklamsız ve tüm Pro çalma araçlarıyla</string>
     <string name="pro_unlock">Kilidi aç</string>
     <string name="pro_loop_locked">A-B döngüsü Via Pro ile gelir</string>

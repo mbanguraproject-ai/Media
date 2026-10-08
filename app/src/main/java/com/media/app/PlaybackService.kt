@@ -95,6 +95,7 @@ class PlaybackService : MediaSessionService() {
             .setBitmapLoader(ViaBitmapLoader(this))
             .build()
         startPro(player)
+        PlayerClock.player = player
 
         // The Sound chain rides on the player's audio session. A new session
         // id (rare: a device route change can cause one) rebuilds it.
@@ -203,6 +204,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        PlayerClock.player = null
         proScope.cancel()
         loopRunner?.release()
         loopRunner = null

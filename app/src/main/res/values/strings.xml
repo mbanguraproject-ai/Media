@@ -467,7 +467,7 @@
     <string name="pro_plan_pro">Pro</string>
     <string name="pro_row_library">Your whole library, every format</string>
     <string name="pro_row_sound">Equalizer, bass and spatial sound</string>
-    <string name="pro_row_display">Every display quality, Ultra included</string>
+    <string name="pro_row_display">Premium and Ultra display, with the full reactive artwork</string>
     <string name="pro_row_ads">No ads, anywhere</string>
     <string name="pro_row_loop">A-B loop with a repeat count</string>
     <string name="pro_row_speed">Speed from 0.5x to 3x, and pitch</string>
@@ -481,7 +481,7 @@
     <string name="pro_once">One payment. No subscription. Yours for good.</string>
     <string name="pro_thanks">Bought once, kept for good. On a new phone, Restore purchase brings it back.</string>
     <string name="pro_restore">Restore purchase</string>
-    <string name="pro_settings_sub">One-time · no ads, A-B loop, fine speed and pitch, skip silence and more</string>
+    <string name="pro_settings_sub">One-time · Premium and Ultra display, no ads, A-B loop, fine speed and pitch and more</string>
     <string name="pro_settings_active_sub">No ads, and every Pro playback tool</string>
     <string name="pro_unlock">Unlock</string>
     <string name="pro_loop_locked">A-B loop comes with Via Pro</string>

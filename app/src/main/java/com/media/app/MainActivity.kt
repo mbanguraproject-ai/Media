@@ -172,8 +172,10 @@ class MainActivity : ComponentActivity() {
             // the app is open.
             val capability = remember { detectCapability(this) }
             val ceiling = remember(capability) { ceilingFor(capability) }
-            val requested = remember(settings.qualityMode, ceiling) {
-                resolveLevel(settings.qualityMode, ceiling)
+            // Premium and Ultra are Via Pro's (DisplayQuality.kt).
+            val pro = isPro()
+            val requested = remember(settings.qualityMode, ceiling, pro) {
+                resolveLevel(settings.qualityMode, ceiling).forPro(pro)
             }
             // Sustained frame performance can step this DOWN on Auto. It
             // never touches playback, and it never overrides a manual pick -
@@ -665,10 +667,14 @@ fun HomeScaffold(vm: PlayerViewModel) {
     val allById = remember(allAudio, allVideo) { (allAudio + allVideo).associateBy { it.id } }
     // Consent first, SDK second. Kicked off once, after the permission gate,
     // so it never lands on top of onboarding.
-    // Entitlement: cached value seeds the flow so no ad can flash before Play
-    // answers; Billing then confirms, restores or revokes it.
-    val cachedAdFree by SettingsStore.adFreeFlow(context).collectAsState(initial = true)
-    LaunchedEffect(cachedAdFree) { Billing.seed(cachedAdFree) }
+    // Entitlement: the cached value seeds Billing until Play answers; Billing
+    // then confirms, restores or revokes it. Only the REAL cached value: this
+    // used to start at `true` for its first frame so no ad could flash, and
+    // with Premium and Ultra behind Pro that frame drew a free user's app at
+    // Ultra and then dropped it. An ad needs a network round trip, far longer
+    // than reading the cache, so none can flash anyway.
+    val cachedAdFree by SettingsStore.adFreeFlow(context).collectAsState(initial = null)
+    LaunchedEffect(cachedAdFree) { cachedAdFree?.let { Billing.seed(it) } }
     LaunchedEffect(Unit) {
         Billing.start(context) { owned ->
             scope.launch { SettingsStore.setAdFree(context, owned) }
@@ -707,7 +713,10 @@ fun HomeScaffold(vm: PlayerViewModel) {
     val beat = rememberBeatPulse(
         state, shape,
         active = state.hasItem && reactive,
-        volume = musicVolume
+        volume = musicVolume,
+        // The player's own position every frame; the controller's estimate
+        // only if the service's player is not there yet.
+        clock = { PlayerClock.positionMs() ?: vm.boundPlayer()?.currentPosition ?: state.positionMs }
     )
 
     // Hoisted to scaffold scope: these were being called INSIDE tap handlers,

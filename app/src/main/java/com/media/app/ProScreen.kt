@@ -59,8 +59,8 @@ private class PlanRow(val text: Int, val free: Boolean)
 private val PlanRows = listOf(
     PlanRow(R.string.pro_row_library, free = true),
     PlanRow(R.string.pro_row_sound, free = true),
-    PlanRow(R.string.pro_row_display, free = true),
     PlanRow(R.string.pro_row_ads, free = false),
+    PlanRow(R.string.pro_row_display, free = false),
     PlanRow(R.string.pro_row_loop, free = false),
     PlanRow(R.string.pro_row_speed, free = false),
     PlanRow(R.string.pro_row_silence, free = false),

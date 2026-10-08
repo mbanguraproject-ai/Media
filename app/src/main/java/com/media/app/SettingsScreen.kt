@@ -285,7 +285,11 @@ private fun DisplayQualitySection(current: QualityMode, onPick: (QualityMode) ->
     // Hardware does not change while the app is open, so this is read once.
     val cap = remember { detectCapability(context) }
     val ceiling = remember(cap) { ceilingFor(cap) }
-    val active = resolveLevel(current, ceiling)
+    // Premium and Ultra are Via Pro's: without it they show a crown and open
+    // the Pro page, and what is drawn is Enhanced.
+    val pro = isPro()
+    val openPro = LocalOpenPro.current
+    val active = resolveLevel(current, ceiling).forPro(pro)
     val adaptive = LocalAdaptiveQuality.current
     // A prediction and a measurement. Once the measurement has spoken,
     // the prediction is noise.
@@ -301,19 +305,21 @@ private fun DisplayQualitySection(current: QualityMode, onPick: (QualityMode) ->
         // Essential" - describing the manual choice instead of what Auto
         // would actually resolve to, which is the one thing this row exists
         // to answer.
-        subtitle = stringResource(R.string.dq_auto_sub, stringResource(ceiling.label)),
+        subtitle = stringResource(R.string.dq_auto_sub, stringResource(ceiling.forPro(pro).label)),
         selected = current == QualityMode.AUTO,
         onClick = { onPick(QualityMode.AUTO) }
     )
     QualityLevel.values().forEach { level ->
         val mode = QualityMode.valueOf(level.name)
         val above = level.ordinal > ceiling.ordinal
+        val locked = !pro && level.needsPro
         QualityOption(
             title = stringResource(level.label),
-            subtitle = stringResource(if (above) R.string.dq_above else level.goal),
-            selected = current == mode,
-            warn = above,
-            onClick = { onPick(mode) }
+            subtitle = stringResource(if (above && !locked) R.string.dq_above else level.goal),
+            selected = current == mode && !locked,
+            warn = above && !locked,
+            locked = locked,
+            onClick = { if (locked) openPro() else onPick(mode) }
         )
     }
 
@@ -420,6 +426,8 @@ private fun QualityOption(
     subtitle: String,
     selected: Boolean,
     warn: Boolean = false,
+    // A Via Pro tier for someone without Pro: the crown at the end.
+    locked: Boolean = false,
     onClick: () -> Unit
 ) {
     Row(
@@ -456,6 +464,10 @@ private fun QualityOption(
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (warn) MediaColors.Warning else MediaColors.CreamDim
             )
+        }
+        if (locked) {
+            Spacer(Modifier.width(Space.md))
+            ProCrown(20.dp, lit = true, description = stringResource(R.string.pro_get))
         }
     }
 }

@@ -463,7 +463,7 @@
     <string name="pro_plan_pro">Pro</string>
     <string name="pro_row_library">आपकी पूरी लाइब्रेरी, हर फ़ॉर्मैट</string>
     <string name="pro_row_sound">इक्वलाइज़र, बेस और स्पेशियल साउंड</string>
-    <string name="pro_row_display">हर डिस्प्ले क्वालिटी, Ultra समेत</string>
+    <string name="pro_row_display">Premium और Ultra डिस्प्ले, पूरे रिएक्टिव आर्टवर्क के साथ</string>
     <string name="pro_row_ads">कहीं कोई विज्ञापन नहीं</string>
     <string name="pro_row_loop">दोहराव की गिनती के साथ A-B लूप</string>
     <string name="pro_row_speed">0.5x से 3x तक स्पीड, और पिच</string>
@@ -477,7 +477,7 @@
     <string name="pro_once">एक भुगतान। कोई सब्सक्रिप्शन नहीं। हमेशा के लिए आपका।</string>
     <string name="pro_thanks">एक बार खरीदा, हमेशा के लिए आपका। नए फ़ोन पर, खरीदारी बहाल करें से यह वापस आ जाता है।</string>
     <string name="pro_restore">खरीदारी बहाल करें</string>
-    <string name="pro_settings_sub">एक बार · बिना विज्ञापन, A-B लूप, बारीक स्पीड और पिच, खामोशी छोड़ें और भी बहुत कुछ</string>
+    <string name="pro_settings_sub">एक बार · Premium और Ultra डिस्प्ले, बिना विज्ञापन, A-B लूप, बारीक स्पीड और पिच और भी बहुत कुछ</string>
     <string name="pro_settings_active_sub">बिना विज्ञापन, और Pro के सभी प्लेबैक टूल</string>
     <string name="pro_unlock">अनलॉक करें</string>
     <string name="pro_loop_locked">A-B लूप Via Pro के साथ मिलता है</string>

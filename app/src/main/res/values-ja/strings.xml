@@ -446,7 +446,7 @@
     <string name="pro_plan_pro">Pro</string>
     <string name="pro_row_library">ライブラリ全体、あらゆる形式</string>
     <string name="pro_row_sound">イコライザー、低音、空間オーディオ</string>
-    <string name="pro_row_display">Ultra を含むすべての表示品質</string>
+    <string name="pro_row_display">Premium と Ultra の表示品質、フル機能のリアクティブアートワーク</string>
     <string name="pro_row_ads">どこにも広告なし</string>
     <string name="pro_row_loop">リピート回数つき A-B ループ</string>
     <string name="pro_row_speed">0.5x〜3x の速度とピッチ</string>
@@ -460,7 +460,7 @@
     <string name="pro_once">支払いは一度だけ。サブスクリプションなし。ずっとあなたのもの。</string>
     <string name="pro_thanks">一度の購入で、ずっと使えます。新しいスマートフォンでは「購入を復元」で戻せます。</string>
     <string name="pro_restore">購入を復元</string>
-    <string name="pro_settings_sub">買い切り · 広告なし、A-B ループ、細かな速度とピッチ、無音スキップなど</string>
+    <string name="pro_settings_sub">買い切り · Premium と Ultra の表示、広告なし、A-B ループ、細かな速度とピッチなど</string>
     <string name="pro_settings_active_sub">広告なし、Pro の再生ツールすべて</string>
     <string name="pro_unlock">解除</string>
     <string name="pro_loop_locked">A-B ループは Via Pro で使えます</string>
