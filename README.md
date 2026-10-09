@@ -133,7 +133,7 @@ Each tier is a complete design (artwork resolution, motion) plus a visual engine
 - Settings lists what the selected tier gives you.
 
 ### Design and settings
-- The icon is the aperture (`tools/make_icon.py`): a white disc cut into three identical blades that turn around a play-shaped opening, a camera iris opening onto play, on a teal-to-blue tile lit from the top left. One cut, rotated by 120 and 240 degrees, so the symmetry is exact. Every asset is generated from that one geometry: the adaptive launcher layers and the themed (monochrome) icon as vectors, sharp at every size and under every launcher mask; the status-bar icon (also Media3's notification icon); the tile in the Home header and About; the Android 7 PNGs; the Play listing icon; and the splash. On Android 12+ the splash animates: the iris starts closed, turns a quarter turn into place and opens onto the play shape, as a true shape morph (the outline at two sizes resampled to the same points), over a lit disc that grows in under it; earlier versions show it still.
+- The icon is the iris (`tools/make_icon.py`, 5.7): a white disc cut into three identical blades closing around a play-shaped opening, a camera iris opening onto play, on a teal-to-blue tile lit from the top left. Each side of the play shape carries straight on past its corner and bends out to the rim, so the cuts and the opening are one continuous line and the blades' own edges make the play shape (until 5.6 each cut stopped just short of a corner, leaving a white bridge). One cut, rotated by 120 and 240 degrees, so the symmetry is exact; every blade corner is rounded the same, and outlines are kept within a quarter of a design unit, which keeps each vector to a few kilobytes. Every asset is generated from that one geometry: the adaptive launcher layers and the themed (monochrome) icon as vectors, sharp at every size and under every launcher mask; the status-bar icon (also Media3's notification icon); the tile in the Home header and About; the Android 7 PNGs; the Play listing icon; and the splash. On Android 12+ the splash animates: the iris starts closed (three curved lines meeting near the centre), turns a quarter turn into place and opens onto the play shape, each blade a true shape morph (the same blade at two opening sizes, resampled to the same points from the same point on the rim), over a lit disc that grows in under it; earlier versions show it still.
 - Editorial visual language: ink and cream, Fraunces serif over Inter sans, content-forward.
 - Theme (Dark / Light / System) and text size (Compact / Default / Large).
 - Edge-to-edge system bars in both themes.
@@ -183,7 +183,7 @@ Play bundle:
 
 Signing is via keystore.properties (git-ignored, never committed).
 
-Icons: `python3 tools/make_icon.py` (needs shapely, skia-python, pillow and numpy) rewrites every icon asset from the aperture's geometry; the design numbers are at the top of the script.
+Icons: `python3 tools/make_icon.py` (needs shapely, skia-python, pillow and numpy) rewrites every icon asset from the iris's geometry; the design numbers are at the top of the script.
 
 ### Release check
 

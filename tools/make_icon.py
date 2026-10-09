@@ -5,11 +5,14 @@ Via's icon - the aperture - and every asset made from it.
     pip install shapely skia-python pillow numpy
     python3 tools/make_icon.py
 
-THE MARK
-A white disc cut into three identical blades that turn around a play-shaped
-opening: a camera iris (picture) opening onto play (sound). Exact three-way
-symmetry - one cut, rotated by 120 and 240 degrees - so nothing is drawn by
-hand. The numbers below are the design; change them here and nothing else.
+THE MARK - THE IRIS
+A white disc cut into three identical blades closing around a play-shaped
+opening: a camera iris (picture) opening onto play (sound). Each side of the
+play shape carries straight on past its corner and bends out to the rim, so
+the cuts and the opening are one continuous line - the blades' own edges
+make the play shape. Exact three-way symmetry - one cut, rotated by 120 and
+240 degrees - so nothing is drawn by hand. The numbers below are the design;
+change them here and nothing else.
 
 Every asset is generated from that one geometry, so the launcher, the themed
 icon, the header mark, the splash and the Play listing cannot drift apart:
@@ -27,18 +30,18 @@ icon, the header mark, the splash and the Play listing cannot drift apart:
   store/play_icon_512.png                       the Play listing
 
 THE SPLASH
-The iris starts closed - three curved lines meeting at a pinhole - turns a
-quarter turn into place and opens onto the play shape, over a lit disc that
-grows in under it. The opening is a true shape morph (the same outline at
-two sizes, resampled to the same points), not a cover sliding off, so every
-frame is the mark itself.
+The iris starts closed - three curved lines meeting near the centre - turns
+a quarter turn into place and opens onto the play shape, over a lit disc
+that grows in under it. Each blade is a true shape morph (the same blade at
+two opening sizes, resampled to the same points), not a cover sliding off,
+so every frame is the mark itself.
 """
 import math
 import os
 import sys
 
 from shapely import affinity
-from shapely.geometry import LineString, Point, Polygon
+from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.geometry.polygon import orient
 from shapely.ops import unary_union
 
@@ -48,10 +51,11 @@ RES = "app/src/main/res"
 CX = CY = 512.0
 R = 300.0          # the disc
 S = 176.0          # the opening: circumradius of the play triangle
-CORNER = 18.0      # its corner rounding
 CUT = 22.0         # width of each cut
-TURN = 58.0        # degrees each cut turns from the opening to the rim
-CLOSED = 44.0      # the opening's size when the splash starts
+END = 62.0         # where each cut leaves the rim, degrees round from its corner
+BEND = 0.55        # how far the cut has turned along the rim as it leaves (0 straight out, 1 along it)
+SOFT = 7.0         # the rounding of every corner of the blades
+CLOSED = 60.0      # the opening's size when the splash starts
 
 # The palette: teal into deep blue, lit from the top left; the mark white.
 BG_STOPS = [(0.0, "#3BE8CB"), (0.48, "#0EA5B7"), (1.0, "#1E3A8A")]
@@ -60,40 +64,60 @@ SHADOW = "#04122B"
 
 
 def soften(p, r):
-    return p.buffer(-r, join_style="round").buffer(r, join_style="round")
+    """Every corner rounded by [r], the outward ones and the inward ones."""
+    p = p.buffer(-r, join_style="round").buffer(r, join_style="round")
+    return p.buffer(r * 0.6, join_style="round").buffer(-r * 0.6, join_style="round")
 
 
-def corner_for(s):
-    return min(CORNER, s * 0.1)
-
-
-def opening(s=S):
-    tri = [(CX + s * math.cos(math.radians(120 * k)), CY + s * math.sin(math.radians(120 * k))) for k in range(3)]
-    return soften(Polygon(tri), corner_for(s)).buffer(0)
+def triangle(s=S):
+    return [(CX + s * math.cos(math.radians(120 * k)), CY + s * math.sin(math.radians(120 * k))) for k in range(3)]
 
 
 def cuts(s=S):
-    # Each cut starts just outside the opening's rounded corner (a 60-degree
-    # corner rounded by r pulls its tip in by r), so the opening stays its own
-    # shape at every size.
-    r0 = s - corner_for(s) + 10.0
-    pts = []
-    for i in range(161):
+    # One cut. Its outer edge is the play shape's side, carried on past the
+    # corner (the centre line runs half a cut inside it), then a cubic
+    # curve bends it out to the rim, leaving at END degrees and turned BEND
+    # of the way from straight out towards along the rim.
+    v = triangle(s)
+    v0, v2 = v[0], v[2]
+    ln = math.dist(v0, v2)
+    d = ((v0[0] - v2[0]) / ln, (v0[1] - v2[1]) / ln)
+    n = (-d[1], d[0])
+    if (CX - v0[0]) * n[0] + (CY - v0[1]) * n[1] < 0:
+        n = (-n[0], -n[1])
+    h2 = CUT / 2
+    p0 = (v0[0] + n[0] * h2 - d[0] * 60, v0[1] + n[1] * h2 - d[1] * 60)   # starts inside the opening
+    p1 = (v0[0] + n[0] * h2 + d[0] * 40, v0[1] + n[1] * h2 + d[1] * 40)
+    a = math.radians(END)
+    e = (CX + (R + 34) * math.cos(a), CY + (R + 34) * math.sin(a))
+    rad = (math.cos(a), math.sin(a))
+    tan = (-rad[1], rad[0])
+    hx, hy = rad[0] * (1 - BEND) + tan[0] * BEND, rad[1] * (1 - BEND) + tan[1] * BEND
+    hl = math.hypot(hx, hy)
+    hx, hy = hx / hl, hy / hl
+    q1 = (p1[0] + d[0] * 110, p1[1] + d[1] * 110)
+    q2 = (e[0] - hx * 120, e[1] - hy * 120)
+    pts = [p0]
+    for i in range(1, 161):
         t = i / 160
-        rr = r0 + t * (R + 30 - r0)
-        a = math.radians(TURN) * t
-        pts.append((CX + rr * math.cos(a), CY + rr * math.sin(a)))
+        u = 1 - t
+        pts.append((u ** 3 * p1[0] + 3 * u * u * t * q1[0] + 3 * u * t * t * q2[0] + t ** 3 * e[0],
+                    u ** 3 * p1[1] + 3 * u * u * t * q1[1] + 3 * u * t * t * q2[1] + t ** 3 * e[1]))
     cut = LineString(pts).buffer(CUT / 2, cap_style="flat")
     return unary_union([affinity.rotate(cut, 120 * k, origin=(CX, CY)) for k in range(3)])
 
 
 def mark(s=S):
-    """The mark: one polygon, its outline cut by the three cuts, the opening a hole in it."""
+    """The mark: three blades, in order round the centre, each one closed outline."""
     disc = Point(CX, CY).buffer(R, 128)
-    m = disc.difference(cuts(s)).difference(opening(s))
-    if m.geom_type != "Polygon" or len(m.interiors) != 1:
-        sys.exit("the mark should be one shape with one opening; got %s" % m.geom_type)
-    return orient(m, 1.0)
+    m = soften(disc.difference(cuts(s)).difference(Polygon(triangle(s))), SOFT)
+    blades = list(getattr(m, "geoms", [m]))
+    if len(blades) != 3 or any(len(b.interiors) for b in blades):
+        sys.exit("the mark should be three blades; got %s" % m.geom_type)
+    blades.sort(key=lambda b: math.atan2(b.centroid.y - CY, b.centroid.x - CX))
+    # Points closer than a quarter of a design unit to the line through their
+    # neighbours go: a sixteenth of a pixel on the 512px store icon.
+    return MultiPolygon([orient(b.simplify(0.25, preserve_topology=True), 1.0) for b in blades])
 
 
 # ------------------------------------------------------------ path data
@@ -102,11 +126,14 @@ def ring_d(coords, f):
     return "M" + " L".join("%s,%s" % (f(x), f(y)) for x, y in pts) + "Z"
 
 
-def poly_d(p, tx, nd=2):
+def poly_d(m, tx, nd=2):
+    """Path data for every blade, each its own closed subpath."""
     f = lambda v: ("%." + str(nd) + "f") % v
-    out = [ring_d([tx(c) for c in p.exterior.coords], f)]
-    for ring in p.interiors:
-        out.append(ring_d([tx(c) for c in ring.coords], f))
+    out = []
+    for p in getattr(m, "geoms", [m]):
+        out.append(ring_d([tx(c) for c in p.exterior.coords], f))
+        for ring in p.interiors:
+            out.append(ring_d([tx(c) for c in ring.coords], f))
     return "".join(out)
 
 
@@ -128,14 +155,21 @@ def resample(coords, n, anchor):
     return out + [out[0]]
 
 
-def morph_d(p, tx, n_out=640, n_in=150):
-    """Path data with a fixed number of points, anchored the same at any size, so two can morph."""
+def morph_d(m, anchors, tx, n=220):
+    """Path data with a fixed number of points per blade, each blade starting at
+    its own [anchors] point, so the same blade at two sizes can morph."""
     f = lambda v: "%.2f" % v
-    a_out = (CX + R * math.cos(math.radians(107)), CY + R * math.sin(math.radians(107)))
-    a_in = (CX + S * 2, CY)
-    ext = resample(p.exterior.coords, n_out, a_out)
-    hole = resample(p.interiors[0].coords, n_in, a_in)
-    return ring_d([tx(c) for c in ext], f) + ring_d([tx(c) for c in hole], f)
+    return "".join(ring_d([tx(c) for c in resample(b.exterior.coords, n, a)], f)
+                   for b, a in zip(m.geoms, anchors))
+
+
+def rim_anchors(m):
+    """A point on the rim in the middle of each blade: where its morph starts."""
+    out = []
+    for b in m.geoms:
+        a = math.atan2(b.centroid.y - CY, b.centroid.x - CX)
+        out.append((CX + R * math.cos(a), CY + R * math.sin(a)))
+    return out
 
 
 # ------------------------------------------------------- VectorDrawable
@@ -274,8 +308,9 @@ def splash(open_m, closed_m):
              shadow_path(tx, k) + mark_path(poly_d(open_m, tx, 3), tx) + "</vector>\n")
     write(f"{RES}/drawable/splash_icon.xml", still)
 
-    d_closed = morph_d(closed_m, tx)
-    d_open = morph_d(open_m, tx)
+    anchors = rim_anchors(open_m)
+    d_closed = morph_d(closed_m, anchors, tx)
+    d_open = morph_d(open_m, anchors, tx)
     (x1, y1), (x2, y2) = tx((CX, CY - R)), tx((CX, CY + R))
     av = (HEAD +
           '<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"\n'
