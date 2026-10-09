@@ -56,7 +56,11 @@ data class OutputRoute(
     val mixerRate: Int?,
     val deviceRates: List<Int>,
     val bluetooth: Boolean,
-    val usb: Boolean
+    val usb: Boolean,
+    /** AudioDeviceInfo.TYPE_*, or null when nothing could be found. */
+    val type: Int? = null,
+    /** The device's own name as it reports it (never translated), when it has one. */
+    val product: String? = null
 )
 
 internal fun khz(hz: Int): String {
@@ -171,7 +175,8 @@ object AudioInfo {
         val kindLabel = context.getString(
             chosen?.let { kindLabelRes(it.type) } ?: R.string.route_phone_speaker
         )
-        val name = chosen?.productName?.toString()?.takeIf { it.isNotBlank() && it != Build.MODEL } ?: kindLabel
+        val product = chosen?.productName?.toString()?.takeIf { it.isNotBlank() && it != Build.MODEL }
+        val name = product ?: kindLabel
         return OutputRoute(
             name = name,
             kind = kind,
@@ -179,7 +184,9 @@ object AudioInfo {
             mixerRate = mixer,
             deviceRates = chosen?.sampleRates?.toList()?.sorted().orEmpty(),
             bluetooth = chosen != null && chosen.type in BT_TYPES,
-            usb = chosen != null && chosen.type in USB_TYPES
+            usb = chosen != null && chosen.type in USB_TYPES,
+            type = chosen?.type,
+            product = product
         )
     }
 

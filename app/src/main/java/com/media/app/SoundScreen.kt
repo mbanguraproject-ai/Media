@@ -29,7 +29,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -49,6 +48,15 @@ import kotlin.math.log10
 import kotlin.math.pow
 import kotlin.math.roundToInt
 import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.rounded.DirectionsCar
+import androidx.compose.material.icons.rounded.Headphones
+import androidx.compose.material.icons.rounded.PhoneAndroid
+import androidx.compose.material.icons.rounded.Speaker
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 
 // ============================================================================
 //  SOUND
@@ -57,13 +65,40 @@ import androidx.compose.ui.res.stringResource
 //  only on what is on - holding the DSP chain the Audio Path sheet reports.
 //  Every change is saved as it happens and the service picks it up live, so
 //  what you hear while dragging is what you keep.
+//
+//  It opens on the output: the headphones, speaker or car playing right now,
+//  whose own tuning everything under it is. On the phone speaker there is
+//  nothing to tune and the screen says so instead of offering dead sliders.
 // ============================================================================
 
 @Composable
 fun SoundScreen(onClose: () -> Unit) {
     val context = LocalContext.current
-    LaunchedEffect(Unit) { SoundEngine.load(context) }
+    // The output now, and again whenever one comes or goes while this is
+    // open - with a second look, as a device appears a moment before audio
+    // is routed to it.
+    DisposableEffect(Unit) {
+        SoundEngine.load(context)
+        val am = context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        val look = Runnable { SoundEngine.load(context) }
+        val watch = object : android.media.AudioDeviceCallback() {
+            fun again() {
+                SoundEngine.load(context)
+                handler.removeCallbacks(look)
+                handler.postDelayed(look, 700)
+            }
+            override fun onAudioDevicesAdded(added: Array<out android.media.AudioDeviceInfo>?) = again()
+            override fun onAudioDevicesRemoved(removed: Array<out android.media.AudioDeviceInfo>?) = again()
+        }
+        am.registerAudioDeviceCallback(watch, handler)
+        onDispose {
+            am.unregisterAudioDeviceCallback(watch)
+            handler.removeCallbacksAndMessages(null)
+        }
+    }
     val s by SoundEngine.settings.collectAsState()
+    val route by SoundEngine.route.collectAsState()
     val status by SoundEngine.status.collectAsState()
     fun update(next: SoundSettings) = SoundEngine.save(context, next)
     val modern = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
@@ -78,35 +113,55 @@ fun SoundScreen(onClose: () -> Unit) {
             Text(stringResource(R.string.sound_title), style = Typo.Section, color = MediaColors.Cream)
         }
 
-        Section(stringResource(R.string.sound_eq))
-        Toggle(stringResource(R.string.sound_eq), stringResource(R.string.sound_eq_sub), s.eqEnabled) {
-            update(s.copy(eqEnabled = it))
-        }
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
-                .padding(horizontal = Space.xl, vertical = Space.sm),
-            horizontalArrangement = Arrangement.spacedBy(Space.sm)
-        ) {
-            SoundEngine.PRESETS.forEach { (name, gains) ->
-                Chip(presetLabel(name), selected = s.eqEnabled && s.preset == name) {
-                    update(s.copy(eqEnabled = true, preset = name, bands = gains))
-                }
+        Section(stringResource(R.string.sound_output))
+        OutputCard(route, s.output) { update(s.copy(output = it)) }
+
+        if (route.external) {
+            Section(stringResource(R.string.sound_stage))
+            AmountSlider(stringResource(R.string.sound_depth), s.depth) { update(s.copy(depth = it)) }
+            Note(stringResource(when (s.output) {
+                OutputClass.HEADPHONES -> R.string.sound_depth_headphones
+                OutputClass.SPEAKER -> R.string.sound_depth_speaker
+                OutputClass.CAR -> R.string.sound_depth_car
+            }))
+            Spacer(Modifier.height(Space.sm))
+            AmountSlider(stringResource(R.string.sound_space), s.space) { update(s.copy(space = it)) }
+            Note(stringResource(when (s.output) {
+                OutputClass.HEADPHONES -> R.string.sound_space_headphones
+                OutputClass.SPEAKER -> R.string.sound_space_speaker
+                OutputClass.CAR -> R.string.sound_space_car
+            }))
+
+            Section(stringResource(R.string.sound_eq))
+            Toggle(stringResource(R.string.sound_eq), stringResource(R.string.sound_eq_sub), s.eqEnabled) {
+                update(s.copy(eqEnabled = it))
             }
-            if (s.preset == "Custom") Chip(presetLabel("Custom"), selected = s.eqEnabled) {}
-        }
-        ResponseCurve(s, status.speaker)
-        SoundEngine.BANDS.forEachIndexed { i, hz ->
-            val g = s.bands.getOrElse(i) { 0f }
-            SliderRow(
-                label = if (hz >= 1000) "${(hz / 1000).roundToInt()} kHz" else "${hz.roundToInt()} Hz",
-                value = g, range = -SoundEngine.BAND_RANGE_DB..SoundEngine.BAND_RANGE_DB,
-                // One decimal: the sliders move in half-dB steps, and "+1 dB"
-                // for a +0.5 setting was a readout that lied by half.
-                readout = stringResource(R.string.db_value, g),
-                enabled = s.eqEnabled
-            ) { v ->
-                val bands = s.bands.toMutableList().also { it[i] = (v * 2).roundToInt() / 2f }
-                update(s.copy(bands = bands, preset = "Custom"))
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+                    .padding(horizontal = Space.xl, vertical = Space.sm),
+                horizontalArrangement = Arrangement.spacedBy(Space.sm)
+            ) {
+                SoundEngine.PRESETS.forEach { (name, gains) ->
+                    Chip(presetLabel(name), selected = s.eqEnabled && s.preset == name) {
+                        update(s.copy(eqEnabled = true, preset = name, bands = gains))
+                    }
+                }
+                if (s.preset == "Custom") Chip(presetLabel("Custom"), selected = s.eqEnabled) {}
+            }
+            ResponseCurve(s, route)
+            SoundEngine.BANDS.forEachIndexed { i, hz ->
+                val g = s.bands.getOrElse(i) { 0f }
+                SliderRow(
+                    label = if (hz >= 1000) "${(hz / 1000).roundToInt()} kHz" else "${hz.roundToInt()} Hz",
+                    value = g, range = -SoundEngine.BAND_RANGE_DB..SoundEngine.BAND_RANGE_DB,
+                    // One decimal: the sliders move in half-dB steps, and "+1 dB"
+                    // for a +0.5 setting was a readout that lied by half.
+                    readout = stringResource(R.string.db_value, g),
+                    enabled = s.eqEnabled
+                ) { v ->
+                    val bands = s.bands.toMutableList().also { it[i] = (v * 2).roundToInt() / 2f }
+                    update(s.copy(bands = bands, preset = "Custom"))
+                }
             }
         }
 
@@ -139,29 +194,6 @@ fun SoundScreen(onClose: () -> Unit) {
             update(s.copy(limiter = it))
         }
 
-        Section(stringResource(R.string.sound_effects))
-        SliderRow(
-            label = stringResource(R.string.sound_bass), value = s.bass / 10f, range = 0f..100f,
-            readout = stringResource(R.string.percent_value, s.bass / 10), enabled = true
-        ) { update(s.copy(bass = (it * 10).roundToInt())) }
-        // Said plainly, from what the chain is doing right now.
-        Note(
-            stringResource(if (status.speaker) R.string.sound_bass_speaker else R.string.sound_bass_headphones)
-        )
-        SliderRow(
-            label = stringResource(R.string.sound_spatial), value = s.spatial / 10f, range = 0f..100f,
-            readout = stringResource(R.string.percent_value, s.spatial / 10), enabled = true
-        ) { update(s.copy(spatial = (it * 10).roundToInt())) }
-        Note(
-            when {
-                !status.spatial -> stringResource(R.string.sound_spatial_none)
-                status.speaker -> stringResource(R.string.sound_spatial_speaker)
-                s.spatial > 0 && status.spatialActive -> stringResource(R.string.sound_spatial_on)
-                s.spatial > 0 -> stringResource(R.string.sound_spatial_idle)
-                else -> stringResource(R.string.sound_spatial_sub)
-            }
-        )
-
         Section(stringResource(R.string.sound_engine))
         Toggle(
             stringResource(R.string.sound_compat),
@@ -180,10 +212,92 @@ fun SoundScreen(onClose: () -> Unit) {
         ProPlaybackSection()
 
         Box(Modifier.fillMaxWidth().padding(Space.xl, Space.lg), contentAlignment = Alignment.CenterStart) {
+            // This output back to flat (still the same kind of device), and
+            // loudness back to its defaults.
             Text(stringResource(R.string.sound_reset_flat), style = Typo.Label, color = MediaColors.CreamDim,
-                modifier = Modifier.pressScale(haptic = true) { update(SoundSettings()) })
+                modifier = Modifier.pressScale(haptic = true) { update(SoundSettings(output = s.output)) })
         }
         Spacer(Modifier.height(bottomSafePadding(gap = 100.dp)))
+    }
+}
+
+/** Depth or Space: its name and amount on one line, the slider full width under it. */
+@Composable
+private fun AmountSlider(title: String, amount: Int, onChange: (Int) -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = Space.xl)) {
+        SliderLabel(title, stringResource(R.string.percent_value, amount / 10))
+        Slider(
+            value = amount / 10f,
+            onValueChange = { onChange((it * 10).roundToInt().coerceIn(0, 1000)) },
+            valueRange = 0f..100f,
+            colors = proSliderColors()
+        )
+    }
+}
+
+/**
+ * What is playing the sound. Headphones, a speaker or a car: its name, and
+ * what kind of device it is, which shapes Depth and Space - guessed from the
+ * device, corrected with one tap. The phone speaker: a plain word on why
+ * there is nothing to tune.
+ */
+@Composable
+private fun OutputCard(route: SoundRoute, output: OutputClass, onPick: (OutputClass) -> Unit) {
+    val icon = when {
+        !route.external -> Icons.Rounded.PhoneAndroid
+        output == OutputClass.SPEAKER -> Icons.Rounded.Speaker
+        output == OutputClass.CAR -> Icons.Rounded.DirectionsCar
+        else -> Icons.Rounded.Headphones
+    }
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = Space.xl)
+            .clip(RoundedCornerShape(Radius.lg))
+            .background(MediaColors.FillSubtle)
+            .border(1.dp, MediaColors.Fill, RoundedCornerShape(Radius.lg))
+            .padding(vertical = Space.lg)
+    ) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = Space.lg), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(40.dp).clip(CircleShape)
+                    .background(if (route.external) MediaColors.Accent else MediaColors.Fill),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, null, tint = if (route.external) MediaColors.OnAccent else MediaColors.CreamDim,
+                    modifier = Modifier.size(22.dp))
+            }
+            Spacer(Modifier.width(Space.md))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    if (route.external) route.name else stringResource(R.string.sound_output_phone),
+                    style = Typo.Primary.copy(fontWeight = FontWeight.SemiBold), color = MediaColors.Cream,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    stringResource(if (route.external) R.string.sound_output_own else R.string.sound_output_phone_sub),
+                    style = Typo.Tertiary, color = MediaColors.CreamDim
+                )
+            }
+        }
+        if (route.external) {
+            Spacer(Modifier.height(Space.md))
+            val classes = OutputClass.entries
+            // Natural widths, scrolling if a language's words run long.
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = Space.lg),
+                horizontalArrangement = Arrangement.spacedBy(Space.sm)
+            ) {
+                classes.forEach { c ->
+                    Chip(
+                        stringResource(when (c) {
+                            OutputClass.HEADPHONES -> R.string.sound_class_headphones
+                            OutputClass.SPEAKER -> R.string.sound_class_speaker
+                            OutputClass.CAR -> R.string.sound_class_car
+                        }),
+                        selected = c == output
+                    ) { onPick(c) }
+                }
+            }
+        }
     }
 }
 
@@ -328,22 +442,29 @@ private fun SliderRow(
 }
 
 /**
- * The response actually applied right now - the sliders, the bass shelf for
- * this output, joined by the same smooth curve the engine renders - from 20Hz
- * to 20kHz on a log scale, +/-15dB.
+ * The response actually applied right now - the sliders joined by the same
+ * smooth curve the engine renders, plus the shape Depth gives the low end on
+ * this output - from 20Hz to 20kHz on a log scale, +/-15dB.
  */
 @Composable
-private fun ResponseCurve(s: SoundSettings, speaker: Boolean) {
+private fun ResponseCurve(s: SoundSettings, route: SoundRoute) {
     val accent = MediaColors.Accent
     val grid = MediaColors.Fill
-    val points = remember(s, speaker) { SoundEngine.effectiveBands(s, speaker) }
+    val points = remember(s, route) { SoundEngine.effectiveBands(s, route.external) }
+    val steps = 160
+    val lo = log10(20f)
+    val hi = log10(20000f)
+    // Depth's shape, worked out once per change rather than on every frame.
+    val depthDb = remember(s.output, s.depth, route.external) {
+        val hz = DoubleArray(steps + 1) { 10.0.pow((lo + (hi - lo) * it / steps).toDouble()) }
+        if (route.external) SoundStage.depthCurveDb(s.output, s.depth / 1000f, hz, headroom = false)
+        else DoubleArray(steps + 1)
+    }
     Column(Modifier.fillMaxWidth().padding(horizontal = Space.xl, vertical = Space.sm)) {
         Canvas(Modifier.fillMaxWidth().height(96.dp)) {
             val w = size.width
             val h = size.height
             val range = 15f
-            val lo = log10(20f)
-            val hi = log10(20000f)
             fun yOf(db: Float) = h / 2f - (db.coerceIn(-range, range) / range) * (h / 2f)
             fun xOf(hz: Float) = (log10(hz) - lo) / (hi - lo) * w
             for (db in listOf(-12f, -6f, 0f, 6f, 12f)) {
@@ -351,22 +472,22 @@ private fun ResponseCurve(s: SoundSettings, speaker: Boolean) {
             }
             for (f in listOf(100f, 1000f, 10000f)) drawLine(grid, Offset(xOf(f), 0f), Offset(xOf(f), h), strokeWidth = 1f)
             val path = Path()
-            val steps = 160
             for (i in 0..steps) {
                 val hz = 10f.pow(lo + (hi - lo) * i / steps)
                 val x = w * i / steps
-                val y = yOf(EqCurve.at(hz, SoundEngine.BANDS, points))
+                val y = yOf(EqCurve.at(hz, SoundEngine.BANDS, points) + depthDb[i].toFloat())
                 if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
             }
             drawPath(path, accent, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
-            for ((i, f) in SoundEngine.BANDS.withIndex()) {
+            if (s.eqEnabled) for ((i, f) in SoundEngine.BANDS.withIndex()) {
                 drawCircle(accent, radius = 2.5.dp.toPx(), center = Offset(xOf(f), yOf(points[i])))
             }
         }
         Row(Modifier.fillMaxWidth().padding(top = Space.xxs), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("20 Hz", style = Typo.Micro, color = MediaColors.CreamFaint)
-            Text(stringResource(if (speaker) R.string.sound_tuned_speaker else R.string.sound_tuned_headphones),
-                style = Typo.Micro, color = MediaColors.CreamDim)
+            Text(stringResource(R.string.sound_tuned_for, route.name),
+                style = Typo.Micro, color = MediaColors.CreamDim, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false).padding(horizontal = Space.sm))
             Text("20 kHz", style = Typo.Micro, color = MediaColors.CreamFaint)
         }
     }

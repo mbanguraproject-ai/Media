@@ -28,6 +28,8 @@ class PlaybackService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null
     private var effects: SoundEffects? = null
+    // Depth and Space: runs inside the audio sink, on every format (SoundSink.kt).
+    private val stage = SoundStage()
     // Via Pro (ProAudio.kt): the balance/mono processor in the audio chain,
     // the soft-pause / smart-resume wrapper the session hands out, and the
     // A-B loop.
@@ -71,17 +73,22 @@ class PlaybackService : MediaSessionService() {
         //
         // The audio sink is built here rather than by the factory's default
         // so the Pro balance/mono processor sits first in its chain (before
-        // silence skipping and speed).
+        // silence skipping and speed), and so Depth and Space run in front of
+        // it on every format, the float path included (SoundSink.kt).
+        stage.params = SoundEngine.stageParams()
         val renderers = object : DefaultRenderersFactory(this) {
             override fun buildAudioSink(
                 context: android.content.Context,
                 enableFloatOutput: Boolean,
                 enableAudioTrackPlaybackParams: Boolean
-            ): AudioSink = DefaultAudioSink.Builder(context)
-                .setEnableFloatOutput(enableFloatOutput)
-                .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-                .setAudioProcessors(arrayOf<AudioProcessor>(balance))
-                .build()
+            ): AudioSink = SoundSink(
+                DefaultAudioSink.Builder(context)
+                    .setEnableFloatOutput(enableFloatOutput)
+                    .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                    .setAudioProcessors(arrayOf<AudioProcessor>(balance))
+                    .build(),
+                stage
+            )
         }
             .setEnableAudioFloatOutput(true)
             .setEnableDecoderFallback(true)
@@ -100,9 +107,10 @@ class PlaybackService : MediaSessionService() {
         // The Sound chain rides on the player's audio session. A new session
         // id (rare: a device route change can cause one) rebuilds it.
         val fx = SoundEffects(this).also { effects = it }
-        fx.speaker = onSpeaker()
+        fx.external = SoundEngine.route.value.external
         fx.attach(player.audioSessionId)
-        // Headphones in or out, Bluetooth on or off: the bass shape follows.
+        // Headphones in or out, Bluetooth on or off: that device's own tuning
+        // follows, and on the phone speaker none.
         audioManager().registerAudioDeviceCallback(routeWatch, main)
         player.addListener(object : Player.Listener {
             override fun onAudioSessionIdChanged(audioSessionId: Int) {
@@ -119,9 +127,10 @@ class PlaybackService : MediaSessionService() {
             }
         })
         soundListener = SoundEngine.listen(this) {
-            SoundEngine.load(this)
+            SoundEngine.reload(this)
             fx.rebuildIfEngineChanged()
             fx.apply()
+            stage.params = SoundEngine.stageParams()
             // Switching ReplayGain on, or between track and album, changes
             // the gain for what is already playing.
             loadGain(player, player.currentMediaItem)
@@ -161,15 +170,21 @@ class PlaybackService : MediaSessionService() {
 
     private fun audioManager() = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
 
-    private fun onSpeaker(): Boolean =
-        runCatching { AudioInfo.output(this).kind.let { it == "Phone speaker" || it == "Earpiece" } }
-            .getOrDefault(true)
+    /** The output now, its own tuning, applied to the EQ and the stage. */
+    private fun followRoute() {
+        runCatching { SoundEngine.load(this) }
+        effects?.let {
+            it.external = SoundEngine.route.value.external
+            it.apply()
+        }
+        stage.params = SoundEngine.stageParams()
+    }
 
     // A device shows up a moment before media is actually routed to it, so
     // look again shortly after as well.
     private fun recheckRoute() {
-        effects?.speaker = onSpeaker()
-        main.postDelayed({ effects?.speaker = onSpeaker() }, 700)
+        followRoute()
+        main.postDelayed({ followRoute() }, 700)
     }
 
     private val routeWatch = object : android.media.AudioDeviceCallback() {

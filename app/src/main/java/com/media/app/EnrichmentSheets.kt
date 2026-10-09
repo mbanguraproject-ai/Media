@@ -463,6 +463,7 @@ fun AudioPathSheet(item: AppMediaItem, onOpenSound: () -> Unit, onDismiss: () ->
     val route = remember { AudioInfo.output(context) }
     val sound by SoundEngine.status.collectAsState()
     val settings by SoundEngine.settings.collectAsState()
+    val tuned by SoundEngine.route.collectAsState()
     val fmt = info?.first
 
     GlassSheet(onDismiss) {
@@ -486,13 +487,17 @@ fun AudioPathSheet(item: AppMediaItem, onOpenSound: () -> Unit, onDismiss: () ->
                 stringResource(if ((fmt?.bitDepth ?: 16) > 16) R.string.decoder_float else R.string.decoder_pcm16),
                 stringResource(if ((fmt?.bitDepth ?: 16) > 16) R.string.decoder_float_note else R.string.decoder_int_note))
             val chain = buildList {
+                // In signal order: Depth and Space in the player, then the mixer's chain.
+                // They run on stereo; a mono or surround file goes past them.
+                val channels = fmt?.channels
+                val stereo = channels == null || channels == 2
+                if (tuned.external && stereo && settings.depth > 0) add(stringResource(R.string.chain_depth, settings.depth / 10))
+                if (tuned.external && stereo && settings.space > 0) add(stringResource(R.string.chain_space, settings.space / 10))
                 if (sound.gainDb != 0f) add(sound.replayGainDb?.let {
                     stringResource(R.string.chain_gain_rg, sound.gainDb, it)
                 } ?: stringResource(R.string.chain_gain, sound.gainDb))
-                if (settings.eqEnabled && sound.equalizer) add(stringResource(R.string.chain_eq, presetLabel(settings.preset)))
+                if (tuned.external && settings.eqEnabled && sound.equalizer) add(stringResource(R.string.chain_eq, presetLabel(settings.preset)))
                 if (sound.limiterOn) add(stringResource(R.string.chain_limiter))
-                if (settings.bass > 0 && sound.bass) add(stringResource(R.string.chain_bass, settings.bass / 10))
-                if (settings.spatial > 0 && sound.spatial) add(stringResource(R.string.chain_spatial, settings.spatial / 10))
             }
             Stage(stringResource(R.string.stage_sound),
                 if (chain.isEmpty()) stringResource(R.string.sound_bitperfect) else chain.joinToString(" → "),
