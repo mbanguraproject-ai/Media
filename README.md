@@ -185,6 +185,8 @@ Signing is via keystore.properties (git-ignored, never committed).
 
 Icons: `python3 tools/make_icon.py` (needs shapely, skia-python, pillow and numpy) rewrites every icon asset from the iris's geometry; the design numbers are at the top of the script.
 
+Feature graphic: `python3 tools/make_feature_graphic.py` draws `store/feature_graphic.png`, Play's 1024 x 500 banner: the iris (from the icon's own geometry) on a deep navy night, sending out the beat as rings over a waveform, beside the name in Fraunces and the tagline in Inter, the app's own fonts. Drawn at twice the size and scaled down; a 24-bit PNG with no transparency, as Play asks.
+
 ### Release check
 
 4.5 crashed at launch with a `VerifyError` in `HomeScaffold`. The method had
