@@ -19,26 +19,29 @@ import kotlinx.coroutines.delay
 //  read the SAME BeatState, so they cannot drift apart and only one frame loop
 //  ever runs.
 //
-//  5.2 - THE CONE. The idea is a reactive speaker: watch the woofer and you
-//  see the music. The cover is driven like one: a spring (stiff, lightly
-//  damped) that each kick drum strikes. It punches out within ~35ms, swings
-//  back past rest on the rebound and settles in ~300ms, and between kicks it
-//  is still - so every movement you see is a kick.
+//  THE COVER ANSWERS THE BEAT. What it answers is decided once per track
+//  (BeatGrid.kt): the kicks and snares where the beat puts them, the
+//  strongest of each moment, never two within about half a beat.
 //
-//  ONE SYSTEM, ONE JOB PER DRUM. The first 5.2 build gave every drum several
-//  effects, each on its own smoothing, so a single kick set off six things
-//  slightly out of step and the snare and hats piled more on top. Now:
-//
-//    KICK   -> MOTION   the cone. Its glow, its shadow, the rings it sends
-//                       out and the waveform's playhead all read the SAME
-//                       spring, so they move as one body, in phase.
-//    SNARE  -> LIGHT    one flash across the cover. A kick landing with it
-//                       has priority (it is the same moment; motion wins),
-//                       unless the snare is an accent.
-//    HATS   -> TEXTURE  a fine shimmer on the cover's surface, each hat a
-//                       short decay; it ducks under the kick.
+//    KICK   -> MOTION   the cone: out in 30ms, then a clean fall that is over
+//                       before the next beat (a third of a beat, 70-160ms).
+//                       Its glow, its shadow and the rings it sends out all
+//                       read this one value, so they move as one body.
+//    SNARE  -> LIGHT    one flash across the cover, only in a moment no kick
+//                       has taken.
+//    HATS   -> TEXTURE  a fine shimmer that follows how busy the cymbals
+//                       are - a level, not a hit, so it never reacts on its
+//                       own; it gives way to the cone and the flash.
 //    ROOM               the backdrop swells slowly with the bass over a bar
 //                       or so. It is the ambience, never a hit.
+//
+//  5.2-5.5 drove the cone with a spring that every hit struck. Lightly
+//  damped, it swung two or three times after each kick and wandered with the
+//  bass line between them, so the cover moved when nothing was hit; and two
+//  hits close together struck it mid-swing, so the next beat landed on a
+//  rebound and looked late. Now each kick is a fixed shape in time: a new
+//  one always starts from a full attack, whatever the last one was doing,
+//  so no beat is ever missed, and between hits the cover is still.
 //
 //  Tiers add drums, not effects: Enhanced the kick, Premium the snare,
 //  Ultra the hats and the cone's true deformation (Phantom.kt).
@@ -47,23 +50,8 @@ import kotlinx.coroutines.delay
 private const val RINGS = 4
 private const val RING_LIFE_NS = 520_000_000f
 
-/** A snare within this of a kick is the kick's moment, unless it is an accent. */
-private const val DUCK_NS = 70_000_000L
-private const val ACCENT = 0.85f
 /** How long the snare's flash lasts. */
 internal const val FLASH_NS = 420_000_000L
-/** How fast one hat's shimmer dies away. */
-private const val TEXTURE_TAU_S = 0.09f
-
-// The cone spring: w = 33 rad/s (5.3 Hz), damping ratio 0.2. Simulated: a
-// kick peaks at +0.8 after ~33ms, rebounds to -0.24 at ~117ms and settles by
-// ~380ms.
-private const val CONE_K = 1100f
-private const val CONE_D = 13.3f
-private const val CONE_STRIKE = 30f
-// How much the bass line holds the cone out between kicks: a little, so a
-// held bass reads as weight without blurring the kicks.
-private const val CONE_HOLD = 0.08f
 
 /** Floor cut + smoothstep. Crushes the mush, keeps the peaks. */
 private fun punch(v: Float): Float {
@@ -80,11 +68,11 @@ class BeatState {
     var room by mutableStateOf(0f)
         internal set
 
-    /** The cone: about 0..1 out on a kick, below 0 on the rebound. */
+    /** The cone: 0 at rest, up to about 1 at a kick's peak. */
     var cone by mutableStateOf(0f)
         internal set
 
-    /** The hats' shimmer, 0..1: each hat a short decay, ducked under the kick. */
+    /** The hats' shimmer, 0..1: how busy the cymbals are, under the cone and the flash. */
     var texture by mutableStateOf(0f)
         internal set
 
@@ -92,7 +80,7 @@ class BeatState {
     var frameNanos by mutableStateOf(0L)
         internal set
 
-    /** The cone's push, 0..1: what the glow, the shadow and the playhead follow. */
+    /** The cone's push, 0..1: what the glow, the shadow and the rings follow. */
     val push: Float get() = cone.coerceIn(0f, 1f)
 
     internal val born = LongArray(RINGS)
@@ -109,52 +97,52 @@ class BeatState {
     var snarePower = 0f
         private set
 
-    private var hat = 0f
-    internal var coneVelocity = 0f
-    /** The last analysis frame whose hits have fired, so a resync never fires one twice. */
-    internal var firedFrame = Int.MIN_VALUE
+    // The last two kicks: a new one starts from a full attack while the one
+    // before it finishes its fall underneath.
+    private var prevNanos = 0L
+    private var prevPower = 0f
 
-    internal fun kick(now: Long, p: Float) {
-        kickNanos = now; kickPower = p
-        born[next] = now
+    /** The fall of one kick, from the track's beat (Pulse.decayFor). */
+    internal var decayS = 0.12f
+
+    /** Where in the track's moments the next one to fire is. */
+    internal var nextMoment = 0
+    /** The media time of the last frame, to tell playback from a jump. */
+    internal var lastMs = Float.NaN
+
+    /** A kick at [at] (display-clock nanos, exact to the moment, not the frame). */
+    internal fun kick(at: Long, p: Float) {
+        prevNanos = kickNanos; prevPower = kickPower
+        kickNanos = at; kickPower = p
+        born[next] = at
         power[next] = p
         next = (next + 1) % RINGS
-        coneVelocity += CONE_STRIKE * p
     }
 
-    internal fun snare(now: Long, p: Float) {
-        // Same moment as a kick: the kick's. An accent still flashes.
-        if (kickNanos != 0L && now - kickNanos in 0..DUCK_NS && p < ACCENT) return
-        snareNanos = now; snarePower = p
+    internal fun snare(at: Long, p: Float) {
+        snareNanos = at; snarePower = p
     }
 
-    internal fun hat(p: Float) {
-        if (p > hat) hat = p
-    }
-
-    internal fun step(dt: Float, bass: Float, now: Long) {
-        val a = CONE_K * (bass * CONE_HOLD - cone) - CONE_D * coneVelocity
-        coneVelocity += a * dt
-        cone = (cone + coneVelocity * dt).coerceIn(-0.6f, 1.4f)
-        hat *= kotlin.math.exp(-dt / TEXTURE_TAU_S)
-        // The snare's light, as it fades: what the hats duck under.
+    internal fun step(now: Long, bass: Float, cymbals: Float) {
+        fun pulse(at: Long, p: Float) = if (at == 0L) 0f else p * Pulse.at((now - at) / 1e9f, decayS)
+        cone = maxOf(pulse(kickNanos, kickPower), pulse(prevNanos, prevPower))
+        // The snare's light, as it fades: what the hats give way to.
         val since = now - snareNanos
         val light = if (snareNanos != 0L && since in 0..FLASH_NS) {
             val f = 1f - since / FLASH_NS.toFloat()
             f * f * snarePower
         } else 0f
-        // The hats give way to the cone and to the flash: one thing at a time.
-        texture = hat * (1f - push * 0.85f) * (1f - light * 0.8f)
+        val target = cymbals * 0.45f * (1f - push * 0.85f) * (1f - light * 0.8f)
+        texture += (target - texture) * if (target > texture) 0.25f else 0.06f
         room += (bass - room) * if (bass > room) 0.05f else 0.02f
     }
 
     internal fun reset() {
         room = 0f; cone = 0f; texture = 0f
-        hat = 0f
-        coneVelocity = 0f
-        firedFrame = Int.MIN_VALUE
+        nextMoment = 0
+        lastMs = Float.NaN
         for (i in 0 until RINGS) born[i] = 0L
-        kickNanos = 0L; snareNanos = 0L
+        kickNanos = 0L; snareNanos = 0L; prevNanos = 0L
     }
 }
 
@@ -181,18 +169,6 @@ object PlayerClock {
 private const val DISPLAY_LEAD_MS = 30f
 
 /**
- * Drives [BeatState] at the display's rate whenever [active] and playback is
- * running.
- *
- * SYNC. Until 5.3 this re-read the position twice a second (PlayerState) and
- * guessed in between by counting frames from the last read. Each read was
- * already a frame or more old when the effect restarted on it, so the guess
- * started behind, drifted, and snapped back twice a second: the artwork and
- * the song looked like two different things. Now [clock] is the player's own
- * position, read on every frame, plus the time the frame takes to reach the
- * screen - so a hit is drawn on the frame you see as you hear it.
- */
-/**
  * Music-stream volume as 0..1, polled at ~3Hz.
  *
  * This is the power control: at zero the artwork is completely still, and
@@ -215,6 +191,17 @@ fun rememberMusicVolume(): Float {
     return vol
 }
 
+/**
+ * Drives [BeatState] at the display's rate whenever [active] and playback is
+ * running.
+ *
+ * SYNC. [clock] is the player's own position, read on every frame - what you
+ * are hearing, the output's latency already in it - plus the time the frame
+ * takes to reach the screen, less whatever the Sound chain holds the audio
+ * back by (SoundStatus.latencyMs). A moment fires on the frame playback
+ * crosses it, timed to the moment itself, not the frame: its pulse is
+ * already as far along as the sound is.
+ */
 @Composable
 fun rememberBeatPulse(
     state: PlayerState,
@@ -234,45 +221,37 @@ fun rememberBeatPulse(
             return@LaunchedEffect
         }
         val power = volume.coerceIn(0f, 1f)
-        val lead = (DISPLAY_LEAD_MS * state.speed).toLong()
-        val hz = SoundShape.HZ
-        var last = 0L
+        val speed = state.speed.coerceAtLeast(0.1f)
+        val moments = shape.moments
+        beat.decayS = Pulse.decayFor(moments.periodFrames / SoundShape.HZ / speed)
         while (true) {
             withFrameNanos { frameTime ->
-                val dt = if (last == 0L) 0f else ((frameTime - last) / 1e9f).coerceIn(0f, 0.05f)
-                last = frameTime
-                val ms = now() + lead
-                val frame = (ms * hz / 1000L).toInt()
-
-                when {
-                    // A jump - a seek, a resume after a while away - fires
-                    // nothing it skipped.
-                    frame < beat.firedFrame - 2 || frame > beat.firedFrame + hz / 2 ->
-                        beat.firedFrame = frame
-                    // Every hit playback has crossed since the last frame, on
-                    // this frame. Volume scales them: quieter means softer.
-                    frame > beat.firedFrame -> {
-                        fire(shape.lowHits, beat.firedFrame, frame) { p -> beat.kick(frameTime, p * power) }
-                        fire(shape.midHits, beat.firedFrame, frame) { p -> beat.snare(frameTime, p * power) }
-                        fire(shape.highHits, beat.firedFrame, frame) { p -> beat.hat(p * power) }
-                        beat.firedFrame = frame
+                val held = SoundEngine.status.value.latencyMs
+                val ms = now() + (DISPLAY_LEAD_MS - held) * speed
+                val last = beat.lastMs
+                if (last.isNaN() || ms < last - 100f || ms > last + 500f) {
+                    // A start, a seek, a resume after a while away: fire
+                    // nothing that was skipped.
+                    beat.nextMoment = moments.firstAtOrAfter(ms)
+                } else {
+                    var i = beat.nextMoment
+                    while (i < moments.size && moments.timeMs(i) <= ms) {
+                        // When the moment was, on the display clock.
+                        val ago = ((ms - moments.timeMs(i)) / speed * 1_000_000f).toLong()
+                        val p = moments.power[i] * power
+                        if (moments.kick[i]) beat.kick(frameTime - ago, p) else beat.snare(frameTime - ago, p)
+                        i++
                     }
+                    beat.nextMoment = i
                 }
-                beat.step(dt, punch(shape.low.levelAt(ms)) * power, frameTime)
+                beat.lastMs = ms
+                val pos = ms.toLong()
+                beat.step(frameTime, punch(shape.low.levelAt(pos)) * power, shape.high.levelAt(pos) * power)
                 beat.frameNanos = frameTime
             }
         }
     }
     return beat
-}
-
-/** Calls [action] for each hit in [hits] after frame [from], up to and including [to]. */
-private inline fun fire(hits: Hits, from: Int, to: Int, action: (power: Float) -> Unit) {
-    var i = hits.firstAtOrAfter(from + 1)
-    while (i < hits.size && hits.frames[i] <= to) {
-        action(hits.power[i])
-        i++
-    }
 }
 
 /**

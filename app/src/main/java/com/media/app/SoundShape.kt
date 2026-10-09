@@ -19,7 +19,8 @@ import kotlin.math.pow
 //  of the sound. The hits are found once per track, when its shape is
 //  loaded, by picking peaks of the rise in each band against a moving
 //  threshold - so a loud chorus does not fire on every frame and a quiet
-//  verse still has its hits.
+//  verse still has its hits. Which of them the cover answers is the beat's
+//  decision (BeatGrid.kt).
 //
 //  Everything here is plain arithmetic on arrays, checked off the device.
 // ============================================================================
@@ -39,18 +40,6 @@ class Hits(val frames: IntArray, val power: FloatArray) {
         return lo
     }
 
-    /** These hits without the ones within [within] frames of a hit in [other], unless above [keepAbove]. */
-    fun maskedBy(other: Hits, within: Int, keepAbove: Float): Hits {
-        if (size == 0 || other.size == 0) return this
-        val f = ArrayList<Int>(size); val p = ArrayList<Float>(size)
-        for (i in 0 until size) {
-            val j = other.firstAtOrAfter(frames[i] - within)
-            val near = j < other.size && other.frames[j] <= frames[i] + within
-            if (!near || power[i] > keepAbove) { f.add(frames[i]); p.add(power[i]) }
-        }
-        return Hits(IntArray(f.size) { f[it] }, FloatArray(p.size) { p[it] })
-    }
-
     companion object {
         val NONE = Hits(IntArray(0), FloatArray(0))
     }
@@ -61,12 +50,16 @@ class SoundShape(val low: FloatArray, val mid: FloatArray, val high: FloatArray)
     /** The waveform the scrubber draws: the bass curve it has always drawn. */
     val wave: FloatArray get() = low
 
+    /** Every hit each band has: the candidates. */
     val lowHits: Hits = Onsets.detect(low, minGapFrames = 6)      // 120ms: no kick rolls faster
-    // A kick's beater click reaches the snare band too. A mid hit on the same
-    // frame as a kick is the kick's, unless it is strong enough to be a snare
-    // struck with it.
-    val midHits: Hits = Onsets.detect(mid, minGapFrames = 5).maskedBy(lowHits, within = 1, keepAbove = 0.8f)
-    val highHits: Hits = Onsets.detect(high, minGapFrames = 3)    // 60ms: hats can be quick
+    val midHits: Hits = Onsets.detect(mid, minGapFrames = 5)
+
+    /**
+     * What the cover actually answers: the hits that fall where the beat
+     * puts them, the strongest of each moment, never two within about half
+     * a beat (BeatGrid.kt).
+     */
+    val moments: Moments = BeatGrid.moments(low, mid, high, lowHits, midHits)
 
     /** Interleaved low/mid/high per frame, for storage. */
     fun interleaved(): FloatArray {

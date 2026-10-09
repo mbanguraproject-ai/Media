@@ -16,9 +16,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 //  through a displacement field built from what the music is doing right now
 //  (BeatPulse.kt):
 //
-//    THE CONE   the kick's spring. Out, the middle of the cover swells
-//               towards you while its edge stays put, like a woofer's cone
-//               in its surround; on the rebound it sinks back past rest.
+//    THE CONE   the kick. Out, the middle of the cover swells towards you
+//               while its edge stays put, like a woofer's cone in its
+//               surround, and settles back before the next beat.
 //    RIPPLES    each kick sends a ring wave out from the centre across the
 //               surface, decaying as it travels.
 //    SHIMMER    the hi-hats set a fine standing ripple trembling over it -

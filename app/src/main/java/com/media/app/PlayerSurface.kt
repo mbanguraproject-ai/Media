@@ -747,7 +747,7 @@ private fun PlayerArtwork(
     // (Phantom.kt). Where it cannot, Ultra moves as Premium does.
     val phantom = remember { PhantomCone() }
     val coneOn = q.reactiveLevel >= 4 && phantom.available && e > 0.5f && !isVideo
-    // How far the kick's spring scales the cover. With the cone the
+    // How far a kick scales the cover. With the cone the
     // deformation carries the kick, so the cover itself moves less.
     val coneScale = when {
         coneOn -> 0.02f
@@ -760,9 +760,9 @@ private fun PlayerArtwork(
             .graphicsLayer {
                 // beat.cone read HERE, inside the layer lambda: this
                 // re-runs on the draw pass only, never recomposing. The
-                // kick's spring: out on the hit, a little under on the
-                // rebound (BeatPulse.kt). Everything else that moves with
-                // the kick reads this same spring.
+                // kick: out in 30ms, settled before the next beat
+                // (BeatPulse.kt). Everything else that moves with the kick
+                // reads this same value.
                 val s = (1f + beat.cone * coneScale).coerceAtLeast(0.985f)
                 scaleX = s; scaleY = s
                 // Gives way to the lyrics; the pill keeps its cover.

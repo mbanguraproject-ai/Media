@@ -105,7 +105,14 @@ data class SoundStatus(
     val gainDb: Float = 0f,
     /** ReplayGain found for the current track, when enabled and tagged. */
     val replayGainDb: Float? = null,
-    val limiterOn: Boolean = false
+    val limiterOn: Boolean = false,
+    /**
+     * How long the chain holds the audio back beyond what the player's
+     * position knows about, in ms: Dynamics Processing works a frame at a
+     * time, and Depth and Space look 3ms ahead. Reactive artwork draws that
+     * much later so it stays on the beat you hear.
+     */
+    val latencyMs: Float = 0f
 )
 
 object SoundEngine {
@@ -479,7 +486,11 @@ class SoundEffects(private val context: Context) {
                 frameMs = if (dynOk) dpFrameMs else 0f,
                 gainDb = if (dynOk) gain else 0f,
                 replayGainDb = if (dynOk) rg else null,
-                limiterOn = dynOk && s.limiter && needed
+                limiterOn = dynOk && s.limiter && needed,
+                // Three quarters of a frame: if the estimate errs, the cover
+                // is a touch early, which the eye forgives, never late.
+                latencyMs = (if (dynOk && needed) 0.75f * dpFrameMs else 0f) +
+                    (if (SoundEngine.stageParams().wanted) 3f else 0f)
             )
         )
     }
