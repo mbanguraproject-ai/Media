@@ -18,3 +18,6 @@ keystore.properties
 .kotlin/
 _apk_out/
 gradle.local.properties
+
+# Python bytecode from running the tools/ scripts
+__pycache__/
