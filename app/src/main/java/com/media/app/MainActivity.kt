@@ -131,6 +131,13 @@ class MainActivity : ComponentActivity() {
         AppLanguage.keepProcessDefault(this)
     }
 
+    // A file opened while Via is already running comes here (singleTask).
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        OpenWith.take(this, intent)
+    }
+
     override fun onPictureInPictureModeChanged(
         isInPictureInPictureMode: Boolean,
         newConfig: android.content.res.Configuration
@@ -160,6 +167,9 @@ class MainActivity : ComponentActivity() {
         }
         super.onCreate(savedInstanceState)
         Enrichment.init(this)
+        // Opened from a file ("Open with Via"). Not again on a restore: that
+        // file has already been played.
+        if (savedInstanceState == null) OpenWith.take(this, intent)
         setContent {
             val settings by SettingsStore.flow(this).collectAsState(initial = MediaSettings())
             // Dark-only app: bars always use light icons.
@@ -288,6 +298,11 @@ fun AppRoot(vm: PlayerViewModel = viewModel()) {
             notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
+
+    // A file opened with Via plays straight away, whatever screen is up:
+    // the sending app's grant on that file is enough, library access or not.
+    val opened by OpenWith.pending.collectAsState()
+    LaunchedEffect(opened) { opened?.let { vm.playExternal(it) } }
 
     // Local step for the first-run flow: 0 = welcome, 1 = permission explainer.
     var onboardStep by remember { mutableStateOf(0) }
@@ -558,6 +573,14 @@ fun HomeScaffold(vm: PlayerViewModel) {
     val context = LocalContext.current
     val state by vm.state.collectAsState()
     val nav = remember { HomeNav() }
+    // A file opened with Via: Now Playing opens on it (OpenWith.kt).
+    val openPlayer by OpenWith.showPlayer.collectAsState()
+    LaunchedEffect(openPlayer) {
+        if (openPlayer) {
+            nav.showPlayer = true
+            OpenWith.shown()
+        }
+    }
     val ambient = remember { AppAmbient() }
     val shareState by ShareSession.state.collectAsState()
     // Once per context. remember must hold a value, so it holds the context.

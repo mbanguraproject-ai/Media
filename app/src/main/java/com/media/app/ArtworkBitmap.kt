@@ -130,7 +130,7 @@ class ViaBitmapLoader(private val context: Context) : BitmapLoader {
      * when a file:// uri to the same image never could.
      */
     private fun repaired(uri: Uri): Bitmap? {
-        val id = uri.lastPathSegment?.toLongOrNull() ?: return null
+        val id = libraryId(uri) ?: return null
         val file = ArtworkStore.fileFor(id) ?: return null
         return runCatching {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }

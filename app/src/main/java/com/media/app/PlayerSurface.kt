@@ -1224,7 +1224,9 @@ fun rememberArtItem(state: PlayerState): AppMediaItem? =
     remember(state.currentUri, state.currentTitle) {
         state.currentUri?.let { uri ->
             AppMediaItem(
-                id = uri.substringAfterLast('/').toLongOrNull() ?: 0L,
+                // A file opened with Via has no MediaStore id: it gets its own
+                // stable one, so its cover and analysis are its own.
+                id = libraryId(android.net.Uri.parse(uri)) ?: OpenWith.idFor(uri),
                 title = state.currentTitle, artist = state.currentArtist,
                 durationMs = state.durationMs, uri = android.net.Uri.parse(uri),
                 type = if (state.isVideo) MediaType.VIDEO else MediaType.AUDIO,

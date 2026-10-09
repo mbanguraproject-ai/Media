@@ -42,14 +42,35 @@
         android:enableOnBackInvokedCallback="true"
         android:theme="@style/Theme.Media.Splash">
 
+        <!-- singleTask: one Via. A file opened from Downloads or a file
+             manager comes to the Via that is already running (onNewIntent)
+             instead of stacking a second copy inside the other app's task,
+             and returning from picture-in-picture finds the same window. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:supportsPictureInPicture="true"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|layoutDirection">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- "Open with": any audio or video file Android is asked to
+                 open - a download, a file manager, a chat attachment - offers
+                 Via (OpenWith.kt). Some apps label Ogg and FLAC as
+                 application/*. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="audio/*" />
+                <data android:mimeType="video/*" />
+                <data android:mimeType="application/ogg" />
+                <data android:mimeType="application/x-ogg" />
+                <data android:mimeType="application/x-flac" />
+                <data android:mimeType="application/x-matroska" />
             </intent-filter>
         </activity>
 

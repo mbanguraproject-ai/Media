@@ -119,7 +119,7 @@ class PlaybackService : MediaSessionService() {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 // Video gets the short processing frame so lip-sync holds;
                 // music gets the long one for low-frequency precision.
-                fx.lowLatency = mediaItem?.localConfiguration?.uri?.toString()?.contains("/video/") == true
+                fx.lowLatency = mediaItem?.let { isVideoItem(it) } == true
                 loadGain(player, mediaItem)
                 // A loop belongs to one track.
                 val loop = ProPlayback.loop.value

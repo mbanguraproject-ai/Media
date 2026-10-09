@@ -158,6 +158,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             refreshQueue()
             refresh()
             startPositionUpdates()
+            // A file opened with Via before the player was connected.
+            waitingFile?.let { waitingFile = null; playExternal(it) }
         }, MoreExecutors.directExecutor())
     }
 
@@ -171,7 +173,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                             durationMs = it.duration.coerceAtLeast(0L)
                         )
                         if (!recordedForCurrent && it.currentPosition >= 5000L) {
-                            val id = it.currentMediaItem?.localConfiguration?.uri?.lastPathSegment?.toLongOrNull()
+                            val id = libraryId(it.currentMediaItem?.localConfiguration?.uri)
                             if (id != null) {
                                 recordedForCurrent = true
                                 onQualifyingPlay?.invoke(id)
@@ -270,7 +272,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             shuffle = c.shuffleModeEnabled,
             repeatMode = c.repeatMode,
             speed = c.playbackParameters.speed,
-            isVideo = c.currentMediaItem?.localConfiguration?.uri?.toString()?.contains("/video/") == true,
+            isVideo = c.currentMediaItem?.let { isVideoItem(it) } == true,
             videoWidth = c.videoSize.width,
             videoHeight = c.videoSize.height,
             sleepActive = prev.sleepActive,
@@ -410,7 +412,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         val c = controller ?: return
         val current = c.currentMediaItem ?: return
         val base = current.localConfiguration?.uri ?: return
-        if (base.lastPathSegment?.toLongOrNull() != mediaId) return
+        if (libraryId(base) != mediaId) return
         val kind = current.mediaMetadata.artworkUri?.getQueryParameter(DefaultArtwork.KIND_PARAM)
             ?.let { k -> ArtworkKind.entries.firstOrNull { it.name == k } }
         val fresh = artworkUriFor(mediaId, base, kind)
@@ -460,6 +462,38 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         refreshQueue(); refresh()
     }
 
+    private var waitingFile: OpenWith.Request? = null
+
+    /**
+     * A file opened with Via (OpenWith.kt): played on its own, from the start.
+     * Its title and artist come from its tags, read here, and its file name
+     * when it has none. A video is marked as one in its metadata, since its
+     * uri (Downloads, a file manager) does not say /video/ as MediaStore's do.
+     */
+    fun playExternal(r: OpenWith.Request) {
+        val c = controller ?: run { waitingFile = r; return }
+        viewModelScope.launch {
+            val tags = withContext(Dispatchers.IO) { readTags(getApplication<Application>(), r.uri) }
+            val item = ExoMediaItem.Builder()
+                .setUri(r.uri)
+                .setMediaId(OpenWith.idFor(r.uri.toString()).toString())
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setTitle(tags?.title?.takeIf { it.isNotBlank() } ?: r.name)
+                        .setArtist(tags?.artist?.takeIf { it.isNotBlank() } ?: "")
+                        .setArtworkUri(r.uri)
+                        .setMediaType(if (r.video) MediaMetadata.MEDIA_TYPE_VIDEO else MediaMetadata.MEDIA_TYPE_MUSIC)
+                        .build()
+                )
+                .build()
+            c.setMediaItems(listOf(item), 0, 0L)
+            c.prepare()
+            c.setPlaybackSpeed(1.0f)
+            c.play()
+            OpenWith.played(r)
+        }
+    }
+
     fun play(items: List<AppMediaItem>, startIndex: Int) {
         val c = controller ?: return
         if (items.isEmpty() || startIndex !in items.indices) return
@@ -501,7 +535,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun currentIsLongForm(): Boolean {
-        val id = controller?.currentMediaItem?.localConfiguration?.uri?.lastPathSegment?.toLongOrNull()
+        val id = libraryId(controller?.currentMediaItem?.localConfiguration?.uri)
             ?: return false
         val pillar = pillarById[id] ?: return false
         return pillar == Pillar.AUDIOBOOK || pillar == Pillar.PODCAST
@@ -510,7 +544,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     private fun saveCurrentPosition() {
         val c = controller ?: return
         if (!currentIsLongForm()) return
-        val id = c.currentMediaItem?.localConfiguration?.uri?.lastPathSegment?.toLongOrNull() ?: return
+        val id = libraryId(c.currentMediaItem?.localConfiguration?.uri) ?: return
         val pos = c.currentPosition
         val dur = c.duration.coerceAtLeast(0L)
         val spd = c.playbackParameters.speed
@@ -538,7 +572,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         val c = controller ?: return
         val current = c.currentMediaItem ?: return
         // Match by the id embedded in the uri (last path segment)
-        val currentId = current.localConfiguration?.uri?.lastPathSegment?.toLongOrNull()
+        val currentId = libraryId(current.localConfiguration?.uri)
         if (currentId != mediaId) return
 
         // Rebuilding from scratch DROPPED artworkUri, so renaming a track
