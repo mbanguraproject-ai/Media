@@ -9,11 +9,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.layout.onPlaced
-import androidx.compose.ui.layout.positionInParent
-import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -42,7 +37,7 @@ import androidx.compose.ui.unit.dp
 //
 //  The app's way of showing a set of filters or choices and which one is
 //  current: Sound's presets, Settings' choices. A tab's own views - the
-//  pages a swipe moves between - use ViewTabs below instead.
+//  pages a swipe moves between - use PillTabs below instead.
 //
 //  A pill per choice. The current one is filled with the accent and set in
 //  semibold; the rest sit on a faint fill with a hairline edge, so the row
@@ -137,145 +132,117 @@ fun ChipRow(
 }
 
 // ============================================================================
-//  VIEW TABS
+//  PILL TABS
 //
 //  The top-level views of a tab, and the pages a sideways swipe moves
 //  between: Home's Music / Video / Podcasts / Audiobooks, Library's Albums /
-//  Artists / Recordings, Playlists' Mine / Smart. One control on all three,
-//  so the tabs read as one app with one layout: the header, these, the
-//  pages.
+//  Artists / Recordings, Playlists' Mine / Smart. Pills with their icons, as
+//  the app's views have always been - one row on all three tabs, right under
+//  the header on the same gutter, so the header and its views read as one
+//  block.
 //
-//  Set in type, not boxed. 5.9 shipped a boxed segmented control with a
-//  filled teal block: a widget dropped under the header rather than part of
-//  it, and the loudest thing on a screen whose colour belongs to the
-//  artwork. These are words on the header's own gutter - the first starts
-//  where the Via mark starts - the current one in full cream, the rest
-//  receding, with one accent line under the current word and a hairline
-//  across the screen that closes the header off from the list.
+//  Better than the chip row it replaces in three ways:
+//  * Every view is on screen. That row scrolled, and Audiobooks sat off the
+//    right edge on most phones. Here the labels are measured and the pills'
+//    padding is chosen to fit them all across the screen, between a
+//    comfortable 14dp and a tight 8dp, and the type steps down 1sp if that
+//    is still not enough. Only a very narrow phone in a long language still
+//    scrolls, and then the current pill is kept in sight.
+//  * Solid pills, no outlines: a quiet surface for the rest and the accent
+//    for the current one. Hairline edges around every pill drew a box round
+//    each word.
+//  * The accent follows the finger. The fill is read from the pager's live
+//    position, so mid-swipe it is passing from one pill to the next.
 //
-//  The line moves WITH the finger: drawn from the pager's live position, so
-//  halfway through a swipe it sits halfway between the two words, and it
-//  stretches or shrinks to each word's own width on the way. Its soft light
-//  rising off it is the only glow on the screen.
-//
-//  Every view is always on screen: the words size to themselves and fit
-//  four across a 360dp phone in the shipped languages; a longer one scrolls
-//  the row rather than cutting a word, and the current view is kept in
-//  sight. No vibration on a tap (Interactions.kt), and no ripple: the word
-//  lighting up is the answer.
+//  Every label is set in the same weight so a pill never changes width as
+//  it lights up. No vibration on a tap (Interactions.kt).
 // ============================================================================
 
-private val TabRowHeight = 44.dp
-private val TabGap = 22.dp
-private val LineHeight = 2.dp
-private val GlowHeight = 14.dp
+private val PillHeight = 34.dp
+private val PillGap = 6.dp
+private val PillIcon = 15.dp
+private val PillIconGap = 5.dp
+private val PillPadMax = 14.dp
+private val PillPadMin = 8.dp
 
 @Composable
-fun ViewTabs(
+fun PillTabs(
     labels: List<String>,
+    icons: List<ImageVector>,
     pager: androidx.compose.foundation.pager.PagerState,
     modifier: Modifier = Modifier,
     onPick: (Int) -> Unit
 ) {
     val accent = MediaColors.Accent
-    val lit = MediaColors.Cream
-    val idle = MediaColors.CreamFaint
-    val hairline = MediaColors.Fill
+    val onAccent = MediaColors.OnAccent
+    val rest = MediaColors.FillStrong
+    val ink = MediaColors.Cream
+    val full = Typo.Label.copy(fontWeight = FontWeight.SemiBold)
     val gutter = Space.xl
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
     val scroll = rememberScrollState()
-    // Each word's left edge and width in the row, from layout. Drawing reads
-    // them, so the line is placed in the draw phase without recomposing.
-    val starts = androidx.compose.runtime.remember(labels.size) {
-        androidx.compose.runtime.mutableStateListOf<Float>().apply { repeat(labels.size) { add(0f) } }
-    }
-    val widths = androidx.compose.runtime.remember(labels.size) {
-        androidx.compose.runtime.mutableStateListOf<Float>().apply { repeat(labels.size) { add(0f) } }
-    }
-    // A row too long for the screen keeps the current word in sight, a
-    // gutter in from the edge.
-    val gutterPx = with(androidx.compose.ui.platform.LocalDensity.current) { gutter.toPx() }
-    androidx.compose.runtime.LaunchedEffect(pager.settledPage, scroll.maxValue) {
-        if (scroll.maxValue == 0) return@LaunchedEffect
-        val i = pager.settledPage.coerceIn(0, labels.lastIndex)
-        scroll.animateScrollTo((starts[i] - gutterPx).toInt().coerceIn(0, scroll.maxValue))
-    }
     val position = pager.currentPage + pager.currentPageOffsetFraction
 
-    androidx.compose.foundation.layout.Box(modifier.fillMaxWidth().height(TabRowHeight)) {
-        // The hairline across the whole screen, under the words.
-        androidx.compose.foundation.layout.Box(
-            Modifier.align(Alignment.BottomStart).fillMaxWidth().height(0.5.dp).background(hairline)
-        )
+    androidx.compose.foundation.layout.BoxWithConstraints(
+        modifier.fillMaxWidth().padding(top = Space.xxs, bottom = Space.xs)
+    ) {
+        // The type and padding that fit every pill across this width: the
+        // labels themselves, an icon each, the gaps and the gutters, and
+        // what is left shared out as padding.
+        val (style, pad) = androidx.compose.runtime.remember(labels, maxWidth, full, density) {
+            with(density) {
+                val fixed = (PillIcon + PillIconGap).toPx() * labels.size +
+                    PillGap.toPx() * (labels.size - 1) + gutter.toPx() * 2
+                fun padFor(st: androidx.compose.ui.text.TextStyle): Float {
+                    val text = labels.sumOf { measurer.measure(it, st).size.width }.toFloat()
+                    return (maxWidth.toPx() - fixed - text) / (labels.size * 2)
+                }
+                val roomy = padFor(full)
+                if (roomy >= PillPadMin.toPx()) {
+                    full to roomy.coerceAtMost(PillPadMax.toPx()).toDp()
+                } else {
+                    val small = full.copy(fontSize = full.fontSize * (12f / 13f), lineHeight = full.lineHeight * (12f / 13f))
+                    small to padFor(small).coerceIn(PillPadMin.toPx(), PillPadMax.toPx()).toDp()
+                }
+            }
+        }
+        // Only matters where the row still overflows.
+        androidx.compose.runtime.LaunchedEffect(pager.settledPage, scroll.maxValue) {
+            if (scroll.maxValue == 0) return@LaunchedEffect
+            val share = pager.settledPage.toFloat() / (labels.size - 1).coerceAtLeast(1)
+            scroll.animateScrollTo((scroll.maxValue * share).toInt())
+        }
         Row(
-            Modifier
-                .fillMaxHeight()
-                .horizontalScroll(scroll)
-                .drawBehind {
-                    if (widths.isEmpty() || widths.all { it == 0f }) return@drawBehind
-                    val at = (pager.currentPage + pager.currentPageOffsetFraction)
-                        .coerceIn(0f, (labels.size - 1).toFloat())
-                    val from = kotlin.math.floor(at).toInt()
-                    val to = (from + 1).coerceAtMost(labels.lastIndex)
-                    val t = at - from
-                    val x = starts[from] + (starts[to] - starts[from]) * t
-                    val w = widths[from] + (widths[to] - widths[from]) * t
-                    val line = LineHeight.toPx()
-                    val glow = GlowHeight.toPx()
-                    // Light rising off the line, fading out upwards.
-                    drawRect(
-                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                            0f to accent.copy(alpha = 0f),
-                            1f to accent.copy(alpha = 0.16f),
-                            startY = size.height - line - glow,
-                            endY = size.height - line
-                        ),
-                        topLeft = androidx.compose.ui.geometry.Offset(x, size.height - line - glow),
-                        size = androidx.compose.ui.geometry.Size(w, glow)
-                    )
-                    drawRoundRect(
-                        color = accent,
-                        topLeft = androidx.compose.ui.geometry.Offset(x, size.height - line),
-                        size = androidx.compose.ui.geometry.Size(w, line),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(line / 2f)
-                    )
-                },
+            Modifier.horizontalScroll(scroll).padding(horizontal = gutter),
+            horizontalArrangement = Arrangement.spacedBy(PillGap),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Spacer(Modifier.width(gutter))
             labels.forEachIndexed { i, label ->
-                // 1 on the current word, 0 a whole page away or more.
+                // 1 on the current pill, 0 a whole page away or more.
                 val near = (1f - kotlin.math.abs(position - i)).coerceIn(0f, 1f)
-                val ink = androidx.compose.ui.graphics.lerp(idle, lit, near)
-                Text(
-                    label,
-                    style = Typo.Primary.copy(
-                        fontWeight = if (near > 0.5f) FontWeight.SemiBold else FontWeight.Medium,
-                        letterSpacing = (-0.1).sp
-                    ),
-                    color = ink,
-                    maxLines = 1,
-                    softWrap = false,
-                    modifier = Modifier
-                        .onPlaced { c ->
-                            starts[i] = c.positionInParent().x
-                            widths[i] = c.size.width.toFloat()
-                        }
+                val fill = androidx.compose.ui.graphics.lerp(rest, accent, near)
+                val color = androidx.compose.ui.graphics.lerp(ink, onAccent, near)
+                Row(
+                    Modifier
                         .semantics {
                             this.selected = pager.currentPage == i
                             role = Role.Tab
                         }
-                        .clickable(
-                            interactionSource = androidx.compose.runtime.remember {
-                                androidx.compose.foundation.interaction.MutableInteractionSource()
-                            },
-                            indication = null
-                        ) { onPick(i) }
-                        // The touch area runs the row's full height.
-                        .padding(vertical = 12.dp)
-                )
-                if (i < labels.lastIndex) Spacer(Modifier.width(TabGap))
+                        .pressScale { onPick(i) }
+                        .height(PillHeight)
+                        .clip(RoundedCornerShape(Radius.pill))
+                        .background(fill)
+                        .padding(horizontal = pad),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    icons.getOrNull(i)?.let {
+                        Icon(it, null, tint = color, modifier = Modifier.size(PillIcon))
+                        Spacer(Modifier.width(PillIconGap))
+                    }
+                    Text(label, style = style, color = color, maxLines = 1, softWrap = false)
+                }
             }
-            Spacer(Modifier.width(gutter))
         }
     }
 }

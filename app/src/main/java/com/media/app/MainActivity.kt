@@ -1080,8 +1080,9 @@ private fun HomeFeed(
                 onShare = { nav.showShare = true },
                 onPro = { nav.showPro = true }
             )
-            ViewTabs(
+            PillTabs(
                 labels = HomeFormats.map { pillarLabel(it) },
+                icons = HomeFormats.map { pillarIcon(it) },
                 pager = pager
             ) { i -> scope.launch { pager.animateScrollToPage(i) } }
 

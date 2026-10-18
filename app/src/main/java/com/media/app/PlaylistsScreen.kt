@@ -66,8 +66,9 @@ fun PlaylistsScreen(
         // it adds to, where a playlist would appear.
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             header()
-            ViewTabs(
+            PillTabs(
                 labels = listOf(stringResource(R.string.playlists_tab_mine), stringResource(R.string.playlists_tab_smart)),
+                icons = listOf(Icons.AutoMirrored.Rounded.QueueMusic, Icons.Rounded.AutoAwesome),
                 pager = pager
             ) { i -> scope.launch { pager.animateScrollToPage(i) } }
 

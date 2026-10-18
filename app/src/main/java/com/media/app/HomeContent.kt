@@ -147,7 +147,7 @@ fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit, onP
 //
 // Music, Video, Podcasts and Audiobooks were four taps deep: bottom nav ->
 // Library -> a tab row inside that. They are the top level of what this app
-// actually holds, so they are the top level of Home: SegmentedBar (Chips.kt)
+// actually holds, so they are the top level of Home: PillTabs (Chips.kt)
 // over a pager, all four always there (HomeFormats, MainActivity.kt).
 //
 // Each pillar's tab name and the plural for its count ("12 episodes"),
@@ -311,29 +311,22 @@ fun SortSegments(selected: SortKey, onSelect: (SortKey) -> Unit) {
 }
 @Composable
 fun CountAndShuffle(count: Int, nounPlural: Int = R.plurals.count_tracks, onShuffle: () -> Unit) {
-    // The count, and Shuffle as one round accent button - the list's single
-    // solid control, in the shape every player uses for "play this". It was
-    // an outlined pill with a word in it, a second style of button on a
-    // screen that already had one.
     Row(
-        Modifier.fillMaxWidth().padding(start = Space.xl, end = Space.lg, top = Space.md, bottom = Space.xs),
+        Modifier.fillMaxWidth().padding(Space.xl, Space.lg, Space.xl, Space.sm),
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            plural(nounPlural, count), style = Typo.Secondary, color = MediaColors.CreamDim,
-            modifier = Modifier.weight(1f)
-        )
-        Box(
-            Modifier.pressScale(scaleDown = 0.92f, onClick = onShuffle)
-                .size(42.dp)
-                .clip(CircleShape)
-                .background(MediaColors.Accent),
-            contentAlignment = Alignment.Center
+        Text(plural(nounPlural, count), style = Typo.Secondary, color = MediaColors.CreamDim)
+        Row(
+            Modifier.clip(RoundedCornerShape(20.dp))
+                .border(1.dp, MediaColors.Accent.copy(alpha = 0.55f), RoundedCornerShape(20.dp))
+                .clickable(onClick = onShuffle)
+                .padding(horizontal = Space.lg, vertical = Space.sm),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                Icons.Filled.Shuffle, stringResource(R.string.action_shuffle),
-                tint = MediaColors.OnAccent, modifier = Modifier.size(20.dp)
-            )
+            Icon(Icons.Filled.Shuffle, null, tint = MediaColors.Accent, modifier = Modifier.size(15.dp))
+            Spacer(Modifier.width(Space.sm))
+            Text(stringResource(R.string.action_shuffle), style = Typo.Label, color = MediaColors.Accent)
         }
     }
 }
@@ -524,13 +517,13 @@ fun FormatEmpty(pillar: Pillar, onRescan: () -> Unit) {
             style = Typo.Secondary, color = MediaColors.CreamDim,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
-        Spacer(Modifier.height(Space.lg))
-        Row(
-            Modifier.pressScale(onClick = onRescan).padding(horizontal = Space.md, vertical = Space.sm),
-            verticalAlignment = Alignment.CenterVertically
+        Spacer(Modifier.height(Space.xl))
+        Box(
+            Modifier.clip(CircleShape)
+                .border(1.dp, MediaColors.Accent.copy(alpha = 0.55f), CircleShape)
+                .pressScale(onClick = onRescan)
+                .padding(horizontal = Space.xl, vertical = Space.sm)
         ) {
-            Icon(Icons.Filled.Refresh, null, tint = MediaColors.Accent, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(Space.xs))
             Text(stringResource(R.string.action_rescan_library), style = Typo.Label, color = MediaColors.Accent)
         }
     }

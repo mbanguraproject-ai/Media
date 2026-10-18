@@ -1,4 +1,10 @@
 package com.media.app
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.Mic
+
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,10 +22,10 @@ import kotlinx.coroutines.launch
 // decision nobody made. Recordings went the other way: voice notes and
 // WhatsApp audio are kept, not played through, so they sit here, out of the
 // way, rather than as a fifth format on Home.
-private enum class LibTab(val label: Int) {
-    ALBUMS(R.string.label_albums),
-    ARTISTS(R.string.label_artists),
-    RECORDINGS(R.string.pillar_recordings)
+private enum class LibTab(val label: Int, val icon: ImageVector) {
+    ALBUMS(R.string.label_albums, Icons.Rounded.Album),
+    ARTISTS(R.string.label_artists, Icons.Rounded.Person),
+    RECORDINGS(R.string.pillar_recordings, Icons.Rounded.Mic)
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -55,8 +61,9 @@ fun LibraryScreen(
     // says, a row of screen spent on it.
     Column(Modifier.fillMaxSize().screenBackground().statusBarsPadding()) {
         header()
-        ViewTabs(
+        PillTabs(
             labels = tabs.map { stringResource(it.label) },
+            icons = tabs.map { it.icon },
             pager = pager
         ) { i -> scope.launch { pager.animateScrollToPage(i) } }
         HorizontalPager(
