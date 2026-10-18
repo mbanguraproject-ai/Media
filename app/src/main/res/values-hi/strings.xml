@@ -617,4 +617,22 @@
     <string name="db_value">%1$+.1f dB</string>
     <string name="library_reading">आपकी लाइब्रेरी पढ़ी जा रही है</string>
     <string name="video_open_player">प्लेयर में खोलें</string>
+    <!-- Home: Jump back in and the listening streak (Retention.kt) -->
+    <string name="label_jump_back_in_caps">फिर से सुनें</string>
+    <string name="streak_keep">इसे बनाए रखने के लिए आज सुनें</string>
+    <plurals name="streak_days">
+        <item quantity="one">लगातार %d दिन</item>
+        <item quantity="other">लगातार %d दिन</item>
+    </plurals>
+    <plurals name="plays_this_week">
+        <item quantity="one">इस हफ़्ते %d बार चलाया</item>
+        <item quantity="other">इस हफ़्ते %d बार चलाया</item>
+    </plurals>
+    <!-- Home: a format with nothing in it yet -->
+    <string name="empty_format_title">अभी यहाँ कुछ नहीं है</string>
+    <string name="empty_format_music">आपके डिवाइस के गाने यहाँ दिखते हैं। कुछ जोड़ें, फिर दोबारा स्कैन करें।</string>
+    <string name="empty_format_video">आपके डिवाइस के वीडियो यहाँ दिखते हैं, फ़ीड में चलाने के लिए तैयार।</string>
+    <string name="empty_format_podcasts">Podcasts फ़ोल्डर के एपिसोड और लंबी बातचीत यहाँ दिखती हैं।</string>
+    <string name="empty_format_audiobooks">Audiobooks फ़ोल्डर की किताबें यहाँ दिखती हैं, और आपकी जगह याद रहती है।</string>
+    <string name="recordings_empty">वॉइस नोट और रिकॉर्डिंग यहाँ दिखती हैं</string>
 </resources>

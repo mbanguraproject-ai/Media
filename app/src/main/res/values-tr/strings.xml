@@ -617,4 +617,22 @@
     <string name="db_value">%1$+.1f dB</string>
     <string name="library_reading">Kitaplığın okunuyor</string>
     <string name="video_open_player">Oynatıcıda aç</string>
+    <!-- Home: Jump back in and the listening streak (Retention.kt) -->
+    <string name="label_jump_back_in_caps">TEKRAR DİNLE</string>
+    <string name="streak_keep">Serini korumak için bugün dinle</string>
+    <plurals name="streak_days">
+        <item quantity="one">%d günlük seri</item>
+        <item quantity="other">%d günlük seri</item>
+    </plurals>
+    <plurals name="plays_this_week">
+        <item quantity="one">Bu hafta %d dinleme</item>
+        <item quantity="other">Bu hafta %d dinleme</item>
+    </plurals>
+    <!-- Home: a format with nothing in it yet -->
+    <string name="empty_format_title">Henüz bir şey yok</string>
+    <string name="empty_format_music">Cihazındaki şarkılar burada görünür. Biraz ekle, sonra yeniden tara.</string>
+    <string name="empty_format_video">Cihazındaki videolar burada görünür, akışta oynatılmaya hazır.</string>
+    <string name="empty_format_podcasts">Podcasts klasöründeki bölümler ve uzun sohbetler burada görünür.</string>
+    <string name="empty_format_audiobooks">Audiobooks klasöründeki kitaplar burada görünür ve kaldığın yeri hatırlar.</string>
+    <string name="recordings_empty">Sesli notlar ve kayıtlar burada görünür</string>
 </resources>

@@ -600,4 +600,20 @@
     <string name="db_value">%1$+.1f dB</string>
     <string name="library_reading">ライブラリを読み込み中</string>
     <string name="video_open_player">プレーヤーで開く</string>
+    <!-- Home: Jump back in and the listening streak (Retention.kt) -->
+    <string name="label_jump_back_in_caps">もう一度聴く</string>
+    <string name="streak_keep">今日も聴いて記録を続けよう</string>
+    <plurals name="streak_days">
+        <item quantity="other">%d日連続</item>
+    </plurals>
+    <plurals name="plays_this_week">
+        <item quantity="other">今週 %d回再生</item>
+    </plurals>
+    <!-- Home: a format with nothing in it yet -->
+    <string name="empty_format_title">まだ何もありません</string>
+    <string name="empty_format_music">端末の曲がここに表示されます。曲を追加して再スキャンしてください。</string>
+    <string name="empty_format_video">端末の動画がここに表示され、フィードで再生できます。</string>
+    <string name="empty_format_podcasts">Podcasts フォルダのエピソードや長いトークがここに表示されます。</string>
+    <string name="empty_format_audiobooks">Audiobooks フォルダの本がここに表示され、続きから聴けます。</string>
+    <string name="recordings_empty">ボイスメモや録音がここに表示されます</string>
 </resources>

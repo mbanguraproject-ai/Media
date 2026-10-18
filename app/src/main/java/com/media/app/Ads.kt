@@ -33,9 +33,10 @@ import java.util.concurrent.atomic.AtomicBoolean
 //  fast and aiming at targets: obstructive to use and a mis-tap generator.
 //  Settings is somewhere you arrive deliberately and read.
 //
-//  Nothing on Home, nothing on Now Playing, no interstitial between tracks.
-//  A player is used with the screen off; permanent chrome would be in the
-//  way far longer than it would ever be seen.
+//  Nothing permanent on Home or Now Playing: a player is used with the
+//  screen off, and permanent chrome would be in the way far longer than it
+//  would ever be seen. The full-screen formats - app open, and an
+//  interstitial between screens, never between tracks - are FullScreenAds.kt.
 //
 //  Debug builds always request Google's official TEST unit; only release
 //  builds request the live banner. Loading live ads in a debug build, or
@@ -223,11 +224,25 @@ fun ViaBanner(ready: Boolean, modifier: Modifier = Modifier) {
                     override fun onAdLoaded() {
                         view.visibility = View.VISIBLE
                         loaded = true
+                        android.util.Log.i("ViaAds", "banner loaded")
                     }
 
                     override fun onAdFailedToLoad(error: LoadAdError) {
-                        view.visibility = View.GONE
-                        loaded = false
+                        // Logged, not swallowed: "no ad" with no reason is
+                        // how a wrong unit id or an unapproved app goes
+                        // unnoticed for weeks (adb logcat -s ViaAds).
+                        android.util.Log.i("ViaAds", "banner failed to load: ${error.code} ${error.message}")
+                        // Only before the first ad. The banner refreshes
+                        // itself every minute or so, and a refresh that
+                        // finds no fill leaves the ad already showing in
+                        // place - this used to hide that perfectly good ad,
+                        // so the banner vanished a minute after it appeared.
+                        if (!loaded) view.visibility = View.GONE
+                    }
+
+                    override fun onAdClicked() {
+                        // The browser opens; coming back is not an app open.
+                        FullScreenAds.expectReturn()
                     }
                 }
                 view.loadAd(AdRequest.Builder().build())

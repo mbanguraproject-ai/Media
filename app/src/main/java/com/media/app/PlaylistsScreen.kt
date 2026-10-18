@@ -38,52 +38,49 @@ import androidx.compose.ui.res.stringResource
 private val G_FILL = MediaColors.FillSubtle
 private val G_BORDER = MediaColors.Fill
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun PlaylistsScreen(
     playlists: List<Playlist>,
     moodCounts: Map<String, Int>,
+    header: @Composable () -> Unit,
+    startAtEnd: Boolean,
+    onSwipePrevious: () -> Unit,
+    onSwipeNext: () -> Unit,
     onOpenMood: (Mood) -> Unit,
     onCreatePlaylist: (String) -> Unit,
     onOpenPlaylist: (Playlist) -> Unit,
     onDeletePlaylist: (Playlist) -> Unit
 ) {
-    var tab by remember { mutableStateOf(0) } // 0 My Playlists, 1 Smart
+    // 0 My Playlists, 1 Smart
+    val pager = androidx.compose.foundation.pager.rememberPagerState(
+        initialPage = if (startAtEnd) 1 else 0
+    ) { 2 }
+    val scope = rememberCoroutineScope()
     var showCreate by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize().screenBackground()) {
+        // The same header and bar as Home and Library. The 30sp "Playlists"
+        // title is gone: the bottom bar already names the tab, and it cost
+        // the top of the screen. New playlist is the first row of the list
+        // it adds to, where a playlist would appear.
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
-            // Title row
-            Row(
-                Modifier.fillMaxWidth().padding(Space.xl, Space.lg, Space.lg, Space.md),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(stringResource(R.string.playlists_title), style = Typo.Display,
-                    color = MediaColors.Cream, modifier = Modifier.weight(1f))
-                Row(
-                    Modifier.clip(RoundedCornerShape(20.dp))
-                        .background(MediaColors.Accent)
-                        .clickable { showCreate = true }
-                        .padding(horizontal = Space.lg, vertical = Space.sm),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Filled.Add, null, tint = Color.White, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.action_new), style = Typo.Label, color = Color.White)
-                }
-            }
-
-            // Mine / Smart, as chips like every other set of views.
-            TabStrip(
+            header()
+            SegmentedBar(
                 labels = listOf(stringResource(R.string.playlists_tab_mine), stringResource(R.string.playlists_tab_smart)),
-                selected = tab,
-                icons = listOf(Icons.AutoMirrored.Rounded.QueueMusic, Icons.Rounded.AutoAwesome)
-            ) { tab = it }
+                icons = listOf(Icons.AutoMirrored.Rounded.QueueMusic, Icons.Rounded.AutoAwesome),
+                pager = pager
+            ) { i -> scope.launch { pager.animateScrollToPage(i) } }
 
-            Spacer(Modifier.height(Space.lg))
-
-            when (tab) {
-                0 -> MyPlaylistsTab(playlists, onOpenPlaylist, onDeletePlaylist) { showCreate = true }
-                else -> SmartTab(moodCounts, onOpenMood)
+            androidx.compose.foundation.pager.HorizontalPager(
+                state = pager,
+                modifier = Modifier.fillMaxSize()
+                    .tabSwipe(onPrevious = onSwipePrevious, onNext = onSwipeNext)
+            ) { page ->
+                when (page) {
+                    0 -> MyPlaylistsTab(playlists, onOpenPlaylist, onDeletePlaylist) { showCreate = true }
+                    else -> SmartTab(moodCounts, onOpenMood)
+                }
             }
         }
     }
@@ -111,22 +108,42 @@ private fun MyPlaylistsTab(
             onCta = onCreate
         )
     } else {
-        LazyColumn(contentPadding = PaddingValues(bottom = 170.dp)) {
+        LazyColumn(contentPadding = PaddingValues(top = Space.xs, bottom = 170.dp)) {
+            item {
+                // New playlist: drawn like a playlist row, with an outline
+                // in place of the fill, so it reads as "one more of these".
+                Row(
+                    Modifier.fillMaxWidth().padding(Space.xl, 6.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .border(1.dp, MediaColors.Accent.copy(alpha = 0.45f), RoundedCornerShape(14.dp))
+                        .clickable { onCreate() }
+                        .padding(Space.lg, 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        Modifier.size(36.dp).clip(RoundedCornerShape(10.dp))
+                            .background(MediaColors.Accent.copy(alpha = 0.18f)),
+                        contentAlignment = Alignment.Center
+                    ) { Icon(Icons.Filled.Add, null, tint = MediaColors.Accent, modifier = Modifier.size(20.dp)) }
+                    Spacer(Modifier.width(Space.md))
+                    Text(stringResource(R.string.action_create_playlist), style = Typo.Primary, color = MediaColors.Accent)
+                }
+            }
             items(playlists) { pl ->
                 Row(
-                    Modifier.fillMaxWidth().padding(Space.xl, 8.dp)
+                    Modifier.fillMaxWidth().padding(Space.xl, 6.dp)
                         .clip(RoundedCornerShape(14.dp))
                         .background(G_FILL)
                         .border(1.dp, G_BORDER, RoundedCornerShape(14.dp))
                         .clickable { onOpen(pl) }
-                        .padding(Space.lg, 14.dp),
+                        .padding(Space.lg, 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
-                        Modifier.size(44.dp).clip(RoundedCornerShape(11.dp))
+                        Modifier.size(36.dp).clip(RoundedCornerShape(10.dp))
                             .background(MediaColors.Accent.copy(alpha = 0.18f)),
                         contentAlignment = Alignment.Center
-                    ) { Icon(Icons.AutoMirrored.Filled.QueueMusic, null, tint = MediaColors.Accent, modifier = Modifier.size(22.dp)) }
+                    ) { Icon(Icons.AutoMirrored.Filled.QueueMusic, null, tint = MediaColors.Accent, modifier = Modifier.size(20.dp)) }
                     Spacer(Modifier.width(Space.md))
                     Text(pl.name, style = Typo.Primary,
                         color = MediaColors.Cream, modifier = Modifier.weight(1f),
@@ -144,7 +161,7 @@ private fun MyPlaylistsTab(
 @Composable
 private fun SmartTab(moodCounts: Map<String, Int>, onOpenMood: (Mood) -> Unit) {
     val moods = Mood.values().filter { it.holdsSongs } // exclude ALL
-    LazyColumn(contentPadding = PaddingValues(bottom = 170.dp)) {
+    LazyColumn(contentPadding = PaddingValues(top = Space.sm, bottom = 170.dp)) {
         item {
             Text(stringResource(R.string.playlists_moods_hint), style = Typo.Tertiary, color = MediaColors.CreamFaint,
                 modifier = Modifier.padding(Space.xl, 0.dp, Space.xl, Space.sm))
@@ -158,19 +175,19 @@ private fun SmartTab(moodCounts: Map<String, Int>, onOpenMood: (Mood) -> Unit) {
                 else -> Icons.Filled.Favorite
             }
             Row(
-                Modifier.fillMaxWidth().padding(Space.xl, 8.dp)
+                Modifier.fillMaxWidth().padding(Space.xl, 6.dp)
                     .clip(RoundedCornerShape(14.dp))
                     .background(mood.accent.copy(alpha = 0.10f))
                     .border(1.dp, mood.accent.copy(alpha = 0.22f), RoundedCornerShape(14.dp))
                     .clickable { onOpenMood(mood) }
-                    .padding(Space.lg, 14.dp),
+                    .padding(Space.lg, 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
-                    Modifier.size(44.dp).clip(RoundedCornerShape(11.dp))
+                    Modifier.size(36.dp).clip(RoundedCornerShape(10.dp))
                         .background(mood.accent.copy(alpha = 0.2f)),
                     contentAlignment = Alignment.Center
-                ) { Icon(icon, null, tint = mood.accent, modifier = Modifier.size(22.dp)) }
+                ) { Icon(icon, null, tint = mood.accent, modifier = Modifier.size(20.dp)) }
                 Spacer(Modifier.width(Space.md))
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(mood.labelRes), style = Typo.Primary, color = MediaColors.Cream)

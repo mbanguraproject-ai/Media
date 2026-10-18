@@ -2,77 +2,109 @@ package com.media.app
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Album
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.rounded.Mic
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
-// §9's filter set. SONGS/ALBUMS/ARTISTS are three views of the same music
-// pillar; the rest map straight to a pillar.
-// Library is the structured way in - the two views a flat list cannot give
-// you. Songs, Podcasts, Audiobooks, Recordings and Video all left when the
-// pillar strip landed on Home: the same list in two places is not two
-// features, it is one feature and a decision nobody made.
+// Library is the structured way in - the views a flat list cannot give you -
+// plus Recordings. Songs, Podcasts, Audiobooks and Video are Home's formats:
+// the same list in two places is not two features, it is one feature and a
+// decision nobody made. Recordings went the other way: voice notes and
+// WhatsApp audio are kept, not played through, so they sit here, out of the
+// way, rather than as a fifth format on Home.
 private enum class LibTab(val label: Int, val icon: ImageVector) {
     ALBUMS(R.string.label_albums, Icons.Rounded.Album),
-    ARTISTS(R.string.label_artists, Icons.Rounded.Person)
+    ARTISTS(R.string.label_artists, Icons.Rounded.Person),
+    RECORDINGS(R.string.pillar_recordings, Icons.Rounded.Mic)
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun LibraryScreen(
     all: List<AppMediaItem>,
     state: PlayerState,
-    initialPillar: Pillar? = null,
-    lastPlayed: Map<Long, Long> = emptyMap(),
-    playCounts: Map<Long, Int> = emptyMap(),
+    header: @Composable () -> Unit,
+    startAtEnd: Boolean,
+    favorites: Set<Long>,
     onPlay: (List<AppMediaItem>, Int) -> Unit,
     onOpenAlbum: (Album) -> Unit,
     onOpenArtist: (Artist) -> Unit,
-    onEdit: (AppMediaItem) -> Unit,
-    onClose: () -> Unit
+    onMenu: (AppMediaItem) -> Unit,
+    onToggleFav: (AppMediaItem) -> Unit,
+    onSwipePrevious: () -> Unit,
+    onSwipeNext: () -> Unit
 ) {
-    var tab by remember { mutableStateOf(LibTab.ALBUMS) }
-    val pillarItems = remember(all) { all.filter { it.pillar == Pillar.MUSIC } }
-    // `tab` MUST be a key. remember() compares keys with equals(), and
-    // Songs/Albums/Artists all filter Pillar.MUSIC — so pillarItems is
-    // structurally equal across the three and the cached emptyList() was
-    // being returned no matter which tab you selected.
-    val albums = remember(tab, pillarItems) {
-        if (tab == LibTab.ALBUMS) MediaRepository.albumsOf(pillarItems) else emptyList()
-    }
-    val artists = remember(tab, pillarItems) {
-        if (tab == LibTab.ARTISTS) MediaRepository.artistsOf(pillarItems) else emptyList()
+    val tabs = LibTab.values()
+    val pager = rememberPagerState(initialPage = if (startAtEnd) tabs.lastIndex else 0) { tabs.size }
+    val scope = rememberCoroutineScope()
+    val music = remember(all) { all.filter { it.pillar == Pillar.MUSIC } }
+    val albums = remember(music) { MediaRepository.albumsOf(music) }
+    val artists = remember(music) { MediaRepository.artistsOf(music) }
+    val recordings = remember(all) {
+        // Newest first: a recording is found by when it was made.
+        all.filter { it.pillar == Pillar.RECORDING }.sortedByDescending { it.dateAdded }
     }
 
-    // Library is a primary tab destination now, so it wears the same mood
-    // gradient as Home / Playlists / Search rather than a flat ink fill.
+    // Library is a primary tab destination, so it wears the same header and
+    // the same bar as Home: one layout across the tabs. The title it used to
+    // carry ("Library", with a back arrow) said what the bottom bar already
+    // says, a row of screen spent on it.
     Column(Modifier.fillMaxSize().screenBackground().statusBarsPadding()) {
-        Row(
-            Modifier.fillMaxWidth().padding(Space.sm, Space.sm),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back), tint = MediaColors.Cream) }
-            Text(stringResource(R.string.library_title), style = Typo.Section, color = MediaColors.Cream,
-                modifier = Modifier.weight(1f))
-            // Sorting went with the flat lists. Albums and artists
-            // carry an order of their own.
+        header()
+        SegmentedBar(
+            labels = tabs.map { stringResource(it.label) },
+            icons = tabs.map { it.icon },
+            pager = pager
+        ) { i -> scope.launch { pager.animateScrollToPage(i) } }
+        HorizontalPager(
+            state = pager,
+            modifier = Modifier.fillMaxSize()
+                .tabSwipe(onPrevious = onSwipePrevious, onNext = onSwipeNext)
+        ) { page ->
+            when (tabs[page]) {
+                LibTab.ALBUMS -> AlbumGrid(albums, onOpenAlbum)
+                LibTab.ARTISTS -> ArtistList(artists, onOpenArtist)
+                LibTab.RECORDINGS -> RecordingList(recordings, state, favorites, onPlay, onMenu, onToggleFav)
+            }
         }
+    }
+}
 
-        TabStrip(
-            labels = LibTab.values().map { stringResource(it.label) },
-            selected = LibTab.values().indexOf(tab),
-            icons = LibTab.values().map { it.icon }
-        ) { tab = LibTab.values()[it] }
-
-        when (tab) {
-            LibTab.ALBUMS -> AlbumGrid(albums, onOpenAlbum)
-            LibTab.ARTISTS -> ArtistList(artists, onOpenArtist)
+@Composable
+private fun RecordingList(
+    recordings: List<AppMediaItem>,
+    state: PlayerState,
+    favorites: Set<Long>,
+    onPlay: (List<AppMediaItem>, Int) -> Unit,
+    onMenu: (AppMediaItem) -> Unit,
+    onToggleFav: (AppMediaItem) -> Unit
+) {
+    if (recordings.isEmpty()) {
+        CenterNote(stringResource(R.string.recordings_empty))
+        return
+    }
+    LazyColumn(contentPadding = PaddingValues(top = Space.xs, bottom = bottomSafePadding(gap = 170.dp))) {
+        items(recordings.size, key = { recordings[it].id }) { i ->
+            val item = recordings[i]
+            TrackRow(
+                item = item,
+                isPlaying = state.currentUri == item.uri.toString() && state.isPlaying,
+                isFavorite = favorites.contains(item.id),
+                onClick = { onPlay(recordings, i) },
+                onLongPress = { onMenu(item) },
+                onMenu = { onMenu(item) },
+                onToggleFav = { onToggleFav(item) }
+            )
         }
     }
 }

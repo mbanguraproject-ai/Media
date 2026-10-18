@@ -147,15 +147,9 @@ fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit, onP
 //
 // Music, Video, Podcasts and Audiobooks were four taps deep: bottom nav ->
 // Library -> a tab row inside that. They are the top level of what this app
-// actually holds, so they belong at the top level of the screen.
+// actually holds, so they are the top level of Home: SegmentedBar (Chips.kt)
+// over a pager, all four always there (HomeFormats, MainActivity.kt).
 //
-// Only pillars with something in them appear, and with fewer than two there
-// is no strip at all: a phone with no podcasts should never see the word
-// Podcasts, and a music-only library should not carry a row with one item.
-//
-// Chips size to their own text, with no intrinsic measurement: intrinsics
-// inside a scrollable row are how you get a crash on the one device with a
-// long language and a large font scale.
 // Each pillar's tab name and the plural for its count ("12 episodes"),
 // as resources: both follow the app's language.
 private val PillarNames = mapOf(
@@ -177,38 +171,6 @@ fun pillarIcon(p: Pillar): ImageVector = when (p) {
     Pillar.PODCAST -> Icons.Rounded.Podcasts
     Pillar.AUDIOBOOK -> Icons.Rounded.AutoStories
     Pillar.RECORDING -> Icons.Rounded.Mic
-}
-
-@Composable
-fun PillarStrip(available: List<Pillar>, current: Pillar, onPick: (Pillar) -> Unit) {
-    // One item is not a choice, and a row with one word in it reads as a
-    // heading nobody can act on.
-    if (available.size < 2) return
-    TabStrip(
-        labels = available.map { pillarLabel(it) },
-        selected = available.indexOf(current),
-        icons = available.map { pillarIcon(it) }
-    ) { onPick(available[it]) }
-}
-
-/**
- * A set of views and which is current, as chips (Chips.kt). [icons] is
- * optional, matched to labels by position.
- */
-@Composable
-fun TabStrip(
-    labels: List<String>,
-    selected: Int,
-    icons: List<ImageVector?> = emptyList(),
-    onPick: (Int) -> Unit
-) {
-    ChipRow(
-        labels = labels,
-        selected = selected,
-        icons = icons,
-        modifier = Modifier.padding(top = Space.xs, bottom = Space.xs),
-        onPick = onPick
-    )
 }
 
 // ------------------------------------------------------------------ RESUME
@@ -435,4 +397,134 @@ fun TrackRow(
 private fun fmtDur(ms: Long): String {
     val s = (ms / 1000).toInt(); val m = s / 60; val sec = s % 60
     return "%d:%02d".format(m, sec)
+}
+
+// ------------------------------------------------------------ JUMP BACK IN
+//
+// The retention row: what you played last in this format, one tap from
+// playing again, led by the listening streak (Retention.kt). One compact
+// rail at the top of the list, scrolled away with it - not the six stacked
+// shelves this screen once had. Absent until there is something to show.
+private val RecentTile = 64.dp
+
+@Composable
+fun JumpBackIn(
+    streak: Streak,
+    recent: List<AppMediaItem>,
+    playingUri: String?,
+    onPlay: (Int) -> Unit
+) {
+    val showStreak = streak.days > 0
+    if (!showStreak && recent.isEmpty()) return
+    Column(Modifier.fillMaxWidth().padding(top = Space.sm, bottom = Space.xs)) {
+        Text(
+            stringResource(R.string.label_jump_back_in_caps), style = Typo.Micro, color = MediaColors.Accent,
+            modifier = Modifier.padding(start = Space.xl, bottom = Space.sm)
+        )
+        androidx.compose.foundation.lazy.LazyRow(
+            contentPadding = PaddingValues(horizontal = Space.xl),
+            horizontalArrangement = Arrangement.spacedBy(Space.md)
+        ) {
+            if (showStreak) item(key = "streak") { StreakTile(streak) }
+            items(recent.size, key = { recent[it].id }) { i ->
+                val item = recent[i]
+                val playing = playingUri == item.uri.toString()
+                Column(
+                    Modifier.width(RecentTile)
+                        .pressScale(haptic = true) { onPlay(i) }
+                ) {
+                    CoverArt(item, Modifier.size(RecentTile), corner = 12, targetPx = 192)
+                    Spacer(Modifier.height(Space.xs))
+                    Text(
+                        shownTitle(item.title), style = Typo.Tertiary,
+                        color = if (playing) MediaColors.Accent else MediaColors.CreamDim,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StreakTile(streak: Streak) {
+    // At risk (yesterday was the last play) the tile says so, in words; lit,
+    // it says how much this week has held. The flame dims when at risk.
+    val lit = streak.playedToday
+    val shape = RoundedCornerShape(12.dp)
+    Column(Modifier.width(124.dp)) {
+        Column(
+            Modifier.fillMaxWidth().height(RecentTile)
+                .clip(shape)
+                .background(MediaColors.Accent.copy(alpha = if (lit) 0.16f else 0.08f))
+                .border(1.dp, MediaColors.Accent.copy(alpha = if (lit) 0.35f else 0.18f), shape)
+                .padding(horizontal = Space.md),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                Icons.Filled.LocalFireDepartment, null,
+                tint = if (lit) MediaColors.Accent else MediaColors.CreamFaint,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(Modifier.height(Space.xxs))
+            Text(
+                plural(R.plurals.streak_days, streak.days),
+                style = Typo.Label, color = MediaColors.Cream,
+                maxLines = 1, overflow = TextOverflow.Ellipsis
+            )
+        }
+        Spacer(Modifier.height(Space.xs))
+        Text(
+            if (lit) plural(R.plurals.plays_this_week, streak.weekPlays)
+            else stringResource(R.string.streak_keep),
+            style = Typo.Tertiary,
+            color = if (lit) MediaColors.CreamFaint else MediaColors.Accent,
+            maxLines = 1, overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+// ------------------------------------------------------------ EMPTY FORMAT
+//
+// Every format is on Home now, full or not, so each one needs its own
+// "nothing yet" that says where its files come from - an empty Podcasts
+// page that only said "empty" would read as broken.
+@Composable
+fun FormatEmpty(pillar: Pillar, onRescan: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().padding(Space.xl, 56.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            Modifier.size(56.dp).clip(CircleShape).background(MediaColors.FillSubtle)
+                .border(1.dp, MediaColors.Fill, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(pillarIcon(pillar), null, tint = MediaColors.Accent, modifier = Modifier.size(26.dp))
+        }
+        Spacer(Modifier.height(Space.lg))
+        Text(stringResource(R.string.empty_format_title), style = Typo.Section, color = MediaColors.Cream)
+        Spacer(Modifier.height(Space.sm))
+        Text(
+            stringResource(
+                when (pillar) {
+                    Pillar.VIDEO -> R.string.empty_format_video
+                    Pillar.PODCAST -> R.string.empty_format_podcasts
+                    Pillar.AUDIOBOOK -> R.string.empty_format_audiobooks
+                    else -> R.string.empty_format_music
+                }
+            ),
+            style = Typo.Secondary, color = MediaColors.CreamDim,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+        Spacer(Modifier.height(Space.xl))
+        Box(
+            Modifier.clip(CircleShape)
+                .border(1.dp, MediaColors.Accent.copy(alpha = 0.55f), CircleShape)
+                .pressScale(haptic = true, onClick = onRescan)
+                .padding(horizontal = Space.xl, vertical = Space.sm)
+        ) {
+            Text(stringResource(R.string.action_rescan_library), style = Typo.Label, color = MediaColors.Accent)
+        }
+    }
 }

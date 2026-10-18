@@ -58,6 +58,7 @@ fun SettingsScreen(
     onOpenTerms: () -> Unit,
     onOpenAbout: () -> Unit,
     onClose: () -> Unit,
+    onSwipePrevious: () -> Unit = {},
     onOpenSound: () -> Unit = {},
     onRepairArtwork: () -> Unit = {}
 ) {
@@ -70,6 +71,8 @@ fun SettingsScreen(
         // Settings is text and empty space with no artwork to justify a
         // gradient, so the illumination is compressed to a near-flat field.
         Modifier.fillMaxSize().screenBackground().statusBarsPadding()
+            // The last tab: a swipe back walks to Playlists (TabSwipe.kt).
+            .tabSwipe(onPrevious = onSwipePrevious, onNext = null)
             .verticalScroll(rememberScrollState())
     ) {
         Row(

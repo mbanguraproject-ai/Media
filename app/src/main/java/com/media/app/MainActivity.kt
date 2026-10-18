@@ -118,7 +118,40 @@ class MainActivity : ComponentActivity() {
     // banner, and once per app open a new version is offered.
     override fun onResume() {
         super.onResume()
+        FullScreenAds.attach(this)
+        // The day may have turned while Via was away.
+        Retention.refresh(this)
         InAppUpdate.check(this, updateLauncher)
+    }
+
+    override fun onDestroy() {
+        FullScreenAds.detach(this)
+        super.onDestroy()
+    }
+
+    // Everything Via opens on top of itself funnels through these two: the
+    // pickers, Play's purchase, review and update sheets, the browser, the
+    // share sheet, the system's delete dialog, an ad. Coming back from one
+    // of them is the listener finishing a step, not opening the app, so it
+    // must not bring an app-open ad (FullScreenAds.kt).
+    @Deprecated("Deprecated in ComponentActivity")
+    override fun startActivityForResult(intent: Intent, requestCode: Int, options: Bundle?) {
+        FullScreenAds.expectReturn()
+        super.startActivityForResult(intent, requestCode, options)
+    }
+
+    @Deprecated("Deprecated in ComponentActivity")
+    override fun startIntentSenderForResult(
+        intent: android.content.IntentSender,
+        requestCode: Int,
+        fillInIntent: Intent?,
+        flagsMask: Int,
+        flagsValues: Int,
+        extraFlags: Int,
+        options: Bundle?
+    ) {
+        FullScreenAds.expectReturn()
+        super.startIntentSenderForResult(intent, requestCode, fillInIntent, flagsMask, flagsValues, extraFlags, options)
     }
 
     // The language picked in Settings, on Android 12 and below (Language.kt).
@@ -166,6 +199,8 @@ class MainActivity : ComponentActivity() {
             window.isStatusBarContrastEnforced = false
         }
         super.onCreate(savedInstanceState)
+        // Before onStart, so this very launch counts as an app open.
+        FullScreenAds.attach(this)
         Enrichment.init(this)
         // Opened from a file ("Open with Via"). Not again on a restore: that
         // file has already been played.
@@ -508,6 +543,42 @@ class HomeNav {
     var adsReady by mutableStateOf(false)
     var playerHidden by mutableStateOf(false)
     var playerWasOpen by mutableStateOf(false)
+    // Which way the last tab change went, so the screens slide the way the
+    // finger (or the bottom bar) went: +1 rightwards along the bar, -1 back.
+    var tabDirection by mutableStateOf(1)
+    // Swiped back into a tab from the one after it: it opens on its LAST
+    // view, the one spatially next to where you came from.
+    var tabFromEnd by mutableStateOf(false)
+
+    /**
+     * Opens a tab: from the bottom bar, or a swipe past a tab's first or
+     * last view (TabSwipe.kt). Every tab first clears ALL overlays (they
+     * are mutually exclusive), then opens its own.
+     */
+    fun selectTab(tab: Int, fromEnd: Boolean = false) {
+        if (tab !in 0..3) return
+        tabDirection = if (tab >= currentTab) 1 else -1
+        tabFromEnd = fromEnd
+        showPlaylists = false; showSearch = false; showSettings = false
+        showLibrary = false; libraryPillar = null; openPlaylist = null
+        openAlbum = null; openArtist = null
+        currentTab = tab
+        when (tab) {
+            1 -> showLibrary = true
+            2 -> showPlaylists = true
+            3 -> showSettings = true
+            // 0 Home -> the home surface itself, no overlay.
+        }
+    }
+
+    /** Where the listener is, as screen changes count it (FullScreenAds). */
+    val place: HomePlace
+        get() = HomePlace(
+            tab = currentTab,
+            detail = openPlaylist?.let { "playlist:${it.id}" }
+                ?: openAlbum?.let { "album:${it.id}" }
+                ?: openArtist?.let { "artist:${it.id}" }
+        )
 
     val anyOverlay: Boolean
         get() = showPro || showSound || artworkItem != null || detailsItem != null || showAudioPath ||
@@ -534,15 +605,24 @@ class HomeNav {
             showTerms -> showTerms = false
             showAbout -> showAbout = false
             showPlayer -> showPlayer = false
-            showSearch -> { showSearch = false; currentTab = 0 }
-            showSettings -> { showSettings = false; currentTab = 0 }
+            // Search opens over whichever tab you were on and closes back
+            // onto it, so the tab does not change.
+            showSearch -> showSearch = false
+            showSettings -> { tabDirection = -1; showSettings = false; currentTab = 0 }
             openPlaylist != null -> openPlaylist = null
             openAlbum != null -> openAlbum = null
             openArtist != null -> openArtist = null
-            showPlaylists -> { showPlaylists = false; currentTab = 0 }
-            showLibrary -> { showLibrary = false; libraryPillar = null; currentTab = 0 }
+            showPlaylists -> { tabDirection = -1; showPlaylists = false; currentTab = 0 }
+            showLibrary -> { tabDirection = -1; showLibrary = false; libraryPillar = null; currentTab = 0 }
         }
     }
+}
+
+/** A tab, and the album, artist or playlist open on it, if any. */
+data class HomePlace(val tab: Int, val detail: String?) {
+    /** A different tab, or a detail opened (not closed) on this one. */
+    fun isForwardOf(before: HomePlace): Boolean =
+        tab != before.tab || (detail != null && detail != before.detail)
 }
 
 /**
@@ -610,7 +690,9 @@ fun HomeScaffold(vm: PlayerViewModel) {
                 db.historyDao().record(mediaId, System.currentTimeMillis())
             }
             InAppReview.recordPlay(context)
+            Retention.recordPlay(context)
         }
+        Retention.refresh(context)
     }
     // The review card, if it is due, at a natural pause: Now Playing just
     // closed. Never while something is being looked at or adjusted.
@@ -706,7 +788,30 @@ fun HomeScaffold(vm: PlayerViewModel) {
 
     LaunchedEffect(Unit) {
         (context as? android.app.Activity)?.let { act ->
-            Ads.startConsentThenInit(act) { nav.adsReady = true }
+            Ads.startConsentThenInit(act) {
+                nav.adsReady = true
+                FullScreenAds.onAdsReady()
+            }
+        }
+    }
+    // What a full-screen ad has to know before it goes up: never over a
+    // playing video or Now Playing, and muted while music plays.
+    LaunchedEffect(state.isPlaying, state.isVideo, nav.showPlayer) {
+        FullScreenAds.audioPlaying = state.isPlaying && !state.isVideo
+        FullScreenAds.videoPlaying = state.isPlaying && state.isVideo
+        FullScreenAds.playerOpen = nav.showPlayer
+    }
+    // Every screen change counts towards the next interstitial: a tab, or an
+    // album, artist or playlist opened. Going BACK does not count - an ad
+    // for leaving a screen reads as the app trying to keep you. Counted
+    // after the change has happened, so the ad covers the new page and
+    // closing it lands right there.
+    LaunchedEffect(nav) {
+        var last: HomePlace? = null
+        snapshotFlow { nav.place }.collect { place ->
+            val before = last
+            last = place
+            if (before != null && place.isForwardOf(before)) FullScreenAds.onNavigated()
         }
     }
 
@@ -827,17 +932,10 @@ fun HomeScaffold(vm: PlayerViewModel) {
         onDispose { nav.homePillar = Pillar.MUSIC; nav.playerHidden = false }
     }
 
-    // The pillars, at the top level instead of two screens down.
+    // The formats, at the top level instead of two screens down. All four
+    // are always on Home (HomeFormats), so a rescan that empties one leaves
+    // its page in place with its own empty state, rather than moving you.
     val byPillar = remember(allAudio, allVideo) { (allAudio + allVideo).groupBy { it.pillar } }
-    val pillars = remember(byPillar) {
-        listOf(Pillar.MUSIC, Pillar.VIDEO, Pillar.PODCAST,
-               Pillar.AUDIOBOOK, Pillar.RECORDING)
-            .filter { !byPillar[it].isNullOrEmpty() }
-    }
-    // A rescan can empty the pillar you were standing on.
-    LaunchedEffect(pillars) {
-        if (pillars.isNotEmpty() && nav.homePillar !in pillars) nav.homePillar = pillars.first()
-    }
 
     val anyOverlay = nav.anyOverlay
 
@@ -874,12 +972,12 @@ fun HomeScaffold(vm: PlayerViewModel) {
             HomeFeed(
                 nav = nav, lib = lib, state = state, vm = vm, db = db, scope = scope,
                 mood = mood, setMood = setMood, moodMembers = moodMembers, byPillar = byPillar,
-                pillars = pillars, positions = positions, scanning = scanning,
+                positions = positions, scanning = scanning,
                 sharing = shareState.sharing, feedOwnsVideo = feedOwnsVideo
             )
             HomeScreens(
                 nav = nav, lib = lib, state = state, vm = vm, db = db, scope = scope,
-                settings = settings, setMood = setMood
+                settings = settings, setMood = setMood, sharing = shareState.sharing
             )
             HomeDetails(nav = nav, lib = lib, state = state, vm = vm, db = db, scope = scope)
             HomeChrome(nav = nav, state = state, vm = vm)
@@ -902,6 +1000,16 @@ fun HomeScaffold(vm: PlayerViewModel) {
 //  The scaffold's parts. Each was a stretch of HomeScaffold, moved here as is.
 // ---------------------------------------------------------------------------
 
+/**
+ * The formats Home always shows, in the order the bar and the swipe walk
+ * them. All four, full or empty: hiding an empty one made the bar change
+ * shape from phone to phone, and a format you cannot see is one you never
+ * learn the app holds. Recordings are voice notes, not something you sit
+ * down to play; they live in Library.
+ */
+val HomeFormats = listOf(Pillar.MUSIC, Pillar.VIDEO, Pillar.PODCAST, Pillar.AUDIOBOOK)
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun HomeFeed(
     nav: HomeNav,
@@ -914,159 +1022,215 @@ private fun HomeFeed(
     setMood: (Mood) -> Unit,
     moodMembers: Set<Long>,
     byPillar: Map<Pillar, List<AppMediaItem>>,
-    pillars: List<Pillar>,
     positions: Map<Long, PlaybackPosition>,
     scanning: Boolean,
     sharing: Boolean,
     feedOwnsVideo: Boolean
 ) {
     Box(Modifier.fillMaxSize().screenBackground()) {
-        // Bottom inset = real nav-bar inset + chrome offset (bottom bar + mini-
-        // player), so the last shelf always clears the chrome on any device
-        // (gesture or 3-button). No magic number.
-        val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-
-        // Favorites mood shows only favorited tracks; every other mood shows all music.
-        // Home now has a sort, driven by the three cards below the mood chips.
-        var homeSort by remember { mutableStateOf(SortKey.NAME) }
-
-        val shown = remember(
-            byPillar, nav.homePillar, mood, moodMembers, homeSort, lib.lastPlayed, lib.playCounts
-        ) {
-            val inPillar = byPillar[nav.homePillar].orEmpty()
-            // Moods are a music idea. They never filter video or spoken word.
-            val base = if (nav.homePillar == Pillar.MUSIC && mood.holdsSongs)
-                inPillar.filter { moodMembers.contains(it.id) } else inPillar
-            base.sortedFor(homeSort, lib.lastPlayed, lib.playCounts)
+        val pager = androidx.compose.foundation.pager.rememberPagerState(
+            initialPage = HomeFormats.indexOf(nav.homePillar).coerceAtLeast(0)
+        ) { HomeFormats.size }
+        // The pager is the truth while a finger is on it; homePillar follows
+        // it once it settles, and moves it when something else sets it.
+        LaunchedEffect(pager) {
+            snapshotFlow { pager.settledPage }.collect { nav.homePillar = HomeFormats[it] }
         }
+        LaunchedEffect(nav.homePillar) {
+            val i = HomeFormats.indexOf(nav.homePillar)
+            if (i >= 0 && i != pager.settledPage && !pager.isScrollInProgress) pager.scrollToPage(i)
+        }
+        // A phone with no music but a camera roll of video opens on Video,
+        // once, when the first scan lands - not on an empty page.
+        var landed by remember { mutableStateOf(false) }
+        LaunchedEffect(scanning) {
+            if (scanning || landed) return@LaunchedEffect
+            landed = true
+            if (byPillar[nav.homePillar].isNullOrEmpty()) {
+                HomeFormats.firstOrNull { !byPillar[it].isNullOrEmpty() }?.let { nav.homePillar = it }
+            }
+        }
+        val streak by Retention.streak.collectAsState()
 
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
-            // FIXED top region — does not scroll. Songs scroll underneath it.
-            // The scroll-driven collapse went with the big header: there is
-            // nothing left up here that is worth shrinking.
-            val homeListState = rememberLazyListState()
-
+            // FIXED top region - does not scroll. The header and the bar are
+            // the same on Home, Library and Playlists.
             StashHeader(
                 onSearch = { nav.showSearch = true },
                 sharing = sharing,
                 onShare = { nav.showShare = true },
                 onPro = { nav.showPro = true }
             )
+            SegmentedBar(
+                labels = HomeFormats.map { pillarLabel(it) },
+                icons = HomeFormats.map { pillarIcon(it) },
+                pager = pager
+            ) { i -> scope.launch { pager.animateScrollToPage(i) } }
 
-            PillarStrip(pillars, nav.homePillar) { nav.homePillar = it }
-
-            // SHELVES GONE. "Continue listening", "Recently played", "Your
-            // favourites", "Most played", "Recently added" and "Albums you keep
-            // coming back to" were up to six horizontal rails stacked above the
-            // library, each under its own 19sp header - so the list you opened
-            // the app to reach started a screen and a half down.
-            //
-            // The one actionable item among them was the track you did not
-            // finish. That is the bar below; everything else was a rail of
-            // cards restating a list already on this screen.
-            val resume = remember(lib.music, positions) {
-                positions.values
-                    .filter {
-                        it.durationMs > 0 &&
-                            it.positionMs > it.durationMs * 0.05 &&
-                            it.positionMs < it.durationMs * 0.95
-                    }
-                    .maxByOrNull { it.updatedAt }
-                    ?.let { p -> lib.music.firstOrNull { it.id == p.mediaId }?.to(p) }
-            }
-
-            // Present only while a collection opened from Playlists is actually
-            // filtering the list, so the filter can never be invisible state.
-            if (nav.homePillar == Pillar.MUSIC && mood.holdsSongs) {
-                FilterBar(stringResource(mood.labelRes), shown.size) { setMood(Mood.ALL) }
-            }
-
-            if (scanning) {
-                LibrarySkeleton()
-            } else if (shown.isEmpty()) {
-                EmptyState(
-                    mood = mood,
-                    onRescan = { MediaRepository.refresh(); nav.reloadKey++ },
-                    onClearMood = { setMood(Mood.ALL) }
+            androidx.compose.foundation.pager.HorizontalPager(
+                state = pager,
+                modifier = Modifier.fillMaxSize()
+                    // Past Audiobooks, the swipe carries on into Library.
+                    .tabSwipe(onPrevious = null, onNext = { nav.selectTab(1) })
+            ) { page ->
+                HomeFormatPage(
+                    pillar = HomeFormats[page], nav = nav, lib = lib, state = state, vm = vm,
+                    db = db, scope = scope, mood = mood, setMood = setMood,
+                    moodMembers = moodMembers, byPillar = byPillar, positions = positions,
+                    scanning = scanning, feedOwnsVideo = feedOwnsVideo, streak = streak
                 )
-            } else {
-                LazyColumn(
-                    state = homeListState,
-                    contentPadding = PaddingValues(bottom = 170.dp + navBottom),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    item {
-                        resume?.let { (track, pos) ->
-                            ResumeBar(
-                                item = track,
-                                progress = (pos.positionMs.toFloat() / pos.durationMs)
-                                    .coerceIn(0f, 1f),
-                                onPlay = { vm.playAt(track, pos.positionMs) }
-                            )
+            }
+        }
+    }
+}
+
+/** One format's page on Home: its resume bar, its recent row, its list. */
+@Composable
+private fun HomeFormatPage(
+    pillar: Pillar,
+    nav: HomeNav,
+    lib: HomeLibrary,
+    state: PlayerState,
+    vm: PlayerViewModel,
+    db: OverrideDatabase,
+    scope: CoroutineScope,
+    mood: Mood,
+    setMood: (Mood) -> Unit,
+    moodMembers: Set<Long>,
+    byPillar: Map<Pillar, List<AppMediaItem>>,
+    positions: Map<Long, PlaybackPosition>,
+    scanning: Boolean,
+    feedOwnsVideo: Boolean,
+    streak: Streak
+) {
+    // Bottom inset = real nav-bar inset + chrome offset (bottom bar + mini-
+    // player), so the last row always clears the chrome on any device
+    // (gesture or 3-button). No magic number.
+    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val inPillar = byPillar[pillar].orEmpty()
+    // Moods are a music idea. They never filter video or spoken word.
+    val filtered = pillar == Pillar.MUSIC && mood.holdsSongs
+    // Sort segments parked: the list stays A-Z (SortKey.NAME). SortSegments
+    // is still defined in HomeContent.kt for when it comes back.
+    val shown = remember(inPillar, filtered, moodMembers, lib.lastPlayed, lib.playCounts) {
+        val base = if (filtered) inPillar.filter { moodMembers.contains(it.id) } else inPillar
+        base.sortedFor(SortKey.NAME, lib.lastPlayed, lib.playCounts)
+    }
+    // The one item in this format you did not finish.
+    val resume = remember(inPillar, positions) {
+        val ids = inPillar.associateBy { it.id }
+        positions.values
+            .filter {
+                ids.containsKey(it.mediaId) && it.durationMs > 0 &&
+                    it.positionMs > it.durationMs * 0.05 &&
+                    it.positionMs < it.durationMs * 0.95
+            }
+            .maxByOrNull { it.updatedAt }
+            ?.let { p -> ids[p.mediaId]?.to(p) }
+    }
+    // What was played last in this format - minus the one the resume bar
+    // already offers.
+    val recent = remember(inPillar, lib.lastPlayed, resume) {
+        inPillar.filter { lib.lastPlayed.containsKey(it.id) && it.id != resume?.first?.id }
+            .sortedByDescending { lib.lastPlayed[it.id] }
+            .take(12)
+    }
+
+    Column(Modifier.fillMaxSize()) {
+        // Present only while a collection opened from Playlists is actually
+        // filtering the list, so the filter can never be invisible state.
+        if (filtered) {
+            FilterBar(stringResource(mood.labelRes), shown.size) { setMood(Mood.ALL) }
+        }
+        when {
+            scanning -> LibrarySkeleton()
+            inPillar.isEmpty() -> FormatEmpty(pillar) { MediaRepository.refresh(); nav.reloadKey++ }
+            shown.isEmpty() -> EmptyState(
+                mood = mood,
+                onRescan = { MediaRepository.refresh(); nav.reloadKey++ },
+                onClearMood = { setMood(Mood.ALL) }
+            )
+            else -> LazyColumn(
+                state = rememberLazyListState(),
+                contentPadding = PaddingValues(bottom = 170.dp + navBottom),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                item {
+                    resume?.let { (track, pos) ->
+                        ResumeBar(
+                            item = track,
+                            progress = (pos.positionMs.toFloat() / pos.durationMs).coerceIn(0f, 1f),
+                            onPlay = { vm.playAt(track, pos.positionMs) }
+                        )
+                    }
+                    JumpBackIn(
+                        streak = streak,
+                        recent = recent,
+                        playingUri = state.currentUri,
+                        onPlay = { i ->
+                            vm.playOrToggle(recent, i)
+                            // Its card may be far down the feed; the player
+                            // shows it wherever it is.
+                            if (recent[i].type == MediaType.VIDEO) nav.showPlayer = true
                         }
-                        // Sort segments parked. The selected pill was the loudest
-                        // object on the screen, above the artwork it sat over.
-                        // homeSort stays SortKey.NAME (A-Z); SortSegments is still
-                        // defined in HomeContent.kt for when it comes back.
-                        CountAndShuffle(
-                            count = shown.size,
-                            nounPlural = pillarCountRes(nav.homePillar),
-                            onShuffle = {
-                                if (shown.isNotEmpty()) {
-                                    if (!state.shuffle) vm.toggleShuffle()
-                                    vm.play(shown, (shown.indices).random())
+                    )
+                    CountAndShuffle(
+                        count = shown.size,
+                        nounPlural = pillarCountRes(pillar),
+                        onShuffle = {
+                            if (shown.isNotEmpty()) {
+                                if (!state.shuffle) vm.toggleShuffle()
+                                vm.play(shown, (shown.indices).random())
+                            }
+                        }
+                    )
+                }
+                items(shown.size) { idx ->
+                    val track = shown[idx]
+                    if (pillar == Pillar.VIDEO) {
+                        val onIt = state.currentUri == track.uri.toString()
+                        VideoCard(
+                            item = track,
+                            isCurrent = onIt,
+                            isPlaying = onIt && state.isPlaying,
+                            progress = if (onIt && state.durationMs > 0L)
+                                state.positionMs.toFloat() / state.durationMs else 0f,
+                            canRenderVideo = feedOwnsVideo,
+                            onSurfaceOwned = { own ->
+                                nav.feedSurfaceOwners += if (own) 1 else -1
+                            },
+                            vm = vm,
+                            onClick = { vm.playOrToggle(shown, idx) },
+                            onPlayPause = { vm.playOrToggle(shown, idx) },
+                            onSeek = { f ->
+                                if (state.durationMs > 0L)
+                                    vm.seekTo((f * state.durationMs).toLong())
+                            },
+                            onExpand = { nav.showPlayer = true },
+                            onMenu = { nav.addToItem = track }
+                        )
+                    } else {
+                        TrackRow(
+                            item = track,
+                            isPlaying = state.currentUri == track.uri.toString() && state.isPlaying,
+                            isFavorite = lib.favorites.contains(track.id),
+                            onClick = {
+                                vm.playOrToggle(shown, idx)
+                                if (track.type == MediaType.VIDEO) nav.showPlayer = true
+                            },
+                            onLongPress = { nav.addToItem = track },
+                            onMenu = { nav.addToItem = track },
+                            onToggleFav = {
+                                scope.launch {
+                                    if (lib.favorites.contains(track.id)) db.moodDao().remove(Mood.FAVORITES.key, track.id)
+                                    else db.moodDao().add(MoodMember(Mood.FAVORITES.key, track.id, System.currentTimeMillis()))
                                 }
                             }
                         )
                     }
-                    items(shown.size) { idx ->
-                        val track = shown[idx]
-                        if (nav.homePillar == Pillar.VIDEO) {
-                            val onIt = state.currentUri == track.uri.toString()
-                            VideoCard(
-                                item = track,
-                                isCurrent = onIt,
-                                isPlaying = onIt && state.isPlaying,
-                                progress = if (onIt && state.durationMs > 0L)
-                                    state.positionMs.toFloat() / state.durationMs else 0f,
-                                canRenderVideo = feedOwnsVideo,
-                                onSurfaceOwned = { own ->
-                                    nav.feedSurfaceOwners += if (own) 1 else -1
-                                },
-                                vm = vm,
-                                onClick = { vm.playOrToggle(shown, idx) },
-                                onPlayPause = { vm.playOrToggle(shown, idx) },
-                                onSeek = { f ->
-                                    if (state.durationMs > 0L)
-                                        vm.seekTo((f * state.durationMs).toLong())
-                                },
-                                onExpand = { nav.showPlayer = true },
-                                onMenu = { nav.addToItem = track }
-                            )
-                        } else {
-                            TrackRow(
-                                item = track,
-                                isPlaying = state.currentUri == track.uri.toString() && state.isPlaying,
-                                isFavorite = lib.favorites.contains(track.id),
-                                onClick = {
-                                    vm.playOrToggle(shown, idx)
-                                    if (track.type == MediaType.VIDEO) nav.showPlayer = true
-                                },
-                                onLongPress = { nav.addToItem = track },
-                                onMenu = { nav.addToItem = track },
-                                onToggleFav = {
-                                    scope.launch {
-                                        if (lib.favorites.contains(track.id)) db.moodDao().remove(Mood.FAVORITES.key, track.id)
-                                        else db.moodDao().add(MoodMember(Mood.FAVORITES.key, track.id, System.currentTimeMillis()))
-                                    }
-                                }
-                            )
-                        }
-                    }
                 }
             }
         }
-
     }
 }
 
@@ -1079,28 +1243,31 @@ private fun HomeScreens(
     db: OverrideDatabase,
     scope: CoroutineScope,
     settings: MediaSettings,
-    setMood: (Mood) -> Unit
+    setMood: (Mood) -> Unit,
+    sharing: Boolean
 ) {
     val context = LocalContext.current
-    if (nav.showSearch) {
-        SearchScreen(
-            all = lib.allAudio + lib.allVideo,
-            onPlay = { list, idx ->
-                vm.play(list, idx)
-                nav.showSearch = false
-                if (list[idx].type == MediaType.VIDEO) nav.showPlayer = true
-            },
-            onOpenAlbum = { nav.openAlbum = it; nav.showSearch = false },
-            onOpenArtist = { nav.openArtist = it; nav.showSearch = false },
-            onBrowseLibrary = { nav.showSearch = false; nav.showLibrary = true; nav.currentTab = 1 },
-            onClose = { nav.showSearch = false }
+    // Once per library, not once per recomposition: this scaffold
+    // recomposes twice a second with the playback position.
+    val everything = remember(lib.allAudio, lib.allVideo) { lib.allAudio + lib.allVideo }
+    // The same header on every tab that has one: Home, Library, Playlists.
+    val header: @Composable () -> Unit = {
+        StashHeader(
+            onSearch = { nav.showSearch = true },
+            sharing = sharing,
+            onShare = { nav.showShare = true },
+            onPro = { nav.showPro = true }
         )
     }
-    if (nav.showPlaylists) {
+    TabScreen(nav.showPlaylists, nav.tabDirection) {
         PlaylistsScreen(
             playlists = lib.playlists,
             moodCounts = lib.moodCounts,
-            onOpenMood = { m -> setMood(m); nav.showPlaylists = false; nav.currentTab = 0 },
+            header = header,
+            startAtEnd = nav.tabFromEnd,
+            onSwipePrevious = { nav.selectTab(1, fromEnd = true) },
+            onSwipeNext = { nav.selectTab(3) },
+            onOpenMood = { m -> setMood(m); nav.selectTab(0) },
             onCreatePlaylist = { name ->
                 scope.launch { db.playlistDao().create(Playlist(name = name, createdAt = System.currentTimeMillis())) }
             },
@@ -1142,7 +1309,7 @@ private fun HomeScreens(
             onClose = { nav.openPlaylist = null }
         )
     }
-    if (nav.showSettings) {
+    TabScreen(nav.showSettings, nav.tabDirection) {
         SettingsScreen(
             audioCount = lib.allAudio.size,
             videoCount = lib.videoCount,
@@ -1155,28 +1322,67 @@ private fun HomeScreens(
             adsReady = nav.adsReady,
             onOpenTerms = { nav.showTerms = true },
             onOpenAbout = { nav.showAbout = true },
-            onClose = { nav.showSettings = false },
+            onClose = { nav.back() },
+            onSwipePrevious = { nav.selectTab(2, fromEnd = true) },
             onOpenSound = { nav.showSound = true },
             onRepairArtwork = { ArtworkRepair.startLibraryRepair(context, lib.music) }
         )
     }
-    if (nav.showLibrary) {
+    TabScreen(nav.showLibrary, nav.tabDirection) {
         LibraryScreen(
-            all = lib.allAudio + lib.allVideo,
+            all = everything,
             state = state,
-            initialPillar = nav.libraryPillar,
-            lastPlayed = lib.lastPlayed,
-            playCounts = lib.playCounts,
+            header = header,
+            startAtEnd = nav.tabFromEnd,
+            favorites = lib.favorites,
             onPlay = { list, idx ->
                 vm.playOrToggle(list, idx)
                 if (list[idx].type == MediaType.VIDEO) nav.showPlayer = true
             },
             onOpenAlbum = { nav.openAlbum = it },
             onOpenArtist = { nav.openArtist = it },
-            onEdit = { nav.editItem = it },
-            onClose = { nav.showLibrary = false; nav.libraryPillar = null; nav.currentTab = 0 }
+            onMenu = { nav.addToItem = it },
+            onToggleFav = { track ->
+                scope.launch {
+                    if (lib.favorites.contains(track.id)) db.moodDao().remove(Mood.FAVORITES.key, track.id)
+                    else db.moodDao().add(MoodMember(Mood.FAVORITES.key, track.id, System.currentTimeMillis()))
+                }
+            },
+            onSwipePrevious = { nav.selectTab(0) },
+            onSwipeNext = { nav.selectTab(2) }
         )
     }
+    // Last, so it opens over whichever tab the header was tapped on.
+    if (nav.showSearch) {
+        SearchScreen(
+            all = everything,
+            onPlay = { list, idx ->
+                vm.play(list, idx)
+                nav.showSearch = false
+                if (list[idx].type == MediaType.VIDEO) nav.showPlayer = true
+            },
+            onOpenAlbum = { nav.openAlbum = it; nav.showSearch = false },
+            onOpenArtist = { nav.openArtist = it; nav.showSearch = false },
+            onBrowseLibrary = { nav.selectTab(1) },
+            onClose = { nav.showSearch = false }
+        )
+    }
+}
+
+/**
+ * A tab's screen over Home, sliding in from the side the tab sits on and
+ * out the way you left it - the motion matches the bar's order and the
+ * swipe, so the tabs read as one strip you move along.
+ */
+@Composable
+private fun TabScreen(visible: Boolean, direction: Int, content: @Composable () -> Unit) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = androidx.compose.animation.slideInHorizontally(Motion.spatial()) { w -> if (direction > 0) w else -w } +
+            fadeIn(tween(Motion.Fast)),
+        exit = androidx.compose.animation.slideOutHorizontally(Motion.spatial()) { w -> if (direction > 0) -w else w } +
+            fadeOut(tween(Motion.Fast))
+    ) { content() }
 }
 
 @Composable
@@ -1279,20 +1485,8 @@ private fun BoxScope.HomeChrome(nav: HomeNav, state: PlayerState, vm: PlayerView
         if (state.isPlaying) nav.playerHidden = false
         else if (state.hasItem) { delay(10_000); nav.playerHidden = true }
     }
-    BottomBar(Modifier.align(Alignment.BottomCenter), current = nav.currentTab) { tab ->
-        // Every tab first clears ALL overlays (mutually exclusive), then opens its own.
-        nav.showPlaylists = false; nav.showSearch = false; nav.showSettings = false
-        nav.showLibrary = false; nav.libraryPillar = null; nav.openPlaylist = null
-        nav.openAlbum = null; nav.openArtist = null
-        nav.currentTab = tab
-        when (tab) {
-            1 -> nav.showLibrary = true
-            2 -> nav.showPlaylists = true
-            3 -> nav.showSettings = true
-            // 0 Home -> the home surface itself, no overlay.
-            // Search is no longer a tab — it lives in the header.
-        }
-    }
+    // Search is no longer a tab - it lives in the header.
+    BottomBar(Modifier.align(Alignment.BottomCenter), current = nav.currentTab) { tab -> nav.selectTab(tab) }
     // ---- Surfaces that must sit ABOVE the persistent chrome ----
     // Order matters: everything below is drawn after BottomBar, so the nav bar
     // and mini-player no longer paint over the full player and the info pages.

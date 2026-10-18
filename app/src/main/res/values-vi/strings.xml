@@ -600,4 +600,20 @@
     <string name="db_value">%1$+.1f dB</string>
     <string name="library_reading">Đang đọc thư viện của bạn</string>
     <string name="video_open_player">Mở trong trình phát</string>
+    <!-- Home: Jump back in and the listening streak (Retention.kt) -->
+    <string name="label_jump_back_in_caps">NGHE LẠI</string>
+    <string name="streak_keep">Nghe hôm nay để giữ chuỗi</string>
+    <plurals name="streak_days">
+        <item quantity="other">Chuỗi %d ngày</item>
+    </plurals>
+    <plurals name="plays_this_week">
+        <item quantity="other">%d lượt phát tuần này</item>
+    </plurals>
+    <!-- Home: a format with nothing in it yet -->
+    <string name="empty_format_title">Chưa có gì ở đây</string>
+    <string name="empty_format_music">Bài hát trên thiết bị sẽ hiện ở đây. Thêm vài bài rồi quét lại.</string>
+    <string name="empty_format_video">Video trên thiết bị sẽ hiện ở đây, sẵn sàng phát trong bảng tin.</string>
+    <string name="empty_format_podcasts">Các tập trong thư mục Podcasts và các cuộc trò chuyện dài sẽ hiện ở đây.</string>
+    <string name="empty_format_audiobooks">Sách trong thư mục Audiobooks sẽ hiện ở đây và nhớ chỗ bạn đang nghe.</string>
+    <string name="recordings_empty">Ghi chú thoại và bản ghi âm sẽ hiện ở đây</string>
 </resources>

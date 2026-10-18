@@ -617,4 +617,22 @@
     <string name="db_value">%1$+.1f dB</string>
     <string name="library_reading">Lecture de votre bibliothèque</string>
     <string name="video_open_player">Ouvrir dans le lecteur</string>
+    <!-- Home: Jump back in and the listening streak (Retention.kt) -->
+    <string name="label_jump_back_in_caps">RÉÉCOUTER</string>
+    <string name="streak_keep">Écoutez aujourd\'hui pour la garder</string>
+    <plurals name="streak_days">
+        <item quantity="one">%d jour d\'affilée</item>
+        <item quantity="other">%d jours d\'affilée</item>
+    </plurals>
+    <plurals name="plays_this_week">
+        <item quantity="one">%d écoute cette semaine</item>
+        <item quantity="other">%d écoutes cette semaine</item>
+    </plurals>
+    <!-- Home: a format with nothing in it yet -->
+    <string name="empty_format_title">Rien ici pour l\'instant</string>
+    <string name="empty_format_music">Les titres de votre appareil apparaissent ici. Ajoutez-en, puis réanalysez.</string>
+    <string name="empty_format_video">Les vidéos de votre appareil apparaissent ici, prêtes pour le fil.</string>
+    <string name="empty_format_podcasts">Les épisodes d\'un dossier Podcasts et les longues émissions apparaissent ici.</string>
+    <string name="empty_format_audiobooks">Les livres d\'un dossier Audiobooks apparaissent ici et gardent votre position.</string>
+    <string name="recordings_empty">Vos mémos vocaux et enregistrements apparaissent ici</string>
 </resources>

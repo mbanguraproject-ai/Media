@@ -621,4 +621,22 @@
     <string name="db_value">%1$+.1f dB</string>
     <string name="library_reading">Reading your library</string>
     <string name="video_open_player">Open in the player</string>
+    <!-- Home: Jump back in and the listening streak (Retention.kt) -->
+    <string name="label_jump_back_in_caps">JUMP BACK IN</string>
+    <string name="streak_keep">Play today to keep it</string>
+    <plurals name="streak_days">
+        <item quantity="one">%d-day streak</item>
+        <item quantity="other">%d-day streak</item>
+    </plurals>
+    <plurals name="plays_this_week">
+        <item quantity="one">%d play this week</item>
+        <item quantity="other">%d plays this week</item>
+    </plurals>
+    <!-- Home: a format with nothing in it yet -->
+    <string name="empty_format_title">Nothing here yet</string>
+    <string name="empty_format_music">Songs on your phone show up here. Add some, then rescan.</string>
+    <string name="empty_format_video">Videos on your phone show up here, ready to play in the feed.</string>
+    <string name="empty_format_podcasts">Episodes in a Podcasts folder, and long talks, show up here.</string>
+    <string name="empty_format_audiobooks">Books in an Audiobooks folder show up here, and keep your place.</string>
+    <string name="recordings_empty">Voice notes and recordings show up here</string>
 </resources>

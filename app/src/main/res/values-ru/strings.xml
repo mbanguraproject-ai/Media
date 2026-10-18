@@ -651,4 +651,26 @@
     <string name="db_value">%1$+.1f дБ</string>
     <string name="library_reading">Читаем вашу медиатеку</string>
     <string name="video_open_player">Открыть в плеере</string>
+    <!-- Home: Jump back in and the listening streak (Retention.kt) -->
+    <string name="label_jump_back_in_caps">СЛУШАТЬ СНОВА</string>
+    <string name="streak_keep">Послушайте сегодня, чтобы не прервать</string>
+    <plurals name="streak_days">
+        <item quantity="one">%d день подряд</item>
+        <item quantity="few">%d дня подряд</item>
+        <item quantity="many">%d дней подряд</item>
+        <item quantity="other">%d дня подряд</item>
+    </plurals>
+    <plurals name="plays_this_week">
+        <item quantity="one">%d прослушивание за неделю</item>
+        <item quantity="few">%d прослушивания за неделю</item>
+        <item quantity="many">%d прослушиваний за неделю</item>
+        <item quantity="other">%d прослушивания за неделю</item>
+    </plurals>
+    <!-- Home: a format with nothing in it yet -->
+    <string name="empty_format_title">Здесь пока пусто</string>
+    <string name="empty_format_music">Здесь появятся песни с устройства. Добавьте их и пересканируйте.</string>
+    <string name="empty_format_video">Здесь появятся видео с устройства, их можно смотреть прямо в ленте.</string>
+    <string name="empty_format_podcasts">Здесь появятся выпуски из папки Podcasts и длинные беседы.</string>
+    <string name="empty_format_audiobooks">Здесь появятся книги из папки Audiobooks, с места, где вы остановились.</string>
+    <string name="recordings_empty">Здесь появятся голосовые заметки и записи</string>
 </resources>

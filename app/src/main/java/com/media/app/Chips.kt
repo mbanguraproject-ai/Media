@@ -8,6 +8,10 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -34,9 +38,9 @@ import androidx.compose.ui.unit.dp
 // ============================================================================
 //  CHIPS
 //
-//  The app's ONE way of showing a set of views or filters and which one is
-//  current: Home's Music / Video / Podcasts, Library's Albums / Artists,
-//  Playlists' Mine / Smart, Sound's presets.
+//  The app's way of showing a set of filters or choices and which one is
+//  current: Sound's presets, Settings' choices. A tab's own views - the
+//  pages a swipe moves between - use the SegmentedBar below instead.
 //
 //  A pill per choice. The current one is filled with the accent and set in
 //  semibold; the rest sit on a faint fill with a hairline edge, so the row
@@ -126,6 +130,117 @@ fun ChipRow(
                 icon = icons.getOrNull(index),
                 onClick = { onPick(index) }
             )
+        }
+    }
+}
+
+// ============================================================================
+//  SEGMENTED BAR
+//
+//  The top-level views of a tab, and the pages a sideways swipe moves
+//  between: Home's Music / Video / Podcasts / Audiobooks, Library's Albums /
+//  Artists / Recordings, Playlists' Mine / Smart. One control on all three,
+//  so the tabs read as one app with one layout: the header, this bar, the
+//  pages.
+//
+//  Every choice is always on screen. A scrolling chip row hid Audiobooks
+//  off the right edge on most phones, and a view you cannot see is a view
+//  you do not know is there. Equal segments, the icon over a short label,
+//  fit four on a 320dp screen in every shipped language.
+//
+//  The lit segment slides WITH the finger, not after it: the bar reads the
+//  pager's live position, so halfway through a swipe it sits halfway
+//  between the two views, and each label's colour crosses over the same way.
+// ============================================================================
+
+private val SegmentBarHeight = 50.dp
+private val SegmentInset = 3.dp
+
+@Composable
+fun SegmentedBar(
+    labels: List<String>,
+    icons: List<ImageVector>,
+    pager: androidx.compose.foundation.pager.PagerState,
+    modifier: Modifier = Modifier,
+    onPick: (Int) -> Unit
+) {
+    val shape = RoundedCornerShape(Radius.md)
+    val inner = RoundedCornerShape(Radius.md - SegmentInset)
+    val accent = MediaColors.Accent
+    val onAccent = MediaColors.OnAccent
+    val idle = MediaColors.CreamDim
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    androidx.compose.foundation.layout.BoxWithConstraints(
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = Space.xl, vertical = Space.xs)
+            .height(SegmentBarHeight)
+            .clip(shape)
+            .background(MediaColors.FillSubtle)
+            .border(1.dp, MediaColors.Fill, shape)
+            .padding(SegmentInset)
+    ) {
+        val count = labels.size.coerceAtLeast(1)
+        val segment = maxWidth / count
+        // Read in the layout phase: the indicator moves every frame of a
+        // swipe without recomposing the bar.
+        androidx.compose.foundation.layout.Box(
+            Modifier
+                .offset {
+                    val at = (pager.currentPage + pager.currentPageOffsetFraction)
+                        .coerceIn(0f, (count - 1).toFloat())
+                    androidx.compose.ui.unit.IntOffset((segment.toPx() * at).toInt(), 0)
+                }
+                .width(segment)
+                .fillMaxHeight()
+                .clip(inner)
+                .background(accent)
+        )
+        val position = pager.currentPage + pager.currentPageOffsetFraction
+        Row(Modifier.fillMaxSize()) {
+            labels.forEachIndexed { i, label ->
+                // 1 on the lit segment, 0 a whole segment away or more.
+                val lit = (1f - kotlin.math.abs(position - i)).coerceIn(0f, 1f)
+                val ink = androidx.compose.ui.graphics.lerp(idle, onAccent, lit)
+                androidx.compose.foundation.layout.Column(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(inner)
+                        .semantics {
+                            this.selected = pager.currentPage == i
+                            role = Role.Tab
+                        }
+                        .clickable(
+                            interactionSource = androidx.compose.runtime.remember {
+                                androidx.compose.foundation.interaction.MutableInteractionSource()
+                            },
+                            indication = null
+                        ) {
+                            haptic.performHapticFeedback(
+                                androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove
+                            )
+                            onPick(i)
+                        },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    icons.getOrNull(i)?.let {
+                        Icon(it, null, tint = ink, modifier = Modifier.size(17.dp))
+                    }
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        label,
+                        style = Typo.Tertiary.copy(
+                            fontWeight = if (lit > 0.5f) FontWeight.SemiBold else FontWeight.Medium
+                        ),
+                        color = ink,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = Space.xs)
+                    )
+                }
+            }
         }
     }
 }
