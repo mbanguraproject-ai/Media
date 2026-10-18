@@ -104,6 +104,7 @@ object FullScreenAds {
     private var showing = false
     private var lastShownAt = 0L
 
+    private var foreground = false
     private var returnExpected = false
     private var leftAt = 0L
     private var skipNextOpen = false
@@ -156,6 +157,10 @@ object FullScreenAds {
     }
 
     private fun onAppLeft() {
+        foreground = false
+        // An ad still loading for this open must not land after it: over
+        // the home screen, or another app.
+        showOpenUntil = 0L
         leftAt = now()
         if (returnExpected) {
             returnExpected = false
@@ -164,6 +169,7 @@ object FullScreenAds {
     }
 
     private fun onAppOpened() {
+        foreground = true
         if (skipNextOpen) {
             skipNextOpen = false
             if (now() - leftAt < RETURN_GRACE_MS) {
@@ -178,6 +184,7 @@ object FullScreenAds {
     /** Why a full-screen ad cannot go up right now, or null if it can. */
     private fun blocker(act: Activity?): String? = when {
         !ready -> "ads not ready"
+        !foreground -> "Via is in the background"
         adFree() -> "Via Pro"
         act == null || act.isFinishing || act.isDestroyed -> "no activity"
         act.isInPictureInPictureMode -> "picture-in-picture"
