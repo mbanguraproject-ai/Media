@@ -897,7 +897,7 @@ private fun BoxScope.MiniChrome(
         // 44dp disc's edge at exactly `inset`.
         Box(
             Modifier.size(48.dp).clip(CircleShape)
-                .pressScale { vm.togglePlayPause() },
+                .pressScale(haptic = true) { vm.togglePlayPause() },
             contentAlignment = Alignment.Center
         ) {
             Box(
@@ -973,7 +973,7 @@ private fun NowPlayingTopBar(
             Icon(
                 Icons.Filled.Fullscreen, stringResource(R.string.action_fullscreen), tint = MediaColors.Cream,
                 modifier = Modifier.size(26.dp)
-                    .pressScale(onClick = onFullscreen)
+                    .pressScale(haptic = true, onClick = onFullscreen)
             )
             Spacer(Modifier.width(Space.md))
         }
@@ -981,7 +981,7 @@ private fun NowPlayingTopBar(
             Icon(
                 Icons.Filled.PictureInPictureAlt, stringResource(R.string.action_pip),
                 tint = MediaColors.Cream,
-                modifier = Modifier.size(26.dp).pressScale {
+                modifier = Modifier.size(26.dp).pressScale(haptic = true) {
                     (ctx as? android.app.Activity)?.let {
                         Pip.enter(it, state.videoWidth, state.videoHeight)
                     }
@@ -995,7 +995,7 @@ private fun NowPlayingTopBar(
             Icon(
                 Icons.Filled.Lyrics, stringResource(if (showLyrics) R.string.action_hide_lyrics else R.string.action_lyrics),
                 tint = if (showLyrics) MediaColors.Accent else MediaColors.Cream,
-                modifier = Modifier.size(24.dp).pressScale { onToggleLyrics() }
+                modifier = Modifier.size(24.dp).pressScale(haptic = true) { onToggleLyrics() }
             )
             Spacer(Modifier.width(Space.md))
             // The Sound screen, one tap from what is playing.
@@ -1004,13 +1004,13 @@ private fun NowPlayingTopBar(
             Icon(
                 Icons.Filled.Equalizer, stringResource(R.string.action_equalizer),
                 tint = if (eqOn) MediaColors.Accent else MediaColors.Cream,
-                modifier = Modifier.size(24.dp).pressScale(onClick = onOpenSound)
+                modifier = Modifier.size(24.dp).pressScale(haptic = true, onClick = onOpenSound)
             )
             Spacer(Modifier.width(Space.md))
         }
         Icon(
             Icons.AutoMirrored.Filled.QueueMusic, stringResource(R.string.action_queue), tint = MediaColors.Cream,
-            modifier = Modifier.size(28.dp).pressScale { onOpenQueue() }
+            modifier = Modifier.size(28.dp).pressScale(haptic = true) { onOpenQueue() }
         )
     }
 }
@@ -1173,17 +1173,17 @@ private fun NowPlayingTransport(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(Icons.Filled.SkipPrevious, stringResource(R.string.action_previous), tint = MediaColors.Cream,
-            modifier = Modifier.size(34.dp).pressScale { vm.previous() })
+            modifier = Modifier.size(34.dp).pressScale(haptic = true) { vm.previous() })
         Box(
             Modifier.size(64.dp).clip(CircleShape).background(MediaColors.Cream)
-                .pressScale(scaleDown = 0.92f) { vm.togglePlayPause() },
+                .pressScale(scaleDown = 0.92f, haptic = true) { vm.togglePlayPause() },
             contentAlignment = Alignment.Center
         ) {
             PlayPauseIcon(state.isPlaying, MediaColors.OnInverse,
                 Modifier.size(34.dp), stringResource(R.string.action_play_pause))
         }
         Icon(Icons.Filled.SkipNext, stringResource(R.string.action_next), tint = MediaColors.Cream,
-            modifier = Modifier.size(34.dp).pressScale { vm.next() })
+            modifier = Modifier.size(34.dp).pressScale(haptic = true) { vm.next() })
     }
 
     Row(
@@ -1193,18 +1193,18 @@ private fun NowPlayingTransport(
     ) {
         Icon(Icons.Filled.Shuffle, stringResource(R.string.action_shuffle),
             tint = if (state.shuffle) MediaColors.Accent else MediaColors.CreamDim,
-            modifier = Modifier.size(IconSize.lg).pressScale { vm.toggleShuffle() })
+            modifier = Modifier.size(IconSize.lg).pressScale(haptic = true) { vm.toggleShuffle() })
         Icon(
             if (state.repeatMode == 1) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
             stringResource(R.string.action_repeat),
             tint = if (state.repeatMode != 0) MediaColors.Accent else MediaColors.CreamDim,
-            modifier = Modifier.size(IconSize.lg).pressScale { vm.cycleRepeat() }
+            modifier = Modifier.size(IconSize.lg).pressScale(haptic = true) { vm.cycleRepeat() }
         )
         LoopButton(vm)
         Text(
             speedLabel(state.speed), style = Typo.Primary,
             color = if (state.speed != 1.0f) MediaColors.Accent else MediaColors.CreamDim,
-            modifier = Modifier.pressScale(onClick = onOpenSpeed)
+            modifier = Modifier.pressScale(haptic = true, onClick = onOpenSpeed)
         )
         if (state.sleepActive && !state.sleepEndOfTrack) {
             Text(fmtClock(state.sleepRemainingMs), style = Typo.Primary,

@@ -215,7 +215,7 @@ fun SoundScreen(onClose: () -> Unit) {
             // This output back to flat (still the same kind of device), and
             // loudness back to its defaults.
             Text(stringResource(R.string.sound_reset_flat), style = Typo.Label, color = MediaColors.CreamDim,
-                modifier = Modifier.pressScale { update(SoundSettings(output = s.output)) })
+                modifier = Modifier.pressScale(haptic = true) { update(SoundSettings(output = s.output)) })
         }
         Spacer(Modifier.height(bottomSafePadding(gap = 100.dp)))
     }

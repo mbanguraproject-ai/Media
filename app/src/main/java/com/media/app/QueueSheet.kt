@@ -85,7 +85,7 @@ fun QueueSheet(
             if (queue.size > currentIndex + 1) {
                 Text(
                     stringResource(R.string.action_clear), style = Typo.Label, color = MediaColors.Accent,
-                    modifier = Modifier.pressScale(onClick = onClearUpNext)
+                    modifier = Modifier.pressScale(haptic = true, onClick = onClearUpNext)
                         .padding(Space.sm)
                 )
             }
@@ -238,7 +238,7 @@ private fun QueueRow(
         }
         Icon(
             Icons.Filled.Delete, stringResource(R.string.queue_remove), tint = MediaColors.CreamFaint,
-            modifier = Modifier.size(IconSize.md).pressScale(onClick = onRemove)
+            modifier = Modifier.size(IconSize.md).pressScale(haptic = true, onClick = onRemove)
         )
         Spacer(Modifier.width(Space.md))
         // Dedicated grip: keeps the reorder gesture off the row itself, so tap

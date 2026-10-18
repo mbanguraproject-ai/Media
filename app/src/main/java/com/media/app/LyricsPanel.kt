@@ -242,7 +242,7 @@ private fun Pill(label: String, active: Boolean = false, onClick: () -> Unit) {
     Box(
         Modifier.clip(CircleShape)
             .background(if (active) MediaColors.Accent else MediaColors.Fill)
-            .pressScale(onClick = onClick)
+            .pressScale(haptic = true, onClick = onClick)
             .padding(horizontal = Space.md, vertical = Space.xs)
     ) {
         Text(label, style = Typo.Label, color = if (active) MediaColors.OnAccent else MediaColors.CreamDim)
@@ -375,7 +375,7 @@ private fun Synced(
 @Composable
 private fun CapsuleIcon(icon: ImageVector, description: String, onClick: () -> Unit) {
     Box(
-        Modifier.size(40.dp).clip(CircleShape).pressScale(onClick = onClick),
+        Modifier.size(40.dp).clip(CircleShape).pressScale(haptic = true, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, description, tint = MediaColors.CreamDim, modifier = Modifier.size(18.dp))

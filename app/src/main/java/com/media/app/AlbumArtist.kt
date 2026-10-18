@@ -223,7 +223,7 @@ private fun RenameArtistSheet(
                         if (name.isBlank()) MediaColors.Fill else MediaColors.Accent,
                         RoundedCornerShape(12.dp)
                     )
-                    .pressScale {
+                    .pressScale(haptic = true) {
                         if (name.isNotBlank()) { onRename(name.trim()); onDismiss() }
                     }
                     .padding(vertical = 14.dp),
@@ -275,7 +275,7 @@ fun ArtistDetailScreen(
             Icon(
                 Icons.Filled.Edit, stringResource(R.string.rename_artist),
                 tint = MediaColors.Cream,
-                modifier = Modifier.size(22.dp).pressScale { renaming = true }
+                modifier = Modifier.size(22.dp).pressScale(haptic = true) { renaming = true }
             )
         }
     ) {

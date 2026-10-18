@@ -484,7 +484,7 @@ private fun PermissionGate(
             Spacer(Modifier.height(Space.xxl))
             Box(
                 Modifier.clip(CircleShape).background(MediaColors.Accent)
-                    .pressScale(onClick = if (blocked) onOpenSettings else onGrant)
+                    .pressScale(haptic = true, onClick = if (blocked) onOpenSettings else onGrant)
                     .padding(horizontal = Space.xxl, vertical = Space.md)
             ) {
                 Text(
@@ -1636,7 +1636,7 @@ private fun HomePlayer(
                 Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
                     Box(
                         Modifier.clip(CircleShape).background(MediaColors.Accent)
-                            .pressScale {
+                            .pressScale(haptic = true) {
                                 scope.launch {
                                     SettingsStore.setReactiveArt(context, true)
                                     SettingsStore.setPlayerHintSeen(context)
@@ -1647,7 +1647,7 @@ private fun HomePlayer(
                     Box(
                         Modifier.clip(CircleShape)
                             .border(1.dp, MediaColors.Fill, CircleShape)
-                            .pressScale {
+                            .pressScale(haptic = true) {
                                 scope.launch { SettingsStore.setPlayerHintSeen(context) }
                             }
                             .padding(horizontal = Space.lg, vertical = Space.sm)
@@ -1812,7 +1812,7 @@ private fun EmptyState(mood: Mood, onRescan: () -> Unit, onClearMood: () -> Unit
         Spacer(Modifier.height(Space.xl))
         Box(
             Modifier.clip(CircleShape).background(MediaColors.Accent)
-                .pressScale(onClick = if (filtered) onClearMood else onRescan)
+                .pressScale(haptic = true, onClick = if (filtered) onClearMood else onRescan)
                 .padding(horizontal = Space.xl, vertical = Space.md)
         ) {
             Text(

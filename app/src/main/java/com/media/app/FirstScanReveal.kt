@@ -74,7 +74,7 @@ fun FirstScanReveal(
                 .alpha(if (stage >= 4) 1f else 0f)
                 .clip(CircleShape)
                 .background(MediaColors.Accent)
-                .pressScale(onClick = onDone)
+                .pressScale(haptic = true, onClick = onDone)
                 .padding(horizontal = Space.xxl, vertical = Space.md)
         ) {
             Text(stringResource(R.string.reveal_start), style = Typo.Label, color = Color.White)

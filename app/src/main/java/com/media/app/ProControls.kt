@@ -78,7 +78,7 @@ fun LoopButton(vm: PlayerViewModel) {
     Box(
         Modifier
             .semantics { contentDescription = spoken }
-            .pressScale { if (pro) vm.tapLoop() else openPro() },
+            .pressScale(haptic = true) { if (pro) vm.tapLoop() else openPro() },
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -202,7 +202,7 @@ fun ProLockedRow(text: String, onClick: () -> Unit) {
             .clip(RoundedCornerShape(Radius.md))
             .background(MediaColors.FillSubtle)
             .border(1.dp, MediaColors.Fill, RoundedCornerShape(Radius.md))
-            .pressScale(scaleDown = 0.98f, onClick = onClick)
+            .pressScale(haptic = true, scaleDown = 0.98f, onClick = onClick)
             .padding(Space.lg),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Space.md)

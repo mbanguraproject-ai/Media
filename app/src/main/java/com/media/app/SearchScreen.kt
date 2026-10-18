@@ -137,12 +137,12 @@ fun SearchScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
                     Box(
                         Modifier.clip(CircleShape).background(MediaColors.Accent)
-                            .pressScale { query = "" }
+                            .pressScale(haptic = true) { query = "" }
                             .padding(horizontal = Space.xl, vertical = Space.md)
                     ) { Text(stringResource(R.string.action_search_again), style = Typo.Label, color = Color.White) }
                     Box(
                         Modifier.clip(CircleShape).background(MediaColors.Elevated)
-                            .pressScale(onClick = onBrowseLibrary)
+                            .pressScale(haptic = true, onClick = onBrowseLibrary)
                             .padding(horizontal = Space.xl, vertical = Space.md)
                     ) { Text(stringResource(R.string.search_browse), style = Typo.Label, color = MediaColors.Cream) }
                 }

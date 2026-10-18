@@ -128,7 +128,7 @@ fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit, onP
             modifier = Modifier
                 .size(HeaderTouch)
                 .clip(CircleShape)
-                .pressScale(onClick = onShare)
+                .pressScale(haptic = true, onClick = onShare)
                 .padding(HeaderTouchInset)
         )
         Icon(
@@ -137,7 +137,7 @@ fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit, onP
             modifier = Modifier
                 .size(HeaderTouch)
                 .clip(CircleShape)
-                .pressScale(onClick = onSearch)
+                .pressScale(haptic = true, onClick = onSearch)
                 .padding(HeaderTouchInset)
         )
     }
@@ -187,7 +187,7 @@ fun ResumeBar(item: AppMediaItem, progress: Float, onPlay: () -> Unit) {
             .clip(RoundedCornerShape(Radius.md))
             .background(MediaColors.FillSubtle)
             .border(1.dp, MediaColors.Fill, RoundedCornerShape(Radius.md))
-            .pressScale(onClick = onPlay)
+            .pressScale(haptic = true, onClick = onPlay)
             .padding(Space.sm),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -240,7 +240,7 @@ fun FilterBar(label: String, count: Int, onClear: () -> Unit) {
         Row(
             Modifier
                 .clip(RoundedCornerShape(Radius.pill))
-                .pressScale(onClick = onClear)
+                .pressScale(haptic = true, onClick = onClear)
                 .padding(horizontal = Space.md, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -296,7 +296,7 @@ fun SortSegments(selected: SortKey, onSelect: (SortKey) -> Unit) {
                 Modifier.weight(1f)
                     .clip(RoundedCornerShape(Radius.pill))
                     .background(if (on) MediaColors.Accent else Color.Transparent)
-                    .pressScale { onSelect(key) }
+                    .pressScale(haptic = true) { onSelect(key) }
                     .padding(vertical = 9.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -388,7 +388,7 @@ fun TrackRow(
             Spacer(Modifier.width(Space.md))
             Icon(
                 Icons.Filled.MoreVert, stringResource(R.string.cd_more_options), tint = MediaColors.CreamFaint,
-                modifier = Modifier.size(21.dp).pressScale(onClick = onMenu)
+                modifier = Modifier.size(21.dp).pressScale(haptic = true, onClick = onMenu)
             )
         }
     }
@@ -431,7 +431,7 @@ fun JumpBackIn(
                 val playing = playingUri == item.uri.toString()
                 Column(
                     Modifier.width(RecentTile)
-                        .pressScale { onPlay(i) }
+                        .pressScale(haptic = true) { onPlay(i) }
                 ) {
                     CoverArt(item, Modifier.size(RecentTile), corner = 12, targetPx = 192)
                     Spacer(Modifier.height(Space.xs))
@@ -521,7 +521,7 @@ fun FormatEmpty(pillar: Pillar, onRescan: () -> Unit) {
         Box(
             Modifier.clip(CircleShape)
                 .border(1.dp, MediaColors.Accent.copy(alpha = 0.55f), CircleShape)
-                .pressScale(onClick = onRescan)
+                .pressScale(haptic = true, onClick = onRescan)
                 .padding(horizontal = Space.xl, vertical = Space.sm)
         ) {
             Text(stringResource(R.string.action_rescan_library), style = Typo.Label, color = MediaColors.Accent)

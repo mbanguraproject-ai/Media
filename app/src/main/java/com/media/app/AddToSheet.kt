@@ -205,7 +205,7 @@ private fun QuickAction(
 ) {
     Column(
         modifier.clip(RoundedCornerShape(14.dp)).background(MediaColors.Fill)
-            .pressScale(onClick = onClick)
+            .pressScale(haptic = true, onClick = onClick)
             .padding(vertical = Space.md),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

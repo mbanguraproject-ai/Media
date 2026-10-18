@@ -26,7 +26,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -61,22 +63,18 @@ fun rememberReducedMotion(): Boolean {
  * §13: press → slight scale-down, release → spring back.
  * Indication is suppressed because the scale IS the feedback; a ripple on top
  * reads as two competing responses to one touch.
- *
- * And no vibration. A buzz on every chip, button and row made the phone
- * shake through ordinary browsing, and the scale already answers the touch.
- * Haptics stay only where there is nothing to see under the finger: a swipe
- * that skips a track or dismisses the player (PlayerSurface), and the
- * system's own long-press.
  */
 @Composable
 fun Modifier.pressScale(
     scaleDown: Float = 0.96f,
+    haptic: Boolean = false,
     enabled: Boolean = true,
     onClick: () -> Unit
 ): Modifier {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val reduced = LocalReducedMotion.current
+    val hf = LocalHapticFeedback.current
     val scale by animateFloatAsState(
         targetValue = if (pressed && !reduced) scaleDown else 1f,
         animationSpec = Motion.bouncy(),
@@ -90,9 +88,11 @@ fun Modifier.pressScale(
         .clickable(
             interactionSource = interaction,
             indication = null,
-            enabled = enabled,
-            onClick = onClick
-        )
+            enabled = enabled
+        ) {
+            if (haptic) hf.performHapticFeedback(HapticFeedbackType.LongPress)
+            onClick()
+        }
 }
 
 /**
@@ -166,7 +166,7 @@ fun FavoriteButton(
         tint = tint,
         modifier = modifier
             .graphicsLayer { scaleX = scale; scaleY = scale }
-            .pressScale(scaleDown = 0.88f) { pulse = true; onToggle() }
+            .pressScale(scaleDown = 0.88f, haptic = true) { pulse = true; onToggle() }
     )
 }
 

@@ -155,7 +155,8 @@ fun ChipRow(
 //    position, so mid-swipe it is passing from one pill to the next.
 //
 //  Every label is set in the same weight so a pill never changes width as
-//  it lights up. No vibration on a tap (Interactions.kt).
+//  it lights up. Chips do not vibrate on a tap - the pill lighting up is the
+//  answer - unlike the app's buttons, which do (pressScale's haptic).
 // ============================================================================
 
 private val PillHeight = 34.dp

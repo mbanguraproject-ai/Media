@@ -241,7 +241,7 @@ fun ProBadge(owned: Boolean, description: String, onClick: () -> Unit) {
     androidx.compose.foundation.layout.Row(
         Modifier
             .semantics(mergeDescendants = true) { contentDescription = description }
-            .pressScale(onClick = onClick)
+            .pressScale(haptic = true, onClick = onClick)
             .height(30.dp)
             .then(
                 if (owned) Modifier.shadow(8.dp, shape, clip = false, ambientColor = Gold, spotColor = Gold)
