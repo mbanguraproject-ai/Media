@@ -155,7 +155,7 @@ fun ProScreen(onClose: () -> Unit) {
                         else Brush.horizontalGradient(listOf(MediaColors.Fill, MediaColors.Fill))
                     )
                     .then(
-                        if (price != null) Modifier.pressScale(haptic = true) {
+                        if (price != null) Modifier.pressScale {
                             (context as? android.app.Activity)?.let { Billing.purchase(it) }
                         } else Modifier
                     ),

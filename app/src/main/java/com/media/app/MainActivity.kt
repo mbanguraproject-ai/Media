@@ -118,10 +118,13 @@ class MainActivity : ComponentActivity() {
     // banner, and once per app open a new version is offered.
     override fun onResume() {
         super.onResume()
-        FullScreenAds.attach(this)
+        FullScreenAds.onActivityResumed(this)
         // The day may have turned while Via was away.
         Retention.refresh(this)
-        InAppUpdate.check(this, updateLauncher)
+        // Not over the splash while it waits for the app-open ad: Play's
+        // sheet would land on top of the ad. Once the splash lifts - or
+        // after the ad closes, which resumes this activity again.
+        FullScreenAds.afterOpen { InAppUpdate.check(this, updateLauncher) }
     }
 
     override fun onDestroy() {
@@ -183,7 +186,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val splash = installSplashScreen()
         var keep = true
-        splash.setKeepOnScreenCondition { keep }
+        // At least the 850ms the iris needs to open, and on until this
+        // launch's app-open ad is up over it (FullScreenAds): the ad goes
+        // over the splash, never over the app.
+        splash.setKeepOnScreenCondition { keep || FullScreenAds.splashHeld() }
+        FullScreenAds.onSplashInstalled()
         window.decorView.postDelayed({ keep = false }, 850)
         // Transparent bars with NO system scrim. Plain enableEdgeToEdge()
         // uses the "auto" style, which on 3-button navigation turns contrast
@@ -246,6 +253,9 @@ class MainActivity : ComponentActivity() {
                 ) {
                     Surface(Modifier.fillMaxSize(), color = MediaColors.Ink) {
                         AppRoot()
+                        // On a return to Via, the splash again, over
+                        // everything, until the app-open ad is up.
+                        OpenCover(FullScreenAds.cover)
                     }
                 }
             }
@@ -338,6 +348,12 @@ fun AppRoot(vm: PlayerViewModel = viewModel()) {
     // the sending app's grant on that file is enough, library access or not.
     val opened by OpenWith.pending.collectAsState()
     LaunchedEffect(opened) { opened?.let { vm.playExternal(it) } }
+
+    // The welcome and permission screens are not an app open: a launch
+    // that lands on them lifts the splash at once, with no ad.
+    LaunchedEffect(introSeen, granted) {
+        if (introSeen == false || (introSeen == true && !granted)) FullScreenAds.cancelOpen("first run")
+    }
 
     // Local step for the first-run flow: 0 = welcome, 1 = permission explainer.
     var onboardStep by remember { mutableStateOf(0) }
@@ -468,7 +484,7 @@ private fun PermissionGate(
             Spacer(Modifier.height(Space.xxl))
             Box(
                 Modifier.clip(CircleShape).background(MediaColors.Accent)
-                    .pressScale(haptic = true, onClick = if (blocked) onOpenSettings else onGrant)
+                    .pressScale(onClick = if (blocked) onOpenSettings else onGrant)
                     .padding(horizontal = Space.xxl, vertical = Space.md)
             ) {
                 Text(
@@ -788,7 +804,10 @@ fun HomeScaffold(vm: PlayerViewModel) {
 
     LaunchedEffect(Unit) {
         (context as? android.app.Activity)?.let { act ->
-            Ads.startConsentThenInit(act) {
+            Ads.startConsentThenInit(
+                act,
+                onNoAds = { FullScreenAds.cancelOpen("no consent to request ads") }
+            ) {
                 nav.adsReady = true
                 FullScreenAds.onAdsReady()
             }
@@ -1061,9 +1080,8 @@ private fun HomeFeed(
                 onShare = { nav.showShare = true },
                 onPro = { nav.showPro = true }
             )
-            SegmentedBar(
+            ViewTabs(
                 labels = HomeFormats.map { pillarLabel(it) },
-                icons = HomeFormats.map { pillarIcon(it) },
                 pager = pager
             ) { i -> scope.launch { pager.animateScrollToPage(i) } }
 
@@ -1617,7 +1635,7 @@ private fun HomePlayer(
                 Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
                     Box(
                         Modifier.clip(CircleShape).background(MediaColors.Accent)
-                            .pressScale(haptic = true) {
+                            .pressScale {
                                 scope.launch {
                                     SettingsStore.setReactiveArt(context, true)
                                     SettingsStore.setPlayerHintSeen(context)
@@ -1628,7 +1646,7 @@ private fun HomePlayer(
                     Box(
                         Modifier.clip(CircleShape)
                             .border(1.dp, MediaColors.Fill, CircleShape)
-                            .pressScale(haptic = true) {
+                            .pressScale {
                                 scope.launch { SettingsStore.setPlayerHintSeen(context) }
                             }
                             .padding(horizontal = Space.lg, vertical = Space.sm)
@@ -1793,7 +1811,7 @@ private fun EmptyState(mood: Mood, onRescan: () -> Unit, onClearMood: () -> Unit
         Spacer(Modifier.height(Space.xl))
         Box(
             Modifier.clip(CircleShape).background(MediaColors.Accent)
-                .pressScale(haptic = true, onClick = if (filtered) onClearMood else onRescan)
+                .pressScale(onClick = if (filtered) onClearMood else onRescan)
                 .padding(horizontal = Space.xl, vertical = Space.md)
         ) {
             Text(

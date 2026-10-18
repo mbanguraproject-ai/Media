@@ -66,7 +66,7 @@ object Ads {
      * one can get an AdMob account restricted, so the SDK is only initialised
      * once consent has been resolved — never before.
      */
-    fun startConsentThenInit(activity: Activity, onReady: () -> Unit) {
+    fun startConsentThenInit(activity: Activity, onNoAds: () -> Unit = {}, onReady: () -> Unit) {
         val params = ConsentRequestParameters.Builder().build()
         val info = UserMessagingPlatform.getConsentInformation(activity)
         info.requestConsentInfoUpdate(activity, params, {
@@ -77,12 +77,12 @@ object Ads {
                 // EEA/UK still went on to request ads - the exact case Google
                 // restricts accounts for. A refusal still allows
                 // non-personalised ads, and canRequestAds() says so.
-                if (info.canRequestAds()) initThen(activity, onReady)
+                if (info.canRequestAds()) initThen(activity, onReady) else onNoAds()
             }
         }, {
             // The lookup failed (offline, say). The answer from a previous
             // launch is still on the device; it decides.
-            if (info.canRequestAds()) initThen(activity, onReady)
+            if (info.canRequestAds()) initThen(activity, onReady) else onNoAds()
         })
     }
 

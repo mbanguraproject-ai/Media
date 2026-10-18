@@ -135,7 +135,7 @@ internal fun BannerAction(label: String, primary: Boolean, onClick: () -> Unit) 
                     RoundedCornerShape(Radius.pill)
                 )
             )
-            .pressScale(haptic = true, onClick = onClick)
+            .pressScale(onClick = onClick)
             .padding(horizontal = Space.lg, vertical = Space.sm)
     ) {
         Text(

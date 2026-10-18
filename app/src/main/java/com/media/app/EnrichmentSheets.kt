@@ -115,7 +115,7 @@ private fun TileAction(
 ) {
     Column(
         modifier.clip(RoundedCornerShape(14.dp)).background(MediaColors.Fill)
-            .pressScale(haptic = true, enabled = enabled, onClick = onClick)
+            .pressScale(enabled = enabled, onClick = onClick)
             .padding(vertical = Space.md),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -271,7 +271,7 @@ private fun CandidateTile(c: ArtCandidate, busy: Boolean, modifier: Modifier, on
         }
     }
     val confident = c.score >= Matching.CONFIDENT
-    Column(modifier.pressScale(haptic = true, enabled = thumb != null, onClick = onPick)) {
+    Column(modifier.pressScale(enabled = thumb != null, onClick = onPick)) {
         Box(
             Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(Radius.sm))
                 .background(MediaColors.Fill),
@@ -383,7 +383,7 @@ fun TrackDetailsSheet(
                     color = if (art?.issue == ArtIssue.NONE) MediaColors.Cream else MediaColors.Warning,
                     modifier = Modifier.weight(1f))
                 Text(stringResource(R.string.action_fix), style = Typo.Label, color = MediaColors.Accent,
-                    modifier = Modifier.pressScale(haptic = true) { onFixArtwork() })
+                    modifier = Modifier.pressScale { onFixArtwork() })
             }
 
             Label(stringResource(R.string.label_lyrics))
@@ -412,7 +412,7 @@ fun TrackDetailsSheet(
                     Spacer(Modifier.height(Space.sm))
                     if (changes) {
                         Text(stringResource(R.string.identify_use), style = Typo.Label, color = MediaColors.Accent,
-                            modifier = Modifier.pressScale(haptic = true) { onApply(rec.title, rec.artist) })
+                            modifier = Modifier.pressScale { onApply(rec.title, rec.artist) })
                         Text(stringResource(R.string.identify_saved_note), style = Typo.Tertiary,
                             color = MediaColors.CreamFaint)
                     } else {
@@ -428,7 +428,7 @@ fun TrackDetailsSheet(
                     Text(
                         stringResource(if (onlineAllowed) R.string.identify_lookup else R.string.identify_lookup_consent),
                         style = Typo.Label, color = MediaColors.Accent,
-                        modifier = Modifier.padding(top = Space.xs).pressScale(haptic = true) {
+                        modifier = Modifier.padding(top = Space.xs).pressScale {
                             identifying = true; identifyNote = null
                             launch.launch {
                                 val t = tags
@@ -539,7 +539,7 @@ private fun Stage(
         }
         if (action != null) {
             Text(action, style = Typo.Label, color = MediaColors.Accent,
-                modifier = Modifier.padding(top = Space.md).pressScale(haptic = true, onClick = onAction))
+                modifier = Modifier.padding(top = Space.md).pressScale(onClick = onAction))
         }
     }
 }

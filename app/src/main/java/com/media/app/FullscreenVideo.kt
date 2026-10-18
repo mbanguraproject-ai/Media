@@ -168,7 +168,7 @@ fun FullscreenVideo(
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.video_exit_fullscreen),
                         tint = Color.White,
-                        modifier = Modifier.size(26.dp).pressScale(haptic = true, onClick = onExit)
+                        modifier = Modifier.size(26.dp).pressScale(onClick = onExit)
                     )
                     Spacer(Modifier.width(Space.lg))
                     Text(
@@ -180,7 +180,7 @@ fun FullscreenVideo(
                         Icon(
                             Icons.Filled.PictureInPictureAlt, stringResource(R.string.action_pip),
                             tint = Color.White,
-                            modifier = Modifier.size(24.dp).pressScale(haptic = true) {
+                            modifier = Modifier.size(24.dp).pressScale {
                                 activity?.let { Pip.enter(it, state.videoWidth, state.videoHeight) }
                             }
                         )
@@ -190,7 +190,7 @@ fun FullscreenVideo(
                         Icons.Filled.AspectRatio,
                         stringResource(if (fillScreen) R.string.video_fit else R.string.video_fill),
                         tint = if (fillScreen) MediaColors.Accent else Color.White,
-                        modifier = Modifier.size(24.dp).pressScale(haptic = true) {
+                        modifier = Modifier.size(24.dp).pressScale {
                             fillScreen = !fillScreen
                             interactionTick++
                         }
@@ -204,21 +204,21 @@ fun FullscreenVideo(
                 ) {
                     Icon(
                         Icons.Filled.Replay10, stringResource(R.string.video_back_10), tint = Color.White,
-                        modifier = Modifier.size(34.dp).pressScale(haptic = true) {
+                        modifier = Modifier.size(34.dp).pressScale {
                             vm.seekTo((state.positionMs - 10_000L).coerceAtLeast(0L))
                             interactionTick++
                         }
                     )
                     Icon(
                         Icons.Filled.SkipPrevious, stringResource(R.string.action_previous), tint = Color.White,
-                        modifier = Modifier.size(30.dp).pressScale(haptic = true) {
+                        modifier = Modifier.size(30.dp).pressScale {
                             vm.previous(); interactionTick++
                         }
                     )
                     Box(
                         Modifier.size(66.dp).clip(CircleShape)
                             .background(Color.White.copy(alpha = 0.16f))
-                            .pressScale(scaleDown = 0.92f, haptic = true) {
+                            .pressScale(scaleDown = 0.92f) {
                                 vm.togglePlayPause(); interactionTick++
                             },
                         contentAlignment = Alignment.Center
@@ -227,13 +227,13 @@ fun FullscreenVideo(
                     }
                     Icon(
                         Icons.Filled.SkipNext, stringResource(R.string.action_next), tint = Color.White,
-                        modifier = Modifier.size(30.dp).pressScale(haptic = true) {
+                        modifier = Modifier.size(30.dp).pressScale {
                             vm.next(); interactionTick++
                         }
                     )
                     Icon(
                         Icons.Filled.Forward10, stringResource(R.string.video_forward_10), tint = Color.White,
-                        modifier = Modifier.size(34.dp).pressScale(haptic = true) {
+                        modifier = Modifier.size(34.dp).pressScale {
                             vm.seekTo((state.positionMs + 10_000L).coerceAtMost(state.durationMs))
                             interactionTick++
                         }

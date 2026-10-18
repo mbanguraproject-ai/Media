@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -40,7 +42,7 @@ import androidx.compose.ui.unit.dp
 //
 //  The app's way of showing a set of filters or choices and which one is
 //  current: Sound's presets, Settings' choices. A tab's own views - the
-//  pages a swipe moves between - use the SegmentedBar below instead.
+//  pages a swipe moves between - use ViewTabs below instead.
 //
 //  A pill per choice. The current one is filled with the accent and set in
 //  semibold; the rest sit on a faint fill with a hairline edge, so the row
@@ -80,7 +82,7 @@ fun ViaChip(
                 this.selected = selected
                 role = Role.Tab
             }
-            .pressScale(haptic = true, onClick = onClick)
+            .pressScale(onClick = onClick)
             .height(ChipHeight)
             .clip(shape)
             .background(fill)
@@ -135,78 +137,129 @@ fun ChipRow(
 }
 
 // ============================================================================
-//  SEGMENTED BAR
+//  VIEW TABS
 //
 //  The top-level views of a tab, and the pages a sideways swipe moves
 //  between: Home's Music / Video / Podcasts / Audiobooks, Library's Albums /
 //  Artists / Recordings, Playlists' Mine / Smart. One control on all three,
-//  so the tabs read as one app with one layout: the header, this bar, the
+//  so the tabs read as one app with one layout: the header, these, the
 //  pages.
 //
-//  Every choice is always on screen. A scrolling chip row hid Audiobooks
-//  off the right edge on most phones, and a view you cannot see is a view
-//  you do not know is there. Equal segments, the icon over a short label,
-//  fit four on a 320dp screen in every shipped language.
+//  Set in type, not boxed. 5.9 shipped a boxed segmented control with a
+//  filled teal block: a widget dropped under the header rather than part of
+//  it, and the loudest thing on a screen whose colour belongs to the
+//  artwork. These are words on the header's own gutter - the first starts
+//  where the Via mark starts - the current one in full cream, the rest
+//  receding, with one accent line under the current word and a hairline
+//  across the screen that closes the header off from the list.
 //
-//  The lit segment slides WITH the finger, not after it: the bar reads the
-//  pager's live position, so halfway through a swipe it sits halfway
-//  between the two views, and each label's colour crosses over the same way.
+//  The line moves WITH the finger: drawn from the pager's live position, so
+//  halfway through a swipe it sits halfway between the two words, and it
+//  stretches or shrinks to each word's own width on the way. Its soft light
+//  rising off it is the only glow on the screen.
+//
+//  Every view is always on screen: the words size to themselves and fit
+//  four across a 360dp phone in the shipped languages; a longer one scrolls
+//  the row rather than cutting a word, and the current view is kept in
+//  sight. No vibration on a tap (Interactions.kt), and no ripple: the word
+//  lighting up is the answer.
 // ============================================================================
 
-private val SegmentBarHeight = 50.dp
-private val SegmentInset = 3.dp
+private val TabRowHeight = 44.dp
+private val TabGap = 22.dp
+private val LineHeight = 2.dp
+private val GlowHeight = 14.dp
 
 @Composable
-fun SegmentedBar(
+fun ViewTabs(
     labels: List<String>,
-    icons: List<ImageVector>,
     pager: androidx.compose.foundation.pager.PagerState,
     modifier: Modifier = Modifier,
     onPick: (Int) -> Unit
 ) {
-    val shape = RoundedCornerShape(Radius.md)
-    val inner = RoundedCornerShape(Radius.md - SegmentInset)
     val accent = MediaColors.Accent
-    val onAccent = MediaColors.OnAccent
-    val idle = MediaColors.CreamDim
-    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
-    androidx.compose.foundation.layout.BoxWithConstraints(
-        modifier
-            .fillMaxWidth()
-            .padding(horizontal = Space.xl, vertical = Space.xs)
-            .height(SegmentBarHeight)
-            .clip(shape)
-            .background(MediaColors.FillSubtle)
-            .border(1.dp, MediaColors.Fill, shape)
-            .padding(SegmentInset)
-    ) {
-        val count = labels.size.coerceAtLeast(1)
-        val segment = maxWidth / count
-        // Read in the layout phase: the indicator moves every frame of a
-        // swipe without recomposing the bar.
+    val lit = MediaColors.Cream
+    val idle = MediaColors.CreamFaint
+    val hairline = MediaColors.Fill
+    val gutter = Space.xl
+    val scroll = rememberScrollState()
+    // Each word's left edge and width in the row, from layout. Drawing reads
+    // them, so the line is placed in the draw phase without recomposing.
+    val starts = androidx.compose.runtime.remember(labels.size) {
+        androidx.compose.runtime.mutableStateListOf<Float>().apply { repeat(labels.size) { add(0f) } }
+    }
+    val widths = androidx.compose.runtime.remember(labels.size) {
+        androidx.compose.runtime.mutableStateListOf<Float>().apply { repeat(labels.size) { add(0f) } }
+    }
+    // A row too long for the screen keeps the current word in sight, a
+    // gutter in from the edge.
+    val gutterPx = with(androidx.compose.ui.platform.LocalDensity.current) { gutter.toPx() }
+    androidx.compose.runtime.LaunchedEffect(pager.settledPage, scroll.maxValue) {
+        if (scroll.maxValue == 0) return@LaunchedEffect
+        val i = pager.settledPage.coerceIn(0, labels.lastIndex)
+        scroll.animateScrollTo((starts[i] - gutterPx).toInt().coerceIn(0, scroll.maxValue))
+    }
+    val position = pager.currentPage + pager.currentPageOffsetFraction
+
+    androidx.compose.foundation.layout.Box(modifier.fillMaxWidth().height(TabRowHeight)) {
+        // The hairline across the whole screen, under the words.
         androidx.compose.foundation.layout.Box(
-            Modifier
-                .offset {
-                    val at = (pager.currentPage + pager.currentPageOffsetFraction)
-                        .coerceIn(0f, (count - 1).toFloat())
-                    androidx.compose.ui.unit.IntOffset((segment.toPx() * at).toInt(), 0)
-                }
-                .width(segment)
-                .fillMaxHeight()
-                .clip(inner)
-                .background(accent)
+            Modifier.align(Alignment.BottomStart).fillMaxWidth().height(0.5.dp).background(hairline)
         )
-        val position = pager.currentPage + pager.currentPageOffsetFraction
-        Row(Modifier.fillMaxSize()) {
+        Row(
+            Modifier
+                .fillMaxHeight()
+                .horizontalScroll(scroll)
+                .drawBehind {
+                    if (widths.isEmpty() || widths.all { it == 0f }) return@drawBehind
+                    val at = (pager.currentPage + pager.currentPageOffsetFraction)
+                        .coerceIn(0f, (labels.size - 1).toFloat())
+                    val from = kotlin.math.floor(at).toInt()
+                    val to = (from + 1).coerceAtMost(labels.lastIndex)
+                    val t = at - from
+                    val x = starts[from] + (starts[to] - starts[from]) * t
+                    val w = widths[from] + (widths[to] - widths[from]) * t
+                    val line = LineHeight.toPx()
+                    val glow = GlowHeight.toPx()
+                    // Light rising off the line, fading out upwards.
+                    drawRect(
+                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                            0f to accent.copy(alpha = 0f),
+                            1f to accent.copy(alpha = 0.16f),
+                            startY = size.height - line - glow,
+                            endY = size.height - line
+                        ),
+                        topLeft = androidx.compose.ui.geometry.Offset(x, size.height - line - glow),
+                        size = androidx.compose.ui.geometry.Size(w, glow)
+                    )
+                    drawRoundRect(
+                        color = accent,
+                        topLeft = androidx.compose.ui.geometry.Offset(x, size.height - line),
+                        size = androidx.compose.ui.geometry.Size(w, line),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(line / 2f)
+                    )
+                },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Spacer(Modifier.width(gutter))
             labels.forEachIndexed { i, label ->
-                // 1 on the lit segment, 0 a whole segment away or more.
-                val lit = (1f - kotlin.math.abs(position - i)).coerceIn(0f, 1f)
-                val ink = androidx.compose.ui.graphics.lerp(idle, onAccent, lit)
-                androidx.compose.foundation.layout.Column(
-                    Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clip(inner)
+                // 1 on the current word, 0 a whole page away or more.
+                val near = (1f - kotlin.math.abs(position - i)).coerceIn(0f, 1f)
+                val ink = androidx.compose.ui.graphics.lerp(idle, lit, near)
+                Text(
+                    label,
+                    style = Typo.Primary.copy(
+                        fontWeight = if (near > 0.5f) FontWeight.SemiBold else FontWeight.Medium,
+                        letterSpacing = (-0.1).sp
+                    ),
+                    color = ink,
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier
+                        .onPlaced { c ->
+                            starts[i] = c.positionInParent().x
+                            widths[i] = c.size.width.toFloat()
+                        }
                         .semantics {
                             this.selected = pager.currentPage == i
                             role = Role.Tab
@@ -216,31 +269,13 @@ fun SegmentedBar(
                                 androidx.compose.foundation.interaction.MutableInteractionSource()
                             },
                             indication = null
-                        ) {
-                            haptic.performHapticFeedback(
-                                androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove
-                            )
-                            onPick(i)
-                        },
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    icons.getOrNull(i)?.let {
-                        Icon(it, null, tint = ink, modifier = Modifier.size(17.dp))
-                    }
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        label,
-                        style = Typo.Tertiary.copy(
-                            fontWeight = if (lit > 0.5f) FontWeight.SemiBold else FontWeight.Medium
-                        ),
-                        color = ink,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(horizontal = Space.xs)
-                    )
-                }
+                        ) { onPick(i) }
+                        // The touch area runs the row's full height.
+                        .padding(vertical = 12.dp)
+                )
+                if (i < labels.lastIndex) Spacer(Modifier.width(TabGap))
             }
+            Spacer(Modifier.width(gutter))
         }
     }
 }

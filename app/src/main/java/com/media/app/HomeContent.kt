@@ -128,7 +128,7 @@ fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit, onP
             modifier = Modifier
                 .size(HeaderTouch)
                 .clip(CircleShape)
-                .pressScale(haptic = true, onClick = onShare)
+                .pressScale(onClick = onShare)
                 .padding(HeaderTouchInset)
         )
         Icon(
@@ -137,7 +137,7 @@ fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit, onP
             modifier = Modifier
                 .size(HeaderTouch)
                 .clip(CircleShape)
-                .pressScale(haptic = true, onClick = onSearch)
+                .pressScale(onClick = onSearch)
                 .padding(HeaderTouchInset)
         )
     }
@@ -187,7 +187,7 @@ fun ResumeBar(item: AppMediaItem, progress: Float, onPlay: () -> Unit) {
             .clip(RoundedCornerShape(Radius.md))
             .background(MediaColors.FillSubtle)
             .border(1.dp, MediaColors.Fill, RoundedCornerShape(Radius.md))
-            .pressScale(haptic = true, onClick = onPlay)
+            .pressScale(onClick = onPlay)
             .padding(Space.sm),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -240,7 +240,7 @@ fun FilterBar(label: String, count: Int, onClear: () -> Unit) {
         Row(
             Modifier
                 .clip(RoundedCornerShape(Radius.pill))
-                .pressScale(haptic = true, onClick = onClear)
+                .pressScale(onClick = onClear)
                 .padding(horizontal = Space.md, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -296,7 +296,7 @@ fun SortSegments(selected: SortKey, onSelect: (SortKey) -> Unit) {
                 Modifier.weight(1f)
                     .clip(RoundedCornerShape(Radius.pill))
                     .background(if (on) MediaColors.Accent else Color.Transparent)
-                    .pressScale(haptic = true) { onSelect(key) }
+                    .pressScale { onSelect(key) }
                     .padding(vertical = 9.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -311,22 +311,29 @@ fun SortSegments(selected: SortKey, onSelect: (SortKey) -> Unit) {
 }
 @Composable
 fun CountAndShuffle(count: Int, nounPlural: Int = R.plurals.count_tracks, onShuffle: () -> Unit) {
+    // The count, and Shuffle as one round accent button - the list's single
+    // solid control, in the shape every player uses for "play this". It was
+    // an outlined pill with a word in it, a second style of button on a
+    // screen that already had one.
     Row(
-        Modifier.fillMaxWidth().padding(Space.xl, Space.lg, Space.xl, Space.sm),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        Modifier.fillMaxWidth().padding(start = Space.xl, end = Space.lg, top = Space.md, bottom = Space.xs),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(plural(nounPlural, count), style = Typo.Secondary, color = MediaColors.CreamDim)
-        Row(
-            Modifier.clip(RoundedCornerShape(20.dp))
-                .border(1.dp, MediaColors.Accent.copy(alpha = 0.55f), RoundedCornerShape(20.dp))
-                .clickable(onClick = onShuffle)
-                .padding(horizontal = Space.lg, vertical = Space.sm),
-            verticalAlignment = Alignment.CenterVertically
+        Text(
+            plural(nounPlural, count), style = Typo.Secondary, color = MediaColors.CreamDim,
+            modifier = Modifier.weight(1f)
+        )
+        Box(
+            Modifier.pressScale(scaleDown = 0.92f, onClick = onShuffle)
+                .size(42.dp)
+                .clip(CircleShape)
+                .background(MediaColors.Accent),
+            contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Filled.Shuffle, null, tint = MediaColors.Accent, modifier = Modifier.size(15.dp))
-            Spacer(Modifier.width(Space.sm))
-            Text(stringResource(R.string.action_shuffle), style = Typo.Label, color = MediaColors.Accent)
+            Icon(
+                Icons.Filled.Shuffle, stringResource(R.string.action_shuffle),
+                tint = MediaColors.OnAccent, modifier = Modifier.size(20.dp)
+            )
         }
     }
 }
@@ -388,7 +395,7 @@ fun TrackRow(
             Spacer(Modifier.width(Space.md))
             Icon(
                 Icons.Filled.MoreVert, stringResource(R.string.cd_more_options), tint = MediaColors.CreamFaint,
-                modifier = Modifier.size(21.dp).pressScale(haptic = true, onClick = onMenu)
+                modifier = Modifier.size(21.dp).pressScale(onClick = onMenu)
             )
         }
     }
@@ -431,7 +438,7 @@ fun JumpBackIn(
                 val playing = playingUri == item.uri.toString()
                 Column(
                     Modifier.width(RecentTile)
-                        .pressScale(haptic = true) { onPlay(i) }
+                        .pressScale { onPlay(i) }
                 ) {
                     CoverArt(item, Modifier.size(RecentTile), corner = 12, targetPx = 192)
                     Spacer(Modifier.height(Space.xs))
@@ -517,13 +524,13 @@ fun FormatEmpty(pillar: Pillar, onRescan: () -> Unit) {
             style = Typo.Secondary, color = MediaColors.CreamDim,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
-        Spacer(Modifier.height(Space.xl))
-        Box(
-            Modifier.clip(CircleShape)
-                .border(1.dp, MediaColors.Accent.copy(alpha = 0.55f), CircleShape)
-                .pressScale(haptic = true, onClick = onRescan)
-                .padding(horizontal = Space.xl, vertical = Space.sm)
+        Spacer(Modifier.height(Space.lg))
+        Row(
+            Modifier.pressScale(onClick = onRescan).padding(horizontal = Space.md, vertical = Space.sm),
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            Icon(Icons.Filled.Refresh, null, tint = MediaColors.Accent, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(Space.xs))
             Text(stringResource(R.string.action_rescan_library), style = Typo.Label, color = MediaColors.Accent)
         }
     }
