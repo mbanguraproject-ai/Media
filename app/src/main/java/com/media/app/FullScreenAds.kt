@@ -28,11 +28,13 @@ import java.lang.ref.WeakReference
 //  until the ad is up: on a launch, the system's own splash (MainActivity's
 //  keep-on-screen condition asks [splashHeld]); on a return to Via from
 //  another app or the home screen, the same splash drawn by Via itself
-//  (OpenCover, up while [cover] is true). The ad goes up over the splash,
-//  the splash lifts behind it, and closing the ad shows the app. If no ad
-//  is ready within the hold - no network, no fill - the splash lifts and
-//  the app opens without one. An ad that arrives after that is kept for the
-//  next open; it never lands on top of the app mid-use.
+//  (OpenCover, up while [cover] is true). The ad goes up over the splash
+//  and the splash STAYS behind it - an app-open ad is not full-screen, the
+//  top of whatever is behind it shows above "Continue to app" - and lifts
+//  only when the ad is closed, onto the app. If no ad is ready within the
+//  hold - no network, no fill - the splash lifts and the app opens without
+//  one. An ad that arrives after that is kept for the next open; it never
+//  lands on top of the app mid-use.
 //
 //  NOT AN OPEN: coming back from something Via itself put on top - a picker,
 //  Play's purchase or update sheet, the browser, the share sheet, an ad that
@@ -124,7 +126,18 @@ object FullScreenAds {
     var cover by mutableStateOf(false)
         private set
     private var afterOpen: (() -> Unit)? = null
-    private val holdTimeout = Runnable { release("no ad within the hold") }
+    private val holdTimeout = Runnable { release(if (adOnScreen) "ad still up after the backstop" else "no ad within the hold") }
+    /** The app-open ad is actually on screen (shown, not yet closed). */
+    private var adOnScreen = false
+    // A splash held behind an ad that never reports closing (its activity
+    // killed while Via was away, say) must still lift: at the latest this
+    // long after the ad went up, and the moment Via itself is back on screen.
+    private const val SHOWN_BACKSTOP_MS = 120_000L
+
+    /** What each ad did, to the log only (adb logcat -s ViaAds). */
+    private fun note(kind: String, msg: String) {
+        Log.i(TAG, "$kind: $msg")
+    }
 
     // What the app is doing, kept current by HomeScaffold.
     @Volatile var audioPlaying = false
@@ -156,6 +169,13 @@ object FullScreenAds {
         // translucent sheet, a dialog): nothing to skip next time.
         returnExpected = false
         systemSplash = false
+        // Via can only be resumed once the ad's own activity is gone. If it
+        // went without saying so, the splash behind it must not stay.
+        if (adOnScreen) {
+            adOnScreen = false
+            showing = false
+            release("the ad's screen is gone")
+        }
     }
 
     fun detach(activity: Activity) {
@@ -203,7 +223,7 @@ object FullScreenAds {
     fun onAdsReady() {
         if (ready) return
         ready = true
-        log("ready")
+        note("Consent", "ads may be requested; SDK ready")
         loadAppOpen()
         loadInterstitial()
     }
@@ -211,8 +231,9 @@ object FullScreenAds {
     private fun onAppLeft() {
         foreground = false
         // An ad still loading for this open must not land after it: over
-        // the home screen, or another app.
-        release("left before the ad")
+        // the home screen, or another app. One already up keeps its splash
+        // behind it: the listener comes back to the ad, not the app.
+        if (!adOnScreen) release("left before the ad")
         leftAt = now()
         if (returnExpected) {
             returnExpected = false
@@ -224,10 +245,12 @@ object FullScreenAds {
         foreground = true
         val launch = systemSplash
         systemSplash = false
+        // Back to an app-open ad still up: its splash is still behind it.
+        if (adOnScreen) return
         if (skipNextOpen) {
             skipNextOpen = false
             if (now() - leftAt < RETURN_GRACE_MS) {
-                log("app open skipped: back from something Via opened")
+                note("App open", "not this time: back from something Via opened")
                 return
             }
         }
@@ -237,8 +260,8 @@ object FullScreenAds {
             launch -> begin(Hold.SYSTEM_SPLASH, LAUNCH_HOLD_MS)
             // A return with ads never set up in this run (consent pending or
             // refused) has nothing to wait for, so no splash at all.
-            !ready || adFree() -> log("app open skipped: ${if (adFree()) "Via Pro" else "ads not ready"}")
-            videoPlaying -> log("app open skipped: a video is playing")
+            !ready || adFree() -> note("App open", "not this time: ${if (adFree()) "Via Pro" else "ads not ready (consent)"}")
+            videoPlaying -> note("App open", "not this time: a video is playing")
             else -> begin(Hold.COVER, RETURN_HOLD_MS)
         }
     }
@@ -253,7 +276,7 @@ object FullScreenAds {
     }
 
     /** The splash lifts. [shown]: because the ad is up over it. */
-    private fun release(reason: String, shown: Boolean = false) {
+    private fun release(reason: String) {
         if (hold == Hold.NONE) return
         hold = Hold.NONE
         cover = false
@@ -261,7 +284,7 @@ object FullScreenAds {
         log("open: splash released - $reason")
         val next = afterOpen
         afterOpen = null
-        if (!shown && foreground) next?.invoke()
+        if (foreground) next?.invoke()
     }
 
     // ------------------------------------------------------------- app open
@@ -289,9 +312,19 @@ object FullScreenAds {
         }
         val ad = appOpen ?: return
         appOpen = null
-        ad.fullScreenContentCallback = callback("app open", onShown = { release("ad shown", shown = true) }) {
-            loadAppOpen()
-        }
+        ad.fullScreenContentCallback = callback(
+            "App open",
+            onShown = {
+                // The splash stays behind the ad; only the backstop changes.
+                adOnScreen = true
+                main.removeCallbacks(holdTimeout)
+                main.postDelayed(holdTimeout, SHOWN_BACKSTOP_MS)
+            },
+            onEnd = {
+                adOnScreen = false
+                release("ad closed")
+            }
+        ) { loadAppOpen() }
         present(act) { ad.show(it) }
     }
 
@@ -308,7 +341,7 @@ object FullScreenAds {
                     appOpenRetry = RETRY_MIN_MS
                     appOpen = ad
                     appOpenAt = now()
-                    log("app open loaded")
+                    note("App open", "loaded, waiting for the next open")
                     // Shown only if an open is still holding its splash for
                     // it; otherwise it waits for the next open.
                     tryShowAppOpen()
@@ -316,7 +349,7 @@ object FullScreenAds {
 
                 override fun onAdFailedToLoad(error: LoadAdError) {
                     appOpenLoading = false
-                    log("app open failed to load: ${error.code} ${error.message}")
+                    note("App open", "no ad: code ${error.code} ${error.message}")
                     // No point holding the splash for an ad that is not coming.
                     release("no ad: ${error.code}")
                     retry(appOpenRetry) { loadAppOpen() }
@@ -347,14 +380,14 @@ object FullScreenAds {
             else -> null
         }
         if (why != null) {
-            log("interstitial held: $why")
+            note("Interstitial", "screen change $navigations, not shown: $why")
             if (interstitial == null) loadInterstitial()
             return
         }
         val ad = interstitial ?: return
         interstitial = null
         navigations = 0
-        ad.fullScreenContentCallback = callback("interstitial") { loadInterstitial() }
+        ad.fullScreenContentCallback = callback("Interstitial") { loadInterstitial() }
         present(act!!) { ad.show(it) }
     }
 
@@ -369,12 +402,12 @@ object FullScreenAds {
                     interstitialLoading = false
                     interstitialRetry = RETRY_MIN_MS
                     interstitial = ad
-                    log("interstitial loaded")
+                    note("Interstitial", "loaded, shows at screen change $NAVIGATIONS_PER_INTERSTITIAL")
                 }
 
                 override fun onAdFailedToLoad(error: LoadAdError) {
                     interstitialLoading = false
-                    log("interstitial failed to load: ${error.code} ${error.message}")
+                    note("Interstitial", "no ad: code ${error.code} ${error.message}")
                     retry(interstitialRetry) { loadInterstitial() }
                     interstitialRetry = (interstitialRetry * 2).coerceAtMost(RETRY_MAX_MS)
                 }
@@ -395,24 +428,26 @@ object FullScreenAds {
         }
     }
 
-    private fun callback(kind: String, onShown: () -> Unit = {}, next: () -> Unit) =
+    private fun callback(kind: String, onShown: () -> Unit = {}, onEnd: () -> Unit = {}, next: () -> Unit) =
         object : FullScreenContentCallback() {
             override fun onAdShowedFullScreenContent() {
                 lastShownAt = now()
-                log("$kind shown")
+                note(kind, "shown")
                 onShown()
             }
 
             override fun onAdDismissedFullScreenContent() {
                 showing = false
                 lastShownAt = now()
-                log("$kind dismissed")
+                note(kind, "shown and closed")
+                onEnd()
                 next()
             }
 
             override fun onAdFailedToShowFullScreenContent(error: AdError) {
                 showing = false
-                log("$kind failed to show: ${error.code} ${error.message}")
+                note(kind, "failed to show: code ${error.code} ${error.message}")
+                onEnd()
                 release("the ad could not be shown")
                 next()
             }
