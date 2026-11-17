@@ -118,6 +118,19 @@ BOTH are git-ignored and MUST NEVER be committed. The keystore was backed up as
 base64 during development — VERIFY that backup exists off-Codespace. If the
 keystore is lost, the app can never be updated on Play again.
 
+The app uses Play App Signing: Google holds the app signing key, and the key
+above is only the upload key, which Play Console can reset (App signing >
+Upload key > Request reset). On 2026-11-17 the Codespace was out of quota, so
+a reset was requested to a NEW upload key (alias "upload"). Once Google
+confirms, only that key is accepted; the old "media" key no longer is.
+
+GitHub Actions builds signed releases now (.github/workflows/release.yml,
+Actions > Release > Run workflow, or push a tag like v6.0.3). It reads the
+upload key from repository secrets KEYSTORE_BASE64, KEYSTORE_PASSWORD,
+KEY_ALIAS and KEY_PASSWORD, writes keystore.properties on the runner, and
+keeps the signed .aab and R8 mapping on the run page. Bump versionCode
+before each Play upload.
+
 Git note: GITHUB_TOKEN in Codespaces sometimes breaks pushes. Fix with
 `unset GITHUB_TOKEN` before git commands, and gh auth is set up via
 `gh auth login` + `gh auth setup-git` if pushes fall back to anonymous.

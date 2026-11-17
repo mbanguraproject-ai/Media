@@ -185,6 +185,15 @@ Play bundle:
 
 Signing is via keystore.properties (git-ignored, never committed).
 
+### Signed release on GitHub
+
+The `Release` workflow (Actions, Release, Run workflow, or push a tag such as
+`v6.0.3`) builds the Play bundle signed with the upload key and keeps the
+`.aab` and its R8 mapping on the run page. The key comes from four repository
+secrets: `KEYSTORE_BASE64` (the keystore, base64 encoded), `KEYSTORE_PASSWORD`,
+`KEY_ALIAS` and `KEY_PASSWORD`. The run prints the bundle's certificate
+SHA-256, which must match the upload key in Play Console, App signing.
+
 Icons: `python3 tools/make_icon.py` (needs shapely, skia-python, pillow and numpy) rewrites every icon asset from the iris's geometry; the design numbers are at the top of the script.
 
 Feature graphic: `python3 tools/make_feature_graphic.py` draws `store/feature_graphic.png`, Play's 1024 x 500 banner: the iris (from the icon's own geometry) on a deep navy night, sending out the beat as rings over a waveform, beside the name in Fraunces and the tagline in Inter, the app's own fonts. Drawn at twice the size and scaled down; a 24-bit PNG with no transparency, as Play asks.
