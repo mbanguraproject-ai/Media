@@ -512,9 +512,6 @@
     <string name="pro_loop_times">%1$d×</string>
     <string name="pro_hires_note">Mono, balance and skip silence leave high-resolution files untouched: those go to the output exactly as they are.</string>
     <string name="settings_privacy">Privacy</string>
-    <string name="settings_ad_choices">Ad privacy choices</string>
-    <string name="settings_ad_choices_sub">Change or withdraw consent for personalised ads, or opt out of the sale or sharing of your data</string>
-    <string name="settings_ad_choices_error">Couldn\'t open the privacy form. Check the connection and try again.</string>
     <string name="settings_ad_id">Advertising ID</string>
     <string name="settings_ad_id_sub">Reset or delete it in Android\'s ad settings; it applies to every app</string>
     <string name="settings_privacy_policy">Privacy Policy</string>
