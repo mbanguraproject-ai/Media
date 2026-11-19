@@ -76,7 +76,7 @@ private val HeaderTouchInset = (HeaderTouch - HeaderGlyph) / 2
 private val SearchGlyphRightGap = HeaderGlyph * (3.51f / 24f)
 
 @Composable
-fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit, onPro: () -> Unit) {
+fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -108,16 +108,6 @@ fun StashHeader(onSearch: () -> Unit, sharing: Boolean, onShare: () -> Unit, onP
             )
         }
         Spacer(Modifier.weight(1f))
-        // Via Pro: an offer for most people, a status for owners (ProBadge,
-        // Pro.kt). The badge keeps its size either way, so the header does
-        // not shift on purchase.
-        val pro = isPro()
-        ProBadge(
-            owned = pro,
-            description = stringResource(if (pro) R.string.pro_active_title else R.string.pro_get),
-            onClick = onPro
-        )
-        Spacer(Modifier.width(Space.xs))
         // Lit while something is playing elsewhere. A cast control that looks
         // the same connected and disconnected is the reason people cannot
         // tell why their phone is silent.
