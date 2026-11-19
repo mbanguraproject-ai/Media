@@ -508,9 +508,6 @@
     <string name="pro_loop_times">%1$d×</string>
     <string name="pro_hires_note">Le mono, la balance et le saut des silences ne touchent pas aux fichiers haute résolution : ils partent vers la sortie tels quels.</string>
     <string name="settings_privacy">Confidentialité</string>
-    <string name="settings_ad_choices">Choix de confidentialité publicitaire</string>
-    <string name="settings_ad_choices_sub">Modifiez ou retirez votre consentement aux annonces personnalisées, ou refusez la vente ou le partage de vos données</string>
-    <string name="settings_ad_choices_error">Impossible d\'ouvrir le formulaire de confidentialité. Vérifiez la connexion et réessayez.</string>
     <string name="settings_ad_id">Identifiant publicitaire</string>
     <string name="settings_ad_id_sub">Réinitialisez-le ou supprimez-le dans les réglages publicitaires d\'Android ; cela s\'applique à toutes les applis</string>
     <string name="settings_privacy_policy">Règles de confidentialité</string>
