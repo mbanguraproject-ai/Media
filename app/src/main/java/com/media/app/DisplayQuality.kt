@@ -181,14 +181,6 @@ fun ceilingFor(cap: DeviceCapability): QualityLevel = when {
 }
 
 /** A manual pick is honoured even above the ceiling: the doc allows the override. */
-/**
- * All quality tiers are available to every Via user. The selected tier is
- * still bounded by the device capability ceiling in AUTO mode.
- */
-fun QualityLevel.forPro(pro: Boolean): QualityLevel = this
-
-val QualityLevel.needsPro: Boolean get() = false
-
 fun resolveLevel(mode: QualityMode, ceiling: QualityLevel): QualityLevel = when (mode) {
     QualityMode.AUTO -> ceiling
     QualityMode.ENHANCED -> QualityLevel.ENHANCED
