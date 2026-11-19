@@ -95,9 +95,6 @@ dependencies {
     // Provides androidx.lifecycle.compose.LocalLifecycleOwner (the Compose-UI
     // one is deprecated) for the on-resume permission re-check.
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
-    // ProcessLifecycleOwner: "the app came to the front", across every
-    // activity in the process - what an app-open ad keys on (FullScreenAds).
-    implementation("androidx.lifecycle:lifecycle-process:2.8.6")
     // §4/§12: ambient colour extracted from the current artwork.
     implementation("androidx.palette:palette-ktx:1.0.0")
 
@@ -106,15 +103,6 @@ dependencies {
     implementation("androidx.media3:media3-session:1.4.1")
     implementation("androidx.media3:media3-common:1.4.1")
 
-    // Ads: one native card in the Home feed. UMP is not optional — Google
-    // requires a consent flow for EEA/UK or the account can be restricted.
-    implementation("com.google.android.gms:play-services-ads:23.6.0")
-    implementation("com.google.android.ump:user-messaging-platform:3.1.0")
-    // One-time "remove ads" purchase.
-    // Plain artifact, NOT -ktx: the Kotlin extensions ship compiled with
-    // Kotlin 2.3 metadata and this project is on 2.0.20. We use only the
-    // callback API, so the extensions buy us nothing anyway.
-    implementation("com.android.billingclient:billing:9.1.0")
     // Google Play In-App Review: the rating card shown inside the app.
     implementation("com.google.android.play:review:2.0.2")
     // Google Play In-App Updates: offers a new version when the app opens.
