@@ -94,7 +94,7 @@ class PlaybackService : MediaSessionService() {
             .setEnableDecoderFallback(true)
         val player = ExoPlayer.Builder(this, renderers).build()
         ProPlayback.load(this)
-        val wrapped = ProPlayer(player, pro = { Pro.active.value }, settings = { ProPlayback.settings.value })
+        val wrapped = ProPlayer(player, settings = { ProPlayback.settings.value })
         proPlayer = wrapped
         // Without this the session uses media3's default loader, which has
         // no fallback: a uri that fails to resolve becomes a blank square.
@@ -148,19 +148,17 @@ class PlaybackService : MediaSessionService() {
         val runner = LoopRunner(player) { ProPlayback.clearLoop() }
         loopRunner = runner
         proScope.launch {
-            kotlinx.coroutines.flow.combine(Pro.active, ProPlayback.settings) { pro, s -> pro to s }
-                .collect { (pro, s) ->
-                    player.skipSilenceEnabled = pro && s.skipSilence
-                    balance.mono = pro && s.mono
-                    balance.balance = if (pro) s.balance else 0f
-                    val pitch = if (pro) pitchFactor(s.pitch) else 1f
+            ProPlayback.settings.collect { s ->
+                    player.skipSilenceEnabled = s.skipSilence
+                    balance.mono = s.mono
+                    balance.balance = s.balance
+                    val pitch = pitchFactor(s.pitch)
                     val now = player.playbackParameters
                     if (now.pitch != pitch) player.playbackParameters = PlaybackParameters(now.speed, pitch)
                 }
         }
         proScope.launch {
-            kotlinx.coroutines.flow.combine(Pro.active, ProPlayback.loop) { pro, loop -> if (pro) loop else null }
-                .collect { runner.apply(it) }
+            ProPlayback.loop.collect { runner.apply(it) }
         }
     }
 
