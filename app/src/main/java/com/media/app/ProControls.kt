@@ -57,20 +57,16 @@ fun speedLabel(speed: Float): String {
  */
 @Composable
 fun LoopButton(vm: PlayerViewModel) {
-    val pro = isPro()
-    val openPro = LocalOpenPro.current
     val loop by ProPlayback.loop.collectAsState()
-    val live = if (pro) loop else null
-    val looping = live?.bMs != null
+    val looping = loop?.bMs != null
     val label = when {
-        live == null -> "A-B"
+        loop == null -> "A-B"
         !looping -> "A-"
         else -> "A-B"
     }
     val spoken = stringResource(
         when {
-            !pro -> R.string.pro_loop_locked
-            live == null -> R.string.pro_loop_set_a
+            loop == null -> R.string.pro_loop_set_a
             !looping -> R.string.pro_loop_set_b
             else -> R.string.pro_loop_off
         }
@@ -78,24 +74,19 @@ fun LoopButton(vm: PlayerViewModel) {
     Box(
         Modifier
             .semantics { contentDescription = spoken }
-            .pressScale(haptic = true) { if (pro) vm.tapLoop() else openPro() },
+            .pressScale(haptic = true) { vm.tapLoop() },
         contentAlignment = Alignment.Center
     ) {
         Text(
             label,
             style = Typo.Label.copy(fontWeight = FontWeight.Bold),
-            color = when {
-                looping -> MediaColors.OnAccent
-                live != null -> MediaColors.Accent
-                else -> MediaColors.CreamDim
-            },
+            color = if (looping) MediaColors.OnAccent else if (loop != null) MediaColors.Accent else MediaColors.CreamDim,
             modifier = Modifier
                 .clip(RoundedCornerShape(Radius.pill))
                 .background(if (looping) MediaColors.Accent else MediaColors.FillSubtle)
-                .border(1.dp, if (live != null) MediaColors.Accent else MediaColors.Fill, RoundedCornerShape(Radius.pill))
+                .border(1.dp, if (loop != null) MediaColors.Accent else MediaColors.Fill, RoundedCornerShape(Radius.pill))
                 .padding(horizontal = 10.dp, vertical = 4.dp)
         )
-        if (!pro) ProCrown(12.dp, lit = true, modifier = Modifier.align(Alignment.TopEnd).offset(x = 6.dp, y = (-8).dp))
     }
 }
 
@@ -133,16 +124,8 @@ fun SpeedSheet(state: PlayerState, vm: PlayerViewModel, onDismiss: () -> Unit) {
 
 @Composable
 private fun SpeedProControls(state: PlayerState, vm: PlayerViewModel, onDismiss: () -> Unit) {
-    val pro = isPro()
-    val openPro = LocalOpenPro.current
     val context = LocalContext.current
     val settings by ProPlayback.settings.collectAsState()
-    if (!pro) {
-        // The sheet is its own window, above everything: close it first or
-        // the Pro page opens behind it.
-        ProLockedRow(stringResource(R.string.pro_speed_locked)) { onDismiss(); openPro() }
-        return
-    }
     Column(Modifier.fillMaxWidth().padding(horizontal = Space.xl)) {
         // The slider moves freely and commits on release, so dragging does
         // not write the speed to the database sixty times a second.
