@@ -18,6 +18,7 @@ name: Release
 on:
   workflow_dispatch:
   push:
+    branches: ["feature/via-free-no-ads"]
     tags: ["v*"]
 
 permissions:
@@ -64,6 +65,16 @@ jobs:
             echo "keyAlias=$KEY_ALIAS"
             echo "keyPassword=$KEY_PASSWORD"
           } > keystore.properties
+
+      - name: Confirm monetisation SDKs are absent
+        run: |
+          ./gradlew --no-daemon :app:dependencies --configuration releaseRuntimeClasspath > "$RUNNER_TEMP/release-dependencies.txt"
+          if grep -Eiq 'play-services-ads|user-messaging-platform|com\.android\.billingclient|billingclient' "$RUNNER_TEMP/release-dependencies.txt"; then
+            echo "::error::An advertising, consent or Play Billing dependency is present in the release runtime graph."
+            grep -Ein 'play-services-ads|user-messaging-platform|com\.android\.billingclient|billingclient' "$RUNNER_TEMP/release-dependencies.txt"
+            exit 1
+          fi
+          echo "No AdMob, UMP or Play Billing artifacts in releaseRuntimeClasspath."
 
       - name: Build the signed APKs and bundle
         run: ./gradlew --no-daemon --stacktrace :app:assembleRelease :app:bundleRelease
