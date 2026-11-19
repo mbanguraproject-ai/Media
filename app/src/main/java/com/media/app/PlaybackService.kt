@@ -148,10 +148,6 @@ class PlaybackService : MediaSessionService() {
         val runner = LoopRunner(player) { ProPlayback.clearLoop() }
         loopRunner = runner
         proScope.launch {
-            val cached = runCatching { SettingsStore.adFreeFlow(this@PlaybackService).first() }.getOrDefault(false)
-            Billing.seed(cached)
-        }
-        proScope.launch {
             kotlinx.coroutines.flow.combine(Pro.active, ProPlayback.settings) { pro, s -> pro to s }
                 .collect { (pro, s) ->
                     player.skipSilenceEnabled = pro && s.skipSilence
