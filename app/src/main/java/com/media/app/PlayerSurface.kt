@@ -1085,8 +1085,7 @@ private fun BoxScope.NowPlayingControls(
 
         if (state.durationMs > 0) {
             Column(Modifier.fillMaxWidth().padding(horizontal = Space.xl)) {
-                val loopNow by ProPlayback.loop.collectAsState()
-                val loop = if (isPro()) loopNow else null
+                val loop by ProPlayback.loop.collectAsState()
                 Scrubber(
                     positionMs = state.positionMs,
                     durationMs = state.durationMs,
