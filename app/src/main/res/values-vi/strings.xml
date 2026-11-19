@@ -491,9 +491,6 @@
     <string name="pro_loop_times">%1$d×</string>
     <string name="pro_hires_note">Mono, cân bằng và bỏ qua khoảng lặng không chạm vào tệp độ phân giải cao: các tệp đó được đưa ra đầu ra nguyên vẹn.</string>
     <string name="settings_privacy">Quyền riêng tư</string>
-    <string name="settings_ad_choices">Lựa chọn quyền riêng tư quảng cáo</string>
-    <string name="settings_ad_choices_sub">Thay đổi hoặc rút lại đồng ý cho quảng cáo cá nhân hóa, hoặc từ chối việc bán hay chia sẻ dữ liệu của bạn</string>
-    <string name="settings_ad_choices_error">Không mở được biểu mẫu quyền riêng tư. Hãy kiểm tra kết nối rồi thử lại.</string>
     <string name="settings_ad_id">ID quảng cáo</string>
     <string name="settings_ad_id_sub">Đặt lại hoặc xóa trong cài đặt quảng cáo của Android; áp dụng cho mọi ứng dụng</string>
     <string name="settings_privacy_policy">Chính sách quyền riêng tư</string>
