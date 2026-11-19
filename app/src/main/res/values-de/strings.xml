@@ -508,9 +508,6 @@
     <string name="pro_loop_times">%1$d×</string>
     <string name="pro_hires_note">Mono, Balance und Stille überspringen lassen hochauflösende Dateien unberührt: Diese gehen genau so zur Ausgabe, wie sie sind.</string>
     <string name="settings_privacy">Datenschutz</string>
-    <string name="settings_ad_choices">Datenschutzoptionen für Werbung</string>
-    <string name="settings_ad_choices_sub">Einwilligung für personalisierte Werbung ändern oder widerrufen, oder dem Verkauf oder der Weitergabe deiner Daten widersprechen</string>
-    <string name="settings_ad_choices_error">Das Datenschutzformular ließ sich nicht öffnen. Prüfe die Verbindung und versuch es erneut.</string>
     <string name="settings_ad_id">Werbe-ID</string>
     <string name="settings_ad_id_sub">Setze sie in den Werbeeinstellungen von Android zurück oder lösche sie; das gilt für alle Apps</string>
     <string name="settings_privacy_policy">Datenschutzerklärung</string>
