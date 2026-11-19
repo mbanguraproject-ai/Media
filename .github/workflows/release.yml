@@ -71,8 +71,10 @@ jobs:
       # Play rejects a bundle whose certificate is not the registered upload
       # key: compare this SHA-256 with Play Console > App signing > Upload key.
       # Fails if the bundle came out unsigned.
-      - name: Show the signing certificate
-        run: keytool -printcert -jarfile app/build/outputs/bundle/release/app-release.aab | grep -E "Owner:|SHA256:"
+      - name: Verify and show the bundle signing certificate
+        run: |
+          jarsigner -verify -verbose -certs app/build/outputs/bundle/release/app-release.aab
+          keytool -printcert -jarfile app/build/outputs/bundle/release/app-release.aab | grep -E "Owner:|SHA256:"
 
       - name: Verify every signed APK
         shell: bash
