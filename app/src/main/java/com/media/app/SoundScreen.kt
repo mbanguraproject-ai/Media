@@ -302,34 +302,25 @@ private fun OutputCard(route: SoundRoute, output: OutputClass, onPick: (OutputCl
 }
 
 /**
- * Via Pro's playback settings. Shown to everyone with the real controls: for
- * free users every switch reads off and a tap opens the Pro page, so the
- * section says exactly what Pro would change here.
+ * Playback processing settings. All controls are available to every user.
  */
 @Composable
 private fun ProPlaybackSection() {
     val context = LocalContext.current
-    val pro = isPro()
-    val openPro = LocalOpenPro.current
     val p by ProPlayback.settings.collectAsState()
-    fun set(change: (ProSettings) -> ProSettings) {
-        if (pro) ProPlayback.update(context, change) else openPro()
-    }
+    fun set(change: (ProSettings) -> ProSettings) = ProPlayback.update(context, change)
 
     Row(
         Modifier.fillMaxWidth().padding(Space.xl, Space.xl, Space.xl, Space.sm),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(stringResource(R.string.pro_playback).uppercase(), style = Typo.Micro, color = MediaColors.CreamDim)
-        Spacer(Modifier.width(Space.sm))
-        ProCrown(14.dp, lit = true)
     }
-    if (!pro) ProLockedRow(stringResource(R.string.pro_playback_locked), onClick = openPro)
-    Toggle(stringResource(R.string.pro_skip_silence), stringResource(R.string.pro_skip_silence_sub), pro && p.skipSilence) { v -> set { it.copy(skipSilence = v) } }
-    Toggle(stringResource(R.string.pro_resume), stringResource(R.string.pro_resume_sub), pro && p.smartResume) { v -> set { it.copy(smartResume = v) } }
-    Toggle(stringResource(R.string.pro_soft), stringResource(R.string.pro_soft_sub), pro && p.softPause) { v -> set { it.copy(softPause = v) } }
-    Toggle(stringResource(R.string.pro_mono), stringResource(R.string.pro_mono_sub), pro && p.mono) { v -> set { it.copy(mono = v) } }
-    val bal = if (pro) p.balance else 0f
+    Toggle(stringResource(R.string.pro_skip_silence), stringResource(R.string.pro_skip_silence_sub), p.skipSilence) { v -> set { it.copy(skipSilence = v) } }
+    Toggle(stringResource(R.string.pro_resume), stringResource(R.string.pro_resume_sub), p.smartResume) { v -> set { it.copy(smartResume = v) } }
+    Toggle(stringResource(R.string.pro_soft), stringResource(R.string.pro_soft_sub), p.softPause) { v -> set { it.copy(softPause = v) } }
+    Toggle(stringResource(R.string.pro_mono), stringResource(R.string.pro_mono_sub), p.mono) { v -> set { it.copy(mono = v) } }
+    val bal = p.balance
     val pct = (kotlin.math.abs(bal) * 100f).roundToInt()
     SliderRow(
         label = stringResource(R.string.pro_balance), value = bal, range = -1f..1f,
@@ -340,7 +331,6 @@ private fun ProPlaybackSection() {
         },
         enabled = true
     ) { v ->
-        // Snaps to centre near the middle, so centre is easy to find again.
         val snapped = if (kotlin.math.abs(v) < 0.04f) 0f else (v * 20f).roundToInt() / 20f
         set { it.copy(balance = snapped) }
     }
@@ -352,7 +342,7 @@ private fun ProPlaybackSection() {
             LoopRepeatChoices.forEach { n ->
                 Chip(
                     if (n == 0) stringResource(R.string.pro_loop_endless) else stringResource(R.string.pro_loop_times, n),
-                    selected = pro && p.loopRepeats == n,
+                    selected = p.loopRepeats == n,
                     modifier = Modifier.weight(1f)
                 ) { set { it.copy(loopRepeats = n) } }
             }
