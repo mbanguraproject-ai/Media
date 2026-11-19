@@ -174,24 +174,3 @@ fun proSliderColors() = SliderDefaults.colors(
     activeTickColor = MediaColors.OnAccent.copy(alpha = 0.5f),
     inactiveTickColor = MediaColors.CreamFaint
 )
-
-/** A locked Pro feature: the crown, what it is, and the way to the Pro page. */
-@Composable
-fun ProLockedRow(text: String, onClick: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Space.xl)
-            .clip(RoundedCornerShape(Radius.md))
-            .background(MediaColors.FillSubtle)
-            .border(1.dp, MediaColors.Fill, RoundedCornerShape(Radius.md))
-            .pressScale(haptic = true, scaleDown = 0.98f, onClick = onClick)
-            .padding(Space.lg),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Space.md)
-    ) {
-        ProCrown(22.dp, lit = true)
-        Text(text, style = Typo.Secondary, color = MediaColors.Cream, modifier = Modifier.weight(1f))
-        Text(stringResource(R.string.pro_unlock), style = Typo.Label.copy(fontWeight = FontWeight.Bold), color = MediaColors.Accent)
-    }
-}
