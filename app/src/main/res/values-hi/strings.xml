@@ -508,9 +508,6 @@
     <string name="pro_loop_times">%1$d×</string>
     <string name="pro_hires_note">मोनो, बैलेंस और खामोशी छोड़ें हाई-रिज़ॉल्यूशन फ़ाइलों को नहीं छूते: वे जैसी हैं वैसी ही आउटपुट तक जाती हैं।</string>
     <string name="settings_privacy">निजता</string>
-    <string name="settings_ad_choices">विज्ञापन निजता के विकल्प</string>
-    <string name="settings_ad_choices_sub">मनमुताबिक़ विज्ञापनों के लिए सहमति बदलें या वापस लें, या अपने डेटा की बिक्री या शेयरिंग से इनकार करें</string>
-    <string name="settings_ad_choices_error">निजता फ़ॉर्म नहीं खुल सका। कनेक्शन जाँचें और फिर से कोशिश करें।</string>
     <string name="settings_ad_id">विज्ञापन आईडी</string>
     <string name="settings_ad_id_sub">इसे Android की विज्ञापन सेटिंग में रीसेट करें या मिटाएं; यह हर ऐप पर लागू होता है</string>
     <string name="settings_privacy_policy">निजता नीति</string>
