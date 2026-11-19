@@ -200,10 +200,6 @@ fun SettingsScreen(
         SettingRow(Icons.Outlined.Shield, stringResource(R.string.settings_privacy_policy), null) {
             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(privacyUrl))) }
         }
-        privacyNote?.let {
-            Text(stringResource(it), style = MaterialTheme.typography.bodyMedium, color = MediaColors.Warning,
-                modifier = Modifier.padding(Space.xl, 0.dp, Space.xl, Space.sm))
-        }
 
         SectionLabel(stringResource(R.string.settings_about))
         SettingRow(Icons.Outlined.Info, stringResource(R.string.settings_about_app), null) { onOpenAbout() }
