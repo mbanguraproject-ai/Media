@@ -491,9 +491,6 @@
     <string name="pro_loop_times">%1$d×</string>
     <string name="pro_hires_note">Mono, keseimbangan, dan lewati jeda hening tidak menyentuh file resolusi tinggi: file itu dikirim ke output apa adanya.</string>
     <string name="settings_privacy">Privasi</string>
-    <string name="settings_ad_choices">Pilihan privasi iklan</string>
-    <string name="settings_ad_choices_sub">Ubah atau tarik izin untuk iklan yang dipersonalisasi, atau tolak penjualan atau pembagian datamu</string>
-    <string name="settings_ad_choices_error">Tidak dapat membuka formulir privasi. Periksa koneksi lalu coba lagi.</string>
     <string name="settings_ad_id">ID iklan</string>
     <string name="settings_ad_id_sub">Setel ulang atau hapus di setelan iklan Android; berlaku untuk semua aplikasi</string>
     <string name="settings_privacy_policy">Kebijakan Privasi</string>
