@@ -542,9 +542,6 @@
     <string name="pro_loop_times">%1$d×</string>
     <string name="pro_hires_note">Моно, баланс и пропуск тишины не трогают файлы высокого разрешения: они идут на выход в точности как есть.</string>
     <string name="settings_privacy">Конфиденциальность</string>
-    <string name="settings_ad_choices">Настройки конфиденциальности рекламы</string>
-    <string name="settings_ad_choices_sub">Изменить или отозвать согласие на персонализированную рекламу или отказаться от продажи и передачи ваших данных</string>
-    <string name="settings_ad_choices_error">Не удалось открыть форму конфиденциальности. Проверьте подключение и повторите попытку.</string>
     <string name="settings_ad_id">Рекламный идентификатор</string>
     <string name="settings_ad_id_sub">Сбросьте или удалите его в рекламных настройках Android; это действует для всех приложений</string>
     <string name="settings_privacy_policy">Политика конфиденциальности</string>
