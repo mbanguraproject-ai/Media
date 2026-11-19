@@ -118,17 +118,15 @@ class MainActivity : ComponentActivity() {
     // banner, and once per app open a new version is offered.
     override fun onResume() {
         super.onResume()
-        FullScreenAds.onActivityResumed(this)
         // The day may have turned while Via was away.
         Retention.refresh(this)
         // Not over the splash while it waits for the app-open ad: Play's
         // sheet would land on top of the ad. Once the splash lifts - or
         // after the ad closes, which resumes this activity again.
-        FullScreenAds.afterOpen { InAppUpdate.check(this, updateLauncher) }
+        InAppUpdate.check(this, updateLauncher)
     }
 
     override fun onDestroy() {
-        FullScreenAds.detach(this)
         super.onDestroy()
     }
 
@@ -136,10 +134,8 @@ class MainActivity : ComponentActivity() {
     // pickers, Play's purchase, review and update sheets, the browser, the
     // share sheet, the system's delete dialog, an ad. Coming back from one
     // of them is the listener finishing a step, not opening the app, so it
-    // must not bring an app-open ad (FullScreenAds.kt).
     @Deprecated("Deprecated in ComponentActivity")
     override fun startActivityForResult(intent: Intent, requestCode: Int, options: Bundle?) {
-        FullScreenAds.expectReturn()
         super.startActivityForResult(intent, requestCode, options)
     }
 
@@ -153,7 +149,6 @@ class MainActivity : ComponentActivity() {
         extraFlags: Int,
         options: Bundle?
     ) {
-        FullScreenAds.expectReturn()
         super.startIntentSenderForResult(intent, requestCode, fillInIntent, flagsMask, flagsValues, extraFlags, options)
     }
 
@@ -187,10 +182,8 @@ class MainActivity : ComponentActivity() {
         val splash = installSplashScreen()
         var keep = true
         // At least the 850ms the iris needs to open, and on until this
-        // launch's app-open ad is up over it (FullScreenAds): the ad goes
-        // over the splash, never over the app.
-        splash.setKeepOnScreenCondition { keep || FullScreenAds.splashHeld() }
-        FullScreenAds.onSplashInstalled()
+            // over the splash, never over the app.
+        splash.setKeepOnScreenCondition { keep }
         window.decorView.postDelayed({ keep = false }, 850)
         // Transparent bars with NO system scrim. Plain enableEdgeToEdge()
         // uses the "auto" style, which on 3-button navigation turns contrast
@@ -207,7 +200,6 @@ class MainActivity : ComponentActivity() {
         }
         super.onCreate(savedInstanceState)
         // Before onStart, so this very launch counts as an app open.
-        FullScreenAds.attach(this)
         Enrichment.init(this)
         // Opened from a file ("Open with Via"). Not again on a restore: that
         // file has already been played.
@@ -255,7 +247,6 @@ class MainActivity : ComponentActivity() {
                         AppRoot()
                         // On a return to Via, the splash again, over
                         // everything, until the app-open ad is up.
-                        OpenCover(FullScreenAds.cover)
                     }
                 }
             }
@@ -352,7 +343,6 @@ fun AppRoot(vm: PlayerViewModel = viewModel()) {
     // The welcome and permission screens are not an app open: a launch
     // that lands on them lifts the splash at once, with no ad.
     LaunchedEffect(introSeen, granted) {
-        if (introSeen == false || (introSeen == true && !granted)) FullScreenAds.cancelOpen("first run")
     }
 
     // Local step for the first-run flow: 0 = welcome, 1 = permission explainer.
@@ -556,7 +546,6 @@ class HomeNav {
     // The Via Pro page. Topmost of all: a locked control anywhere opens it.
     var showPro by mutableStateOf(false)
     var homePillar by mutableStateOf(Pillar.MUSIC)
-    var adsReady by mutableStateOf(false)
     var playerHidden by mutableStateOf(false)
     var playerWasOpen by mutableStateOf(false)
     // Which way the last tab change went, so the screens slide the way the
@@ -587,7 +576,6 @@ class HomeNav {
         }
     }
 
-    /** Where the listener is, as screen changes count it (FullScreenAds). */
     val place: HomePlace
         get() = HomePlace(
             tab = currentTab,
@@ -794,46 +782,6 @@ fun HomeScaffold(vm: PlayerViewModel) {
     // with Premium and Ultra behind Pro that frame drew a free user's app at
     // Ultra and then dropped it. An ad needs a network round trip, far longer
     // than reading the cache, so none can flash anyway.
-    val cachedAdFree by SettingsStore.adFreeFlow(context).collectAsState(initial = null)
-    LaunchedEffect(cachedAdFree) { cachedAdFree?.let { Billing.seed(it) } }
-    LaunchedEffect(Unit) {
-        Billing.start(context) { owned ->
-            scope.launch { SettingsStore.setAdFree(context, owned) }
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        (context as? android.app.Activity)?.let { act ->
-            Ads.startConsentThenInit(
-                act,
-                onNoAds = { FullScreenAds.cancelOpen("no consent to request ads") }
-            ) {
-                nav.adsReady = true
-                FullScreenAds.onAdsReady()
-            }
-        }
-    }
-    // What a full-screen ad has to know before it goes up: never over a
-    // playing video or Now Playing, and muted while music plays.
-    LaunchedEffect(state.isPlaying, state.isVideo, nav.showPlayer) {
-        FullScreenAds.audioPlaying = state.isPlaying && !state.isVideo
-        FullScreenAds.videoPlaying = state.isPlaying && state.isVideo
-        FullScreenAds.playerOpen = nav.showPlayer
-    }
-    // Every screen change counts towards the next interstitial: a tab, or an
-    // album, artist or playlist opened. Going BACK does not count - an ad
-    // for leaving a screen reads as the app trying to keep you. Counted
-    // after the change has happened, so the ad covers the new page and
-    // closing it lands right there.
-    LaunchedEffect(nav) {
-        var last: HomePlace? = null
-        snapshotFlow { nav.place }.collect { place ->
-            val before = last
-            last = place
-            if (before != null && place.isForwardOf(before)) FullScreenAds.onNavigated()
-        }
-    }
-
     // ---- beat pulse: ONE driver, shared by the player and Home ----
     // Runs whenever something is playing, not just when the player is open,
     // because the playing card on Home consumes the same level.
@@ -1338,7 +1286,6 @@ private fun HomeScreens(
                 MediaRepository.refresh()
                 nav.reloadKey++
             },
-            adsReady = nav.adsReady,
             onOpenTerms = { nav.showTerms = true },
             onOpenAbout = { nav.showAbout = true },
             onClose = { nav.back() },
