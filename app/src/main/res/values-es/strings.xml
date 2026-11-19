@@ -508,9 +508,6 @@
     <string name="pro_loop_times">%1$d×</string>
     <string name="pro_hires_note">El mono, el balance y saltar silencios no tocan los archivos de alta resolución: esos llegan a la salida tal como son.</string>
     <string name="settings_privacy">Privacidad</string>
-    <string name="settings_ad_choices">Opciones de privacidad de anuncios</string>
-    <string name="settings_ad_choices_sub">Cambia o retira el consentimiento para anuncios personalizados, o rechaza la venta o el intercambio de tus datos</string>
-    <string name="settings_ad_choices_error">No se pudo abrir el formulario de privacidad. Revisa la conexión e inténtalo de nuevo.</string>
     <string name="settings_ad_id">ID de publicidad</string>
     <string name="settings_ad_id_sub">Restablécelo o elimínalo en los ajustes de anuncios de Android; se aplica a todas las apps</string>
     <string name="settings_privacy_policy">Política de privacidad</string>
