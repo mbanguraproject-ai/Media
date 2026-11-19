@@ -771,14 +771,6 @@ fun HomeScaffold(vm: PlayerViewModel) {
     val allPlaylistMembers by remember { db.playlistDao().observeAllMembers() }.collectAsState(initial = emptyList())
 
     val allById = remember(allAudio, allVideo) { (allAudio + allVideo).associateBy { it.id } }
-    // Consent first, SDK second. Kicked off once, after the permission gate,
-    // so it never lands on top of onboarding.
-    // Entitlement: the cached value seeds Billing until Play answers; Billing
-    // then confirms, restores or revokes it. Only the REAL cached value: this
-    // used to start at `true` for its first frame so no ad could flash, and
-    // with Premium and Ultra behind Pro that frame drew a free user's app at
-    // Ultra and then dropped it. An ad needs a network round trip, far longer
-    // than reading the cache, so none can flash anyway.
     // ---- beat pulse: ONE driver, shared by the player and Home ----
     // Runs whenever something is playing, not just when the player is open,
     // because the playing card on Home consumes the same level.
