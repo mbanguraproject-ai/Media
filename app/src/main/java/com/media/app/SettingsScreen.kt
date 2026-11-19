@@ -54,7 +54,6 @@ fun SettingsScreen(
     settings: MediaSettings,
     onFontScaleChange: (Float) -> Unit,
     onRescan: () -> Unit,
-    adsReady: Boolean,
     onOpenTerms: () -> Unit,
     onOpenAbout: () -> Unit,
     onClose: () -> Unit,
@@ -87,16 +86,6 @@ fun SettingsScreen(
         SectionLabel(stringResource(R.string.settings_appearance))
         LanguageRow()
         FontSizePicker(settings.fontScale, onFontScaleChange)
-
-        // A banner, in a card. THE ROUNDED CORNERS ARE THE CARD'S, not the
-        // ad's - cropping an ad is altering it, and AdMob does not allow that -
-        // so the ad sits whole inside a container that has the shape.
-        //
-        // And it sits a full gutter below Text size rather than against it. An
-        // ad within a thumb's width of a control is how accidental clicks
-        // happen, and accidental clicks are how AdMob accounts get closed.
-        val bannerHidden by Billing.adFree.collectAsState()
-        if (!bannerHidden) ViaBanner(ready = adsReady)
 
         // Library first: Storage and Rescan are what people come to Settings
         // for. They were below Sound and Artwork, a long scroll down.
