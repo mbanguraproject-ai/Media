@@ -182,14 +182,12 @@ fun ceilingFor(cap: DeviceCapability): QualityLevel = when {
 
 /** A manual pick is honoured even above the ceiling: the doc allows the override. */
 /**
- * Premium and Ultra come with Via Pro. Without it the app draws Enhanced,
- * whatever was picked and whatever Auto would choose; the pick is kept, so
- * buying Pro (or restoring it) brings it straight back.
+ * All quality tiers are available to every Via user. The selected tier is
+ * still bounded by the device capability ceiling in AUTO mode.
  */
-fun QualityLevel.forPro(pro: Boolean): QualityLevel =
-    if (pro || this == QualityLevel.ENHANCED) this else QualityLevel.ENHANCED
+fun QualityLevel.forPro(pro: Boolean): QualityLevel = this
 
-val QualityLevel.needsPro: Boolean get() = this != QualityLevel.ENHANCED
+val QualityLevel.needsPro: Boolean get() = false
 
 fun resolveLevel(mode: QualityMode, ceiling: QualityLevel): QualityLevel = when (mode) {
     QualityMode.AUTO -> ceiling
