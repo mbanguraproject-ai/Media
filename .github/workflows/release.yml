@@ -2,7 +2,7 @@
 # Play Console. Play App Signing then re-signs it with the app signing key.
 #
 # Run it from Actions > Release > Run workflow, or push a tag such as v6.0.3.
-# The signed .aab and its R8 mapping are kept on the run page for 90 days.
+# The signed ABI APKs, signed .aab and R8 mapping are kept on the run page for 90 days.
 #
 # The upload key comes from four repository secrets (Settings > Secrets and
 # variables > Actions):
@@ -65,14 +65,31 @@ jobs:
             echo "keyPassword=$KEY_PASSWORD"
           } > keystore.properties
 
-      - name: Build the signed bundle
-        run: ./gradlew --no-daemon --stacktrace :app:bundleRelease
+      - name: Build the signed APKs and bundle
+        run: ./gradlew --no-daemon --stacktrace :app:assembleRelease :app:bundleRelease
 
       # Play rejects a bundle whose certificate is not the registered upload
       # key: compare this SHA-256 with Play Console > App signing > Upload key.
       # Fails if the bundle came out unsigned.
       - name: Show the signing certificate
         run: keytool -printcert -jarfile app/build/outputs/bundle/release/app-release.aab | grep -E "Owner:|SHA256:"
+
+      - name: Verify every signed APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          apks=(app/build/outputs/apk/release/*.apk)
+          if [ "${#apks[@]}" -ne 2 ]; then
+            echo "::error::Expected exactly two ABI APKs (arm64-v8a and armeabi-v7a), found ${#apks[@]}."
+            printf '%s\\n' "${apks[@]}"
+            exit 1
+          fi
+          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
+          for apk in "${apks[@]}"; do
+            echo "=== Verifying $apk"
+            "$build_tools/apksigner" verify --verbose --print-certs "$apk"
+          done
 
       - name: Check method register counts
         run: python3 tools/dex_registers.py app/build/outputs/bundle/release/app-release.aab --package com.media.app --top 20
@@ -85,11 +102,12 @@ jobs:
           echo "Version $name (code $code)"
           echo "artifact=via-$name-code$code" >> "$GITHUB_OUTPUT"
 
-      - name: Keep the bundle and R8 mapping
+      - name: Keep signed APKs, bundle and R8 mapping
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.version.outputs.artifact }}
           path: |
+            app/build/outputs/apk/release/*.apk
             app/build/outputs/bundle/release/app-release.aab
             app/build/outputs/mapping/release/mapping.txt
           retention-days: 90
