@@ -216,10 +216,10 @@ class MainActivity : ComponentActivity() {
             // the app is open.
             val capability = remember { detectCapability(this) }
             val ceiling = remember(capability) { ceilingFor(capability) }
-            // Premium and Ultra are Via Pro's (DisplayQuality.kt).
-            val pro = isPro()
-            val requested = remember(settings.qualityMode, ceiling, pro) {
-                resolveLevel(settings.qualityMode, ceiling).forPro(pro)
+            // Every quality tier is available; resolveLevel still enforces
+            // the device's measured capability ceiling.
+            val requested = remember(settings.qualityMode, ceiling) {
+                resolveLevel(settings.qualityMode, ceiling)
             }
             // Sustained frame performance can step this DOWN on Auto. It
             // never touches playback, and it never overrides a manual pick -
