@@ -508,9 +508,6 @@
     <string name="pro_loop_times">%1$d×</string>
     <string name="pro_hires_note">Mono, balanço e pular silêncios não mexem em arquivos de alta resolução: eles vão para a saída exatamente como são.</string>
     <string name="settings_privacy">Privacidade</string>
-    <string name="settings_ad_choices">Opções de privacidade de anúncios</string>
-    <string name="settings_ad_choices_sub">Altere ou retire o consentimento para anúncios personalizados, ou recuse a venda ou o compartilhamento dos seus dados</string>
-    <string name="settings_ad_choices_error">Não foi possível abrir o formulário de privacidade. Verifique a conexão e tente de novo.</string>
     <string name="settings_ad_id">ID de publicidade</string>
     <string name="settings_ad_id_sub">Redefina ou exclua nos ajustes de anúncios do Android; vale para todos os apps</string>
     <string name="settings_privacy_policy">Política de privacidade</string>
