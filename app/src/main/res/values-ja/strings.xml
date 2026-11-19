@@ -491,9 +491,6 @@
     <string name="pro_loop_times">%1$d×</string>
     <string name="pro_hires_note">モノラル、バランス、無音スキップはハイレゾファイルには手を加えません。ハイレゾはそのまま出力されます。</string>
     <string name="settings_privacy">プライバシー</string>
-    <string name="settings_ad_choices">広告のプライバシー設定</string>
-    <string name="settings_ad_choices_sub">パーソナライズド広告への同意を変更・撤回したり、データの販売や共有を拒否したりできます</string>
-    <string name="settings_ad_choices_error">プライバシーフォームを開けませんでした。接続を確認して再試行してください。</string>
     <string name="settings_ad_id">広告ID</string>
     <string name="settings_ad_id_sub">Androidの広告設定でリセットまたは削除できます。すべてのアプリに適用されます</string>
     <string name="settings_privacy_policy">プライバシーポリシー</string>
