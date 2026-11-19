@@ -208,30 +208,6 @@ fun SettingsScreen(
             subtitle = stringResource(if (pro) R.string.pro_settings_active_sub else R.string.pro_settings_sub)
         ) { openPro() }
 
-        // The privacy policy promises that consent "can be changed later in
-        // the app's settings". This is that place. The consent row appears
-        // where the law requires it (EEA, UK, Switzerland, and the US states
-        // set up in AdMob) - UMP decides from the user's location - and opens
-        // Google's own form, which both withdraws GDPR consent and carries
-        // the US "do not sell or share" opt-out.
-        SectionLabel(stringResource(R.string.settings_privacy))
-        var privacyNote by remember { mutableStateOf<Int?>(null) }
-        if (Ads.privacyChoicesRequired(context)) {
-            SettingRow(
-                Icons.Outlined.PrivacyTip, stringResource(R.string.settings_ad_choices), null,
-                subtitle = stringResource(R.string.settings_ad_choices_sub)
-            ) {
-                (context as? android.app.Activity)?.let { act ->
-                    Ads.showPrivacyChoices(act) { err ->
-                        privacyNote = err?.let { R.string.settings_ad_choices_error }
-                    }
-                }
-            }
-        }
-        SettingRow(
-            Icons.Outlined.PermIdentity, stringResource(R.string.settings_ad_id), null,
-            subtitle = stringResource(R.string.settings_ad_id_sub)
-        ) { Ads.openDeviceAdSettings(context) }
         SettingRow(Icons.Outlined.Shield, stringResource(R.string.settings_privacy_policy), null) {
             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(privacyUrl))) }
         }
