@@ -144,7 +144,6 @@ fun smartRewindMs(pausedMs: Long, durationMs: Long): Long = when {
 @UnstableApi
 class ProPlayer(
     private val exo: ExoPlayer,
-    private val pro: () -> Boolean,
     private val settings: () -> ProSettings
 ) : ForwardingPlayer(exo) {
 
@@ -165,13 +164,12 @@ class ProPlayer(
 
     override fun play() {
         val s = settings()
-        val on = pro()
-        if (on && s.smartResume && pausedAt != 0L) {
+        if (s.smartResume && pausedAt != 0L) {
             val back = smartRewindMs(SystemClock.elapsedRealtime() - pausedAt, exo.duration.coerceAtLeast(0L))
             if (back > 0L) exo.seekTo((exo.currentPosition - back).coerceAtLeast(0L))
         }
         pausedAt = 0L
-        if (on && s.softPause && !exo.isPlaying) {
+        if (s.softPause && !exo.isPlaying) {
             val target = endFade()
             exo.volume = 0f
             super.play()
@@ -183,7 +181,7 @@ class ProPlayer(
     }
 
     override fun pause() {
-        if (pro() && settings().softPause && exo.isPlaying) {
+        if (settings().softPause && exo.isPlaying) {
             val from = endFade()
             ramp(from, 0f, FADE_OUT_MS) {
                 super.pause()
