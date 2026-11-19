@@ -508,9 +508,6 @@
     <string name="pro_loop_times">%1$d×</string>
     <string name="pro_hires_note">Mono, denge ve sessizliği atlama yüksek çözünürlüklü dosyalara dokunmaz: onlar çıkışa olduğu gibi gider.</string>
     <string name="settings_privacy">Gizlilik</string>
-    <string name="settings_ad_choices">Reklam gizliliği seçenekleri</string>
-    <string name="settings_ad_choices_sub">Kişiselleştirilmiş reklamlara verdiğin onayı değiştir veya geri çek ya da verilerinin satışını veya paylaşılmasını reddet</string>
-    <string name="settings_ad_choices_error">Gizlilik formu açılamadı. Bağlantıyı kontrol edip yeniden dene.</string>
     <string name="settings_ad_id">Reklam kimliği</string>
     <string name="settings_ad_id_sub">Android\'in reklam ayarlarından sıfırla veya sil; tüm uygulamalar için geçerlidir</string>
     <string name="settings_privacy_policy">Gizlilik Politikası</string>
