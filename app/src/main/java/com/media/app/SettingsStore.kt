@@ -27,7 +27,6 @@ object SettingsStore {
     private val FONT = floatPreferencesKey("font_scale")
     private val INTRO_SEEN = booleanPreferencesKey("intro_seen")
     private val REVEAL_SEEN = booleanPreferencesKey("library_reveal_seen")
-    private val AD_FREE = booleanPreferencesKey("ad_free")
     private val PLAYER_HINT = booleanPreferencesKey("player_hint_seen")
     private val REACTIVE_ART = booleanPreferencesKey("reactive_artwork")
     private val QUALITY = stringPreferencesKey("display_quality")
@@ -84,15 +83,6 @@ object SettingsStore {
 
     suspend fun setRevealSeen(context: Context) {
         context.dataStore.edit { it[REVEAL_SEEN] = true }
-    }
-
-    // Cache only. Play Billing stays the source of truth and clears this if a
-    // purchase is refunded; it exists so the first frame is already ad-free.
-    fun adFreeFlow(context: Context): Flow<Boolean> =
-        context.dataStore.data.map { it[AD_FREE] ?: false }
-
-    suspend fun setAdFree(context: Context, value: Boolean) {
-        context.dataStore.edit { it[AD_FREE] = value }
     }
 
     // Shown once, the first time the full player is opened. A feature that is
