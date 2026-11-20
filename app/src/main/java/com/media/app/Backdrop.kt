@@ -325,7 +325,7 @@ fun LivingBackdrop(
                     startY = horizonTop,
                     endY = horizonTop + bandHeight
                 ),
-                topLeft = Offset.Zero.copy(y = horizonTop),
+                topLeft = Offset(0f, horizonTop),
                 size = Size(size.width, bandHeight)
             )
         }
