@@ -269,8 +269,9 @@ private fun DrawScope.drawAmbient(a: AppAmbient, origin: Offset, roomSize: Size,
             val mid = Offset(room.width / 2f, room.height / 2f)
             val side = max(room.width, room.height) * 1.35f
             val pan = m?.pan?.value ?: 0.5f
-            val dx = (pan - 0.5f) * room.width * 0.22f
-            val dy = (0.5f - pan) * room.height * 0.10f
+            val sceneMotion = 0.75f + (m?.scene?.motion ?: 0.25f)
+            val dx = (pan - 0.5f) * room.width * 0.22f * sceneMotion
+            val dy = (0.5f - pan) * room.height * 0.10f * sceneMotion
             val degrees = m?.spin?.value
             val phase = m?.flow?.value
             // Ultra: both covers flow. Null where the flow cannot run, and
@@ -295,7 +296,7 @@ private fun DrawScope.drawAmbient(a: AppAmbient, origin: Offset, roomSize: Size,
             }
             val t = m?.field?.value
             if (m != null && t != null && m.pools > 0 && m.tones.isNotEmpty()) {
-                drawLightField(m.tones, t, 0f, m.pools, p * mix, w = room.width, h = room.height)
+                drawLightField(m.tones, t, 0f, m.pools, p * mix * m.scene.glow, w = room.width, h = room.height)
             }
             // A touch lighter at the top, where the header sits on it, and a
             // touch heavier at the bottom, where the rows and the bar are.
