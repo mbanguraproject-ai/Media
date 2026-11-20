@@ -322,6 +322,23 @@ private fun DrawScope.drawAmbient(a: AppAmbient, origin: Offset, roomSize: Size,
                         size = Size(room.width, room.height)
                     )
                 }
+                // A restrained radial bloom adds a second depth plane.
+                // It is static, artwork-derived, and capped independently.
+                if (atmosphere.bloomOpacity > 0f) {
+                    drawRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                horizonTone.copy(alpha = atmosphere.bloomOpacity),
+                                horizonTone.copy(alpha = atmosphere.bloomOpacity * 0.35f),
+                                Color.Transparent
+                            ),
+                            center = Offset(room.width * 0.5f, horizonY),
+                            radius = (room.width * atmosphere.bloomRadiusFraction).coerceAtLeast(1f)
+                        ),
+                        topLeft = Offset.Zero,
+                        size = Size(room.width, room.height)
+                    )
+                }
             }
             // A touch lighter at the top, where the header sits on it, and a
             // touch heavier at the bottom, where the rows and the bar are.
