@@ -270,10 +270,10 @@ fun LivingBackdrop(
         Canvas(Modifier.fillMaxSize()) {
             val level = if (reactive) beat.room else 0f
             val mid = center
-            val scale = 1f + 0.06f * level
+            val scale = 1f + 0.06f * level * scene.depth
             // Depth: the deepest layer moves against the tilt.
-            val deepX = -(tilt?.x ?: 0f) * size.width * 0.035f
-            val deepY = -(tilt?.y ?: 0f) * size.height * 0.02f
+            val deepX = -(tilt?.x ?: 0f) * size.width * 0.035f * scene.depth
+            val deepY = -(tilt?.y ?: 0f) * size.height * 0.02f * scene.depth
             val brush = flow?.let { fluidLight.brush(image, size, it.value, level) }
             if (brush != null) {
                 // Drawn past the edges, so the depth shift never shows one.
@@ -304,7 +304,7 @@ fun LivingBackdrop(
             val t = field?.value
             if (t != null && colors != null && colors.field.isNotEmpty()) {
                 translate(deepX * 0.5f, deepY * 0.5f) {
-                    drawLightField(colors.field, t, level, pools, shown.value)
+                    drawLightField(colors.field, t, level, pools, shown.value * scene.glow)
                 }
             }
         }
