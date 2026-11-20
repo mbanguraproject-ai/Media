@@ -124,6 +124,15 @@ object WorldSceneSelector {
 }
 
 
+/**
+ * Applies the selected scene's motion character to the existing measured
+ * bass envelope. It never creates a signal: silence remains still and the
+ * result is bounded for stable rendering on every device.
+ */
+internal fun sceneReactiveLevel(room: Float, scene: WorldSceneProfile): Float =
+    (room.coerceIn(0f, 1f) * (0.80f + scene.motion.coerceIn(0f, 1f))).coerceIn(0f, 1f)
+
+
 /** One remembered scene decision shared by every artwork-driven renderer. */
 @Composable
 fun rememberWorldScene(colors: ArtColors?): WorldSceneProfile =
