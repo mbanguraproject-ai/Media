@@ -268,7 +268,7 @@ fun LivingBackdrop(
     Box(modifier) {
         // Light: the cover and the light field.
         Canvas(Modifier.fillMaxSize()) {
-            val level = if (reactive) beat.room else 0f
+            val level = if (reactive) sceneReactiveLevel(beat.room, scene) else 0f
             val mid = center
             val scale = 1f + 0.06f * level * scene.depth
             // Depth: the deepest layer moves against the tilt.
