@@ -307,6 +307,27 @@ fun LivingBackdrop(
                     drawLightField(colors.field, t, level, pools, shown.value * scene.glow)
                 }
             }
+            // A scene-specific horizon gives each palette treatment a distinct
+            // spatial identity without adding another animation clock or particle system.
+            val horizonColor = colors?.glow ?: colors?.accent ?: Color.White
+            val bandHeight = size.height * 0.28f
+            val horizonTop = (size.height * scene.horizon.coerceIn(0.2f, 0.8f) - bandHeight * 0.5f)
+                .coerceIn(0f, (size.height - bandHeight).coerceAtLeast(0f))
+            val horizonStrength = shown.value * scene.glow.coerceIn(0f, 1f) *
+                (0.08f + level.coerceIn(0f, 1f) * 0.14f)
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colorStops = arrayOf(
+                        0f to Color.Transparent,
+                        0.5f to horizonColor.copy(alpha = horizonStrength),
+                        1f to Color.Transparent
+                    ),
+                    startY = horizonTop,
+                    endY = horizonTop + bandHeight
+                ),
+                topLeft = Offset.Zero.copy(y = horizonTop),
+                size = Size(size.width, bandHeight)
+            )
         }
         // Legibility and finish. Only as dark as this cover needs and never
         // black, so the colour runs on under the navigation bar instead of
