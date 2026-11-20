@@ -163,3 +163,15 @@ internal fun sceneReactiveLevel(room: Float, scene: WorldSceneProfile): Float =
 @Composable
 fun rememberWorldScene(colors: ArtColors?): WorldSceneProfile =
     remember(colors) { WorldSceneSelector.select(ArtworkColorSignature.from(colors)) }
+
+
+/** A bounded artwork bloom for Now Playing; silence and minimal scenes stay neutral. */
+internal fun sceneBloomOpacity(scene: WorldSceneProfile, level: Float): Float {
+    if (scene.family == WorldSceneFamily.MINIMAL) return 0f
+    val signal = level.coerceIn(0f, 1f)
+    return (scene.glow.coerceIn(0f, 1f) * (0.025f + signal * 0.025f))
+        .coerceIn(0f, 0.05f)
+}
+
+internal fun sceneBloomRadiusFraction(scene: WorldSceneProfile): Float =
+    (0.42f + scene.depth.coerceIn(0f, 1f) * 0.16f).coerceIn(0.42f, 0.58f)

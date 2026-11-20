@@ -307,6 +307,31 @@ fun LivingBackdrop(
                     drawLightField(colors.field, t, level, pools, shown.value * scene.glow)
                 }
             }
+            // A soft scene bloom creates a distinct mid-depth light plane.
+            // It is derived from artwork and the existing measured bass envelope;
+            // it adds no clock, sensor listener, or per-frame allocation loop.
+            val bloomColor = colors?.glow ?: colors?.accent
+            val bloomAlpha = shown.value * sceneBloomOpacity(scene, level)
+            if (bloomColor != null && bloomAlpha > 0f) {
+                val bloomCenter = Offset(
+                    size.width * 0.5f + deepX * 0.35f,
+                    size.height * scene.horizon.coerceIn(0.2f, 0.8f) + deepY * 0.35f
+                )
+                val bloomRadius = (size.width * sceneBloomRadiusFraction(scene)).coerceAtLeast(1f)
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            bloomColor.copy(alpha = bloomAlpha),
+                            bloomColor.copy(alpha = bloomAlpha * 0.28f),
+                            Color.Transparent
+                        ),
+                        center = bloomCenter,
+                        radius = bloomRadius
+                    ),
+                    radius = bloomRadius,
+                    center = bloomCenter
+                )
+            }
             // A scene-specific horizon gives each palette treatment a distinct
             // spatial identity without adding another animation clock or particle system.
             val horizonColor = colors?.glow ?: colors?.accent ?: Color.White

@@ -93,6 +93,31 @@ class WorldSceneSelectorTest {
     }
 
     @Test
+    fun nowPlayingBloomIsBoundedSilentAndDisabledForMinimalScenes() {
+        WorldSceneFamily.values().forEach { family ->
+            val argb = when (family) {
+                WorldSceneFamily.DREAM -> 0xffff0000.toInt()
+                WorldSceneFamily.URBAN -> 0xffff8000.toInt()
+                WorldSceneFamily.NATURE -> 0xff00ff00.toInt()
+                WorldSceneFamily.OCEAN -> 0xff0000ff.toInt()
+                WorldSceneFamily.COSMIC -> 0xff8000ff.toInt()
+                WorldSceneFamily.MINIMAL -> 0xff777777.toInt()
+            }
+            val scene = WorldSceneSelector.select(ArtworkColorSignature.fromArgb(listOf(argb)))
+            assertTrue(sceneBloomOpacity(scene, 0f) in 0f..0.05f)
+            assertTrue(sceneBloomOpacity(scene, 1f) in 0f..0.05f)
+            assertTrue(sceneBloomRadiusFraction(scene) in 0.42f..0.58f)
+            if (family == WorldSceneFamily.MINIMAL) {
+                assertEquals(0f, sceneBloomOpacity(scene, 0f), 0f)
+                assertEquals(0f, sceneBloomOpacity(scene, 1f), 0f)
+            } else {
+                assertEquals(0f, sceneBloomOpacity(scene, 0f) - scene.glow * 0.025f, 0.0001f)
+                assertTrue(sceneBloomOpacity(scene, 1f) > sceneBloomOpacity(scene, 0f))
+            }
+        }
+    }
+
+    @Test
     fun nearRedHueWrapsAcrossZeroWithoutChangingClassification() {
         val signature = ArtworkColorSignature.fromArgb(
             listOf(0xffff0000.toInt(), 0xffff0033.toInt())
