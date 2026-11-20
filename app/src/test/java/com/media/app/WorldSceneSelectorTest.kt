@@ -83,7 +83,12 @@ class WorldSceneSelectorTest {
             assertTrue(atmosphere.horizonFraction in 0.18f..0.82f)
             assertTrue(atmosphere.bandFraction in 0.10f..0.20f)
             assertTrue(atmosphere.opacity in 0f..0.12f)
-            if (family == WorldSceneFamily.MINIMAL) assertEquals(0f, atmosphere.opacity, 0f)
+            assertTrue(atmosphere.bloomRadiusFraction in 0.36f..0.56f)
+            assertTrue(atmosphere.bloomOpacity in 0f..0.045f)
+            if (family == WorldSceneFamily.MINIMAL) {
+                assertEquals(0f, atmosphere.opacity, 0f)
+                assertEquals(0f, atmosphere.bloomOpacity, 0f)
+            }
         }
     }
 
