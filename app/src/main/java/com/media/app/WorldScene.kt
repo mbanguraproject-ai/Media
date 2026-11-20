@@ -166,6 +166,7 @@ fun rememberWorldScene(colors: ArtColors?): WorldSceneProfile =
 
 
 /** A bounded artwork bloom for Now Playing; silence and minimal scenes stay neutral. */
+// Kept renderer-independent so policy bounds remain covered by JVM regression tests.
 internal fun sceneBloomOpacity(scene: WorldSceneProfile, level: Float): Float {
     if (scene.family == WorldSceneFamily.MINIMAL) return 0f
     val signal = level.coerceIn(0f, 1f)
