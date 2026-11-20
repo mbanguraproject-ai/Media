@@ -1,5 +1,7 @@
 package com.media.app
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.toArgb
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -120,3 +122,9 @@ object WorldSceneSelector {
         return profiles.getValue(family)
     }
 }
+
+
+/** One remembered scene decision shared by every artwork-driven renderer. */
+@Composable
+fun rememberWorldScene(colors: ArtColors?): WorldSceneProfile =
+    remember(colors) { WorldSceneSelector.select(ArtworkColorSignature.from(colors)) }
