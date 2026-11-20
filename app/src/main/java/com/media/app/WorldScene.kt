@@ -131,17 +131,21 @@ object WorldSceneSelector {
 internal data class SceneAtmosphere(
     val horizonFraction: Float,
     val bandFraction: Float,
-    val opacity: Float
+    val opacity: Float,
+    val bloomRadiusFraction: Float,
+    val bloomOpacity: Float
 )
 
 internal fun sceneAtmosphere(scene: WorldSceneProfile): SceneAtmosphere =
     if (scene.family == WorldSceneFamily.MINIMAL) {
-        SceneAtmosphere(scene.horizon.coerceIn(0.18f, 0.82f), 0.10f, 0f)
+        SceneAtmosphere(scene.horizon.coerceIn(0.18f, 0.82f), 0.10f, 0f, 0.45f, 0f)
     } else {
         SceneAtmosphere(
             horizonFraction = scene.horizon.coerceIn(0.18f, 0.82f),
             bandFraction = (0.10f + scene.depth.coerceIn(0f, 1f) * 0.10f).coerceIn(0.10f, 0.20f),
-            opacity = (0.12f * scene.glow.coerceIn(0f, 1f)).coerceIn(0f, 0.12f)
+            opacity = (0.12f * scene.glow.coerceIn(0f, 1f)).coerceIn(0f, 0.12f),
+            bloomRadiusFraction = (0.36f + scene.depth.coerceIn(0f, 1f) * 0.20f).coerceIn(0.36f, 0.56f),
+            bloomOpacity = (0.045f * scene.glow.coerceIn(0f, 1f)).coerceIn(0f, 0.045f)
         )
     }
 
