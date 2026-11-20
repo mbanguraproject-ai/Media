@@ -298,6 +298,31 @@ private fun DrawScope.drawAmbient(a: AppAmbient, origin: Offset, roomSize: Size,
             if (m != null && t != null && m.pools > 0 && m.tones.isNotEmpty()) {
                 drawLightField(m.tones, t, 0f, m.pools, p * mix * m.scene.glow, w = room.width, h = room.height)
             }
+            // A quiet, artwork-coloured horizon gives Home the same scene
+            // identity as Now Playing without consuming playback/audio signals.
+            val atmosphere = m?.scene?.let(::sceneAtmosphere)
+            val horizonTone = m?.tones?.firstOrNull()
+            if (atmosphere != null && horizonTone != null && atmosphere.opacity > 0f) {
+                val horizonY = room.height * atmosphere.horizonFraction
+                val band = room.height * atmosphere.bandFraction
+                val top = (horizonY - band).coerceAtLeast(0f)
+                val bottom = (horizonY + band).coerceAtMost(room.height)
+                if (bottom > top) {
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0f to Color.Transparent,
+                                0.5f to horizonTone.copy(alpha = atmosphere.opacity),
+                                1f to Color.Transparent
+                            ),
+                            startY = top,
+                            endY = bottom
+                        ),
+                        topLeft = Offset.Zero,
+                        size = Size(room.width, room.height)
+                    )
+                }
+            }
             // A touch lighter at the top, where the header sits on it, and a
             // touch heavier at the bottom, where the rows and the bar are.
             val s = scrim + extraScrim
