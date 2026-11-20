@@ -125,6 +125,28 @@ object WorldSceneSelector {
 
 
 /**
+ * Bounded, non-reactive atmosphere controls for the shared Home environment.
+ * MINIMAL artwork deliberately contributes no horizon wash.
+ */
+internal data class SceneAtmosphere(
+    val horizonFraction: Float,
+    val bandFraction: Float,
+    val opacity: Float
+)
+
+internal fun sceneAtmosphere(scene: WorldSceneProfile): SceneAtmosphere =
+    if (scene.family == WorldSceneFamily.MINIMAL) {
+        SceneAtmosphere(scene.horizon.coerceIn(0.18f, 0.82f), 0.10f, 0f)
+    } else {
+        SceneAtmosphere(
+            horizonFraction = scene.horizon.coerceIn(0.18f, 0.82f),
+            bandFraction = (0.10f + scene.depth.coerceIn(0f, 1f) * 0.10f).coerceIn(0.10f, 0.20f),
+            opacity = (0.12f * scene.glow.coerceIn(0f, 1f)).coerceIn(0f, 0.12f)
+        )
+    }
+
+
+/**
  * Applies the selected scene's motion character to the existing measured
  * bass envelope. It never creates a signal: silence remains still and the
  * result is bounded for stable rendering on every device.
