@@ -218,6 +218,7 @@ fun LivingBackdrop(
     grain: Boolean,
     /** Premium and Ultra: the backdrop moves against the tilt as the deepest layer. Null: no depth. */
     tilt: Tilt?,
+    scene: WorldSceneProfile,
     modifier: Modifier = Modifier
 ) {
     if (light == null) return
