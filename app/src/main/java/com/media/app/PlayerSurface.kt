@@ -638,6 +638,47 @@ private fun BoxScope.PlayerLight(
         )
     }
 
+    // Always-visible artwork aura. This independent layer deliberately does
+    // not depend on the asynchronous CoverLight decode: even when embedded
+    // artwork cannot be decoded for the blurred backdrop, Now Playing still
+    // presents the selected artwork palette as a visible environment.
+    if (e > 0.5f && q.livingBackdrop && !isVideo) {
+        val auraAlpha = sceneVisibleAuraOpacity(scene)
+        val cx = with(density) { (artX + artW / 2f).toPx() }
+        val cy = with(density) { (artY + artH / 2f).toPx() }
+        Canvas(Modifier.matchParentSize().clearAndSetSemantics { }) {
+            val radius = maxOf(size.width, size.height) * 0.62f
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        glow.copy(alpha = auraAlpha),
+                        glow.copy(alpha = auraAlpha * 0.42f),
+                        Color.Transparent
+                    ),
+                    center = Offset(cx, cy),
+                    radius = radius
+                ),
+                radius = radius,
+                center = Offset(cx, cy)
+            )
+            val horizonY = size.height * scene.horizon.coerceIn(0.2f, 0.8f)
+            val band = size.height * 0.22f
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        glow.copy(alpha = 0.12f + scene.glow * 0.06f),
+                        Color.Transparent
+                    ),
+                    startY = (horizonY - band).coerceAtLeast(0f),
+                    endY = (horizonY + band).coerceAtMost(size.height)
+                ),
+                topLeft = Offset(0f, (horizonY - band).coerceAtLeast(0f)),
+                size = androidx.compose.ui.geometry.Size(size.width, band * 2f)
+            )
+        }
+    }
+
     // Bloom behind the artwork — grows and brightens on the beat.
     // Drawn before the art so it reads as light spilling out from
     // behind it rather than a ring stuck on top.

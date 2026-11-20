@@ -137,6 +137,24 @@ class WorldSceneSelectorTest {
     }
 
     @Test
+    fun visibleAuraRemainsPresentForEverySceneIncludingMissingArtwork() {
+        WorldSceneFamily.values().forEach { family ->
+            val argb = when (family) {
+                WorldSceneFamily.DREAM -> 0xffff0000.toInt()
+                WorldSceneFamily.URBAN -> 0xffff8000.toInt()
+                WorldSceneFamily.NATURE -> 0xff00ff00.toInt()
+                WorldSceneFamily.OCEAN -> 0xff0000ff.toInt()
+                WorldSceneFamily.COSMIC -> 0xff8000ff.toInt()
+                WorldSceneFamily.MINIMAL -> 0xff777777.toInt()
+            }
+            val scene = WorldSceneSelector.select(ArtworkColorSignature.fromArgb(listOf(argb)))
+            assertTrue(sceneVisibleAuraOpacity(scene) in 0.18f..0.26f)
+        }
+        val missingArtwork = WorldSceneSelector.select(ArtworkColorSignature.fromArgb(emptyList()))
+        assertTrue(sceneVisibleAuraOpacity(missingArtwork) >= 0.18f)
+    }
+
+    @Test
     fun nearRedHueWrapsAcrossZeroWithoutChangingClassification() {
         val signature = ArtworkColorSignature.fromArgb(
             listOf(0xffff0000.toInt(), 0xffff0033.toInt())

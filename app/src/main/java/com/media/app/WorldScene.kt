@@ -165,6 +165,11 @@ fun rememberWorldScene(colors: ArtColors?): WorldSceneProfile =
     remember(colors) { WorldSceneSelector.select(ArtworkColorSignature.from(colors)) }
 
 
+/** Visible, bounded palette aura used independently of asynchronous cover decoding. */
+internal fun sceneVisibleAuraOpacity(scene: WorldSceneProfile): Float =
+    (0.18f + scene.glow.coerceIn(0f, 1f) * 0.08f).coerceIn(0.18f, 0.26f)
+
+
 /** A bounded artwork bloom for Now Playing; silence and minimal scenes stay neutral. */
 // Kept renderer-independent so policy bounds remain covered by JVM regression tests.
 internal fun sceneBloomOpacity(scene: WorldSceneProfile, level: Float): Float {
