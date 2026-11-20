@@ -21,7 +21,7 @@ android {
         applicationId = "app.devbangs.media"
         minSdk = 24
         targetSdk = 36
-        versionCode = 39
+        versionCode = 40
         versionName = "6.0.2"
     }
 

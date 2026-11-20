@@ -65,7 +65,7 @@ jobs:
       - name: Upload ARM64 visual-test APK
         uses: actions/upload-artifact@v4
         with:
-          name: via-immersive-visual-test-arm64-v39
+          name: via-immersive-visual-test-arm64-v40
           path: app/build/outputs/apk/release/*arm64-v8a*.apk
           retention-days: 30
           if-no-files-found: error
