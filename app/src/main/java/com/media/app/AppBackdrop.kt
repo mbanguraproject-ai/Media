@@ -103,7 +103,8 @@ internal class AmbientMotion(
     val flow: State<Float>?,
     val tones: List<Color>,
     val pools: Int,
-    val grain: Boolean
+    val grain: Boolean,
+    val scene: WorldSceneProfile
 )
 
 /** The room's light, shared by every screen background. */
@@ -179,6 +180,7 @@ fun AppAmbientDriver(ambient: AppAmbient, item: AppMediaItem?, active: Boolean) 
     val moving = lit && q.backdropDrift && !reduced
     val flowing = moving && q.fluidFlow && fluidSupported
     val colors = rememberArtColors(item)
+    val scene = rememberWorldScene(colors)
     val pan = if (moving && !flowing) {
         rememberInfiniteTransition(label = "roomPan").animateFloat(
             0f, 1f, infiniteRepeatable(tween(26_000, easing = LinearEasing), RepeatMode.Reverse), label = "pan"
@@ -202,7 +204,7 @@ fun AppAmbientDriver(ambient: AppAmbient, item: AppMediaItem?, active: Boolean) 
         )
     } else null
     val motion = remember(pan, spin, field, flow, tones, pools, q.grain) {
-        AmbientMotion(pan, spin, field, flow, tones, pools, q.grain)
+        AmbientMotion(pan, spin, field, flow, tones, pools, q.grain, scene)
     }
     SideEffect { if (ambient.motion !== motion) ambient.motion = motion }
 }
