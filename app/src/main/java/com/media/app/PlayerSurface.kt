@@ -594,6 +594,7 @@ private fun BoxScope.PlayerLight(
     // The cover's light, made once per song and shared with the room behind
     // the other screens (CoverLight.kt).
     val light = rememberCoverLight(if (isVideo) null else backdropItem)
+    val scene = rememberWorldScene(artColors)
     // The living backdrop: the cover itself as light, under everything.
     // Fades in with expansion like the wash; how much it moves is the
     // tier's call (Backdrop.kt).
@@ -609,6 +610,7 @@ private fun BoxScope.PlayerLight(
             fieldPools = q.lightField,
             grain = q.grain,
             tilt = if (q.parallax) tilt else null,
+            scene = scene,
             modifier = Modifier.matchParentSize().clearAndSetSemantics { }
                 .graphicsLayer { alpha = e }
         )
