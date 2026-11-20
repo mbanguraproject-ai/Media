@@ -53,6 +53,22 @@ class WorldSceneSelectorTest {
     }
 
     @Test
+    fun sceneReactiveLevelKeepsSilenceStillAndBoundsBassResponse() {
+        val expressive = WorldSceneSelector.select(
+            ArtworkColorSignature.fromArgb(listOf(0xffff0000.toInt()))
+        )
+        assertEquals(0f, sceneReactiveLevel(0f, expressive), 0f)
+        assertEquals(0f, sceneReactiveLevel(-1f, expressive), 0f)
+        assertEquals(1f, sceneReactiveLevel(2f, expressive), 0f)
+        assertTrue(sceneReactiveLevel(0.5f, expressive) > 0.5f)
+
+        val minimal = WorldSceneSelector.select(
+            ArtworkColorSignature.fromArgb(listOf(0xff777777.toInt()))
+        )
+        assertTrue(sceneReactiveLevel(0.5f, minimal) in 0f..1f)
+    }
+
+    @Test
     fun nearRedHueWrapsAcrossZeroWithoutChangingClassification() {
         val signature = ArtworkColorSignature.fromArgb(
             listOf(0xffff0000.toInt(), 0xffff0033.toInt())
