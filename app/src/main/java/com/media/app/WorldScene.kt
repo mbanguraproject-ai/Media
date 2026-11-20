@@ -176,3 +176,8 @@ internal fun sceneBloomOpacity(scene: WorldSceneProfile, level: Float): Float {
 
 internal fun sceneBloomRadiusFraction(scene: WorldSceneProfile): Float =
     (0.42f + scene.depth.coerceIn(0f, 1f) * 0.16f).coerceIn(0.42f, 0.58f)
+
+
+/** Fraction of the existing room drift used to separate the artwork horizon plane. */
+internal fun sceneParallaxFactor(scene: WorldSceneProfile): Float =
+    (0.08f + scene.depth.coerceIn(0f, 1f) * 0.10f).coerceIn(0.08f, 0.18f)

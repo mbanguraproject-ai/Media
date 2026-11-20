@@ -303,7 +303,10 @@ private fun DrawScope.drawAmbient(a: AppAmbient, origin: Offset, roomSize: Size,
             val atmosphere = m?.scene?.let(::sceneAtmosphere)
             val horizonTone = m?.tones?.firstOrNull()
             if (atmosphere != null && horizonTone != null && atmosphere.opacity > 0f) {
-                val horizonY = room.height * atmosphere.horizonFraction
+                // Reuse the room's existing drift signal: the atmosphere moves
+                // slightly against the cover, creating depth without another clock.
+                val depthFactor = m?.scene?.let(::sceneParallaxFactor) ?: 0f
+                val horizonY = room.height * atmosphere.horizonFraction - dy * depthFactor
                 val band = room.height * atmosphere.bandFraction
                 val top = (horizonY - band).coerceAtLeast(0f)
                 val bottom = (horizonY + band).coerceAtMost(room.height)
@@ -332,7 +335,7 @@ private fun DrawScope.drawAmbient(a: AppAmbient, origin: Offset, roomSize: Size,
                                 horizonTone.copy(alpha = atmosphere.bloomOpacity * 0.35f),
                                 Color.Transparent
                             ),
-                            center = Offset(room.width * 0.5f, horizonY),
+                            center = Offset(room.width * 0.5f - dx * depthFactor, horizonY),
                             radius = (room.width * atmosphere.bloomRadiusFraction).coerceAtLeast(1f)
                         ),
                         topLeft = Offset.Zero,

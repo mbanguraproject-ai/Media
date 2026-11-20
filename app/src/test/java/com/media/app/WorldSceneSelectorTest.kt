@@ -118,6 +118,25 @@ class WorldSceneSelectorTest {
     }
 
     @Test
+    fun sceneParallaxFactorIsBoundedAndUsesArtworkDepth() {
+        val factors = WorldSceneFamily.values().map { family ->
+            val argb = when (family) {
+                WorldSceneFamily.DREAM -> 0xffff0000.toInt()
+                WorldSceneFamily.URBAN -> 0xffff8000.toInt()
+                WorldSceneFamily.NATURE -> 0xff00ff00.toInt()
+                WorldSceneFamily.OCEAN -> 0xff0000ff.toInt()
+                WorldSceneFamily.COSMIC -> 0xff8000ff.toInt()
+                WorldSceneFamily.MINIMAL -> 0xff777777.toInt()
+            }
+            sceneParallaxFactor(
+                WorldSceneSelector.select(ArtworkColorSignature.fromArgb(listOf(argb)))
+            )
+        }
+        factors.forEach { assertTrue(it in 0.08f..0.18f) }
+        assertTrue(factors.distinct().size > 1)
+    }
+
+    @Test
     fun nearRedHueWrapsAcrossZeroWithoutChangingClassification() {
         val signature = ArtworkColorSignature.fromArgb(
             listOf(0xffff0000.toInt(), 0xffff0033.toInt())
