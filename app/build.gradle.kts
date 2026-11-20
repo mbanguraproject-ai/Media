@@ -53,7 +53,7 @@ android {
     }
     // Every language ships in the base APK. Play otherwise installs only the
     // phone's own languages from the bundle, and a language picked in
-    // Settings > Language would have no strings on the device to switch to.
+    // Settings would have no strings on the device to switch to.
     bundle {
         language {
             enableSplit = false
@@ -68,8 +68,6 @@ android {
     }
     buildFeatures {
         compose = true
-        // BuildConfig.VERSION_NAME — Settings and About both hardcoded "1.0"
-        // while the build was on 1.3.
         buildConfig = true
     }
 }
@@ -80,22 +78,14 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
-    // 1.9.2's enableEdgeToEdge() calls setStatusBarColor and
-    // setNavigationBarColor, deprecated in Android 15. The deprecation is the
-    // library's, not ours - we call one function - so a version bump clears it.
     implementation("androidx.activity:activity-compose:1.10.1")
-    // Pulled in transitively at 1.1.0, which Play flags as outdated. We use no
-    // Fragments; this just pins it forward.
     implementation("androidx.fragment:fragment:1.8.6")
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
-    // Provides androidx.lifecycle.compose.LocalLifecycleOwner (the Compose-UI
-    // one is deprecated) for the on-resume permission re-check.
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
-    // §4/§12: ambient colour extracted from the current artwork.
     implementation("androidx.palette:palette-ktx:1.0.0")
 
     implementation("androidx.media3:media3-exoplayer:1.4.1")
@@ -103,13 +93,12 @@ dependencies {
     implementation("androidx.media3:media3-session:1.4.1")
     implementation("androidx.media3:media3-common:1.4.1")
 
-    // Google Play In-App Review: the rating card shown inside the app.
     implementation("com.google.android.play:review:2.0.2")
-    // Google Play In-App Updates: offers a new version when the app opens.
-    // Plain artifact, not -ktx, for the same Kotlin metadata reason as billing.
     implementation("com.google.android.play:app-update:2.1.0")
 
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
+
+    testImplementation("junit:junit:4.13.2")
 }
