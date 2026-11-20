@@ -69,6 +69,25 @@ class WorldSceneSelectorTest {
     }
 
     @Test
+    fun sceneAtmosphereIsBoundedAndMinimalArtworkStaysNeutral() {
+        WorldSceneFamily.values().forEach { family ->
+            val scene = when (family) {
+                WorldSceneFamily.DREAM -> WorldSceneSelector.select(ArtworkColorSignature.fromArgb(listOf(0xffff0000.toInt())))
+                WorldSceneFamily.URBAN -> WorldSceneSelector.select(ArtworkColorSignature.fromArgb(listOf(0xffff8000.toInt())))
+                WorldSceneFamily.NATURE -> WorldSceneSelector.select(ArtworkColorSignature.fromArgb(listOf(0xff00ff00.toInt())))
+                WorldSceneFamily.OCEAN -> WorldSceneSelector.select(ArtworkColorSignature.fromArgb(listOf(0xff0000ff.toInt())))
+                WorldSceneFamily.COSMIC -> WorldSceneSelector.select(ArtworkColorSignature.fromArgb(listOf(0xff8000ff.toInt())))
+                WorldSceneFamily.MINIMAL -> WorldSceneSelector.select(ArtworkColorSignature.fromArgb(listOf(0xff777777.toInt())))
+            }
+            val atmosphere = sceneAtmosphere(scene)
+            assertTrue(atmosphere.horizonFraction in 0.18f..0.82f)
+            assertTrue(atmosphere.bandFraction in 0.10f..0.20f)
+            assertTrue(atmosphere.opacity in 0f..0.12f)
+            if (family == WorldSceneFamily.MINIMAL) assertEquals(0f, atmosphere.opacity, 0f)
+        }
+    }
+
+    @Test
     fun nearRedHueWrapsAcrossZeroWithoutChangingClassification() {
         val signature = ArtworkColorSignature.fromArgb(
             listOf(0xffff0000.toInt(), 0xffff0033.toInt())
